@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#10151d">
+<title>Gold & Bitcoin</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1017;--card:#151d28;--line:#263345;--text:#f2f5f8;--muted:#9eacbd;--gold:#f0c35a;--green:#32d296;--red:#ff737d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:env(safe-area-inset-top) 14px calc(24px + env(safe-area-inset-bottom));}
+header{padding:18px 4px 12px;display:flex;align-items:center;justify-content:space-between}h1{font-size:23px;margin:0} .sub{color:var(--muted);font-size:12px;margin-top:4px}.pill{font-size:11px;color:var(--gold);border:1px solid #66562f;border-radius:20px;padding:6px 9px}
+.tabs{display:flex;gap:8px;margin:8px 0 14px}.tabs button,.periods button{background:#151d28;border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:10px 12px;font-weight:600}.tabs button.active,.periods button.active{background:#2b2b23;color:var(--gold);border-color:#66562f}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px;margin:12px 0}.label{color:var(--muted);font-size:12px}.price{font-size:25px;font-weight:750;margin:6px 0}.change{font-size:13px;color:var(--green)}.assethead{display:flex;justify-content:space-between;align-items:center}.assetname{font-weight:700}.coin{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#282b30;margin-right:9px;color:var(--gold)}
+.periods{display:flex;gap:6px;margin:12px 0}.periods button{padding:7px 10px;font-size:12px}.chart{height:145px;width:100%;display:block;background:linear-gradient(180deg,rgba(50,210,150,.08),transparent);border-radius:8px}
+.signal{display:flex;align-items:center;justify-content:space-between;gap:12px}.signal strong{font-size:17px}.buy{color:var(--green)}.sell{color:var(--red)}.neutral{color:var(--gold)}.hint{font-size:12px;color:var(--muted);line-height:1.5;margin-top:9px}
+.timer{text-align:center}.digits{font-size:42px;font-weight:800;letter-spacing:2px;margin:8px 0}.btn{border:0;border-radius:11px;padding:12px 14px;background:var(--gold);color:#161616;font-weight:750;font-size:14px}.btn.secondary{background:#273344;color:var(--text);border:1px solid var(--line)}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>*{flex:1}.field{width:100%;background:#0d141d;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:15px;margin:6px 0 10px}.trade{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:10px 0;font-size:13px}.trade:last-child{border-bottom:0}.footer{text-align:center;color:var(--muted);font-size:11px;line-height:1.5;padding:10px}
+</style>
+</head>
+<body>
+<header><div><h1>Gold & Bitcoin</h1><div class="sub">Панель наблюдения и ручной торговли</div></div><span class="pill">ДЕМО-ПАНЕЛЬ</span></header>
+<div class="tabs"><button class="active" onclick="showTab('market',this)">Рынок</button><button onclick="showTab('signals',this)">Сигналы</button><button onclick="showTab('journal',this)">Мои сделки</button></div>
+<section id="market">
+<div class="card">
+ <div class="assethead"><div><span class="coin">Au</span><span class="assetname">Золото · XAU/USD</span></div><span class="pill">WATCH</span></div>
+ <div class="price" id="gold-price">Загрузка цены…</div><div class="label" id="gold-status">Получаем котировку Capital.com</div>
+ <div class="periods"><button class="active" onclick="period(this,'gold')">1м</button><button onclick="period(this,'gold')">5м</button><button onclick="period(this,'gold')">15м</button><button onclick="period(this,'gold')">1ч</button></div>
+ <svg class="chart" viewBox="0 0 340 130" preserveAspectRatio="none" aria-label="Демонстрационный график"><g stroke="#293747" stroke-width="1"><path d="M0 25H340M0 55H340M0 85H340M0 115H340"/></g><path d="M0 93 L18 82 L32 88 L47 62 L62 70 L78 54 L93 67 L108 43 L125 49 L141 32 L156 45 L172 38 L188 61 L203 52 L220 68 L237 49 L254 57 L270 35 L288 43 L304 24 L322 31 L340 17" fill="none" stroke="#f0c35a" stroke-width="2.5"/></svg>
+</div>
+<div class="card">
+ <div class="assethead"><div><span class="coin">₿</span><span class="assetname">Bitcoin · BTC/USD</span></div><span class="pill">WATCH</span></div>
+ <div class="price" id="btc-price">Загрузка цены…</div><div class="label" id="btc-status">Получаем котировку Capital.com</div>
+ <div class="periods"><button class="active" onclick="period(this,'btc')">1м</button><button onclick="period(this,'btc')">5м</button><button onclick="period(this,'btc')">15м</button><button onclick="period(this,'btc')">1ч</button></div>
+ <svg class="chart" viewBox="0 0 340 130" preserveAspectRatio="none" aria-label="Демонстрационный график"><g stroke="#293747" stroke-width="1"><path d="M0 25H340M0 55H340M0 85H340M0 115H340"/></g><path d="M0 25 L18 38 L34 31 L50 55 L67 47 L82 69 L99 58 L116 81 L132 73 L150 91 L167 77 L184 101 L201 83 L218 94 L234 70 L251 77 L268 54 L285 63 L302 39 L320 48 L340 30" fill="none" stroke="#32d296" stroke-width="2.5"/></svg>
+</div>
+</section>
+<section id="signals" hidden>
+<div class="card"><div class="signal"><div><div class="label">XAU/USD · Золото</div><strong class="neutral">ОЖИДАНИЕ</strong></div><span class="pill">Сигнал не подключён</span></div><div class="hint">Это шаблон интерфейса. Без живых котировок и расчёта индикаторов он не выдаёт торговых рекомендаций.</div></div>
+<div class="card"><div class="signal"><div><div class="label">BTC/USD · Bitcoin</div><strong class="neutral">ОЖИДАНИЕ</strong></div><span class="pill">Сигнал не подключён</span></div><div class="hint">Следующий этап — подключить рыночные данные и правила сигналов. Сделки останутся ручными.</div></div>
+<div class="card timer"><div class="label">ТАЙМЕР СЕССИИ</div><div class="digits" id="clock">05:00</div><div class="row"><button class="btn" onclick="startTimer()">Старт</button><button class="btn secondary" onclick="pauseTimer()">Пауза</button><button class="btn secondary" onclick="resetTimer()">Сброс</button></div><div class="periods" style="justify-content:center"><button onclick="setTimer(60)">1 мин</button><button class="active" onclick="setTimer(300)">5 мин</button><button onclick="setTimer(900)">15 мин</button><button onclick="setTimer(1800)">30 мин</button></div></div>
+</section>
+<section id="journal" hidden>
+<div class="card"><h3 style="margin-top:0">Добавить сделку вручную</h3><label class="label" for="asset">Актив</label><select class="field" id="asset"><option>Золото XAU/USD</option><option>Bitcoin BTC/USD</option></select><label class="label" for="direction">Направление</label><select class="field" id="direction"><option>Покупка</option><option>Продажа</option></select><label class="label" for="entry">Цена входа (необязательно)</label><input class="field" id="entry" placeholder="Например, 2350.50" inputmode="decimal"><label class="label" for="note">Заметка</label><input class="field" id="note" placeholder="Почему открыл сделку"><button class="btn" style="width:100%" onclick="addTrade()">Сохранить запись</button></div>
+<div class="card"><h3 style="margin-top:0">История сделок</h3><div id="trades" class="hint">Пока записей нет. Добавленные записи хранятся в этом браузере на устройстве.</div><button class="btn secondary" style="margin-top:10px" onclick="clearTrades()">Очистить журнал</button></div>
+</section>
+<div class="footer">Цены запрашиваются у Capital.com, если настроен API. Линии на графиках пока демонстрационные; сигналы не подключены. Сделки открываются вручную. Не является финансовой рекомендацией.</div>
+<script>
+let remaining=300, interval=null;
+function showTab(id,btn){document.querySelectorAll('section').forEach(s=>s.hidden=s.id!==id);document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));btn.classList.add('active')}
+function period(btn,asset){btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));btn.classList.add('active')}
+function drawClock(){let m=Math.floor(remaining/60),s=remaining%60;document.getElementById('clock').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
+function setTimer(n){pauseTimer();remaining=n;drawClock();document.querySelectorAll('.periods button').forEach(b=>{if(b.textContent===({60:'1 мин',300:'5 мин',900:'15 мин',1800:'30 мин'}[n]))b.classList.add('active');else if(['1 мин','5 мин','15 мин','30 мин'].includes(b.textContent))b.classList.remove('active')})}
+function startTimer(){if(interval)return;interval=setInterval(()=>{if(remaining>0){remaining--;drawClock()}else{pauseTimer();if(navigator.vibrate)navigator.vibrate([200,100,200]);alert('Таймер завершён')}} ,1000)}
+function pauseTimer(){if(interval){clearInterval(interval);interval=null}}
+function resetTimer(){pauseTimer();remaining=300;drawClock()}
+function getTrades(){try{return JSON.parse(localStorage.getItem('gb-trades')||'[]')}catch(e){return []}}
+function renderTrades(){let arr=getTrades(),el=document.getElementById('trades');if(!arr.length){el.textContent='Пока записей нет. Добавленные записи хранятся в этом браузере на устройстве.';return}el.innerHTML=arr.map(t=>'<div class="trade"><div><b>'+esc(t.asset)+'</b><br>'+esc(t.direction)+' · '+esc(t.entry||'цена не указана')+'<br><span class="label">'+esc(t.note||'Без заметки')+' · '+esc(t.date)+'</span></div></div>').join('')}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function addTrade(){let arr=getTrades();arr.unshift({asset:document.getElementById('asset').value,direction:document.getElementById('direction').value,entry:document.getElementById('entry').value.trim(),note:document.getElementById('note').value.trim(),date:new Date().toLocaleString('ru-RU')});try{localStorage.setItem('gb-trades',JSON.stringify(arr));renderTrades();document.getElementById('entry').value='';document.getElementById('note').value='';alert('Запись сохранена')}catch(e){alert('Не удалось сохранить запись в браузере')}} 
+function clearTrades(){if(confirm('Удалить все записи из журнала?')){localStorage.removeItem('gb-trades');renderTrades()}}
+async function loadPrices(){
+ const set=(id,text)=>{const el=document.getElementById(id);if(el)el.textContent=text};
+ try{
+  const r=await fetch('/.netlify/functions/prices',{cache:'no-store'});
+  const d=await r.json();
+  if(!r.ok) throw new Error(d.error||'Источник не ответил');
+  for(const [key,priceId,statusId] of [['gold','gold-price','gold-status'],['bitcoin','btc-price','btc-status']]){
+   const item=d[key];
+   if(item && item.price!=null){set(priceId,Number(item.price).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' USD');set(statusId,'Capital.com · bid/offer котировка · обновлено '+new Date(d.updatedAt).toLocaleTimeString('ru-RU'));}
+   else {set(priceId,'Цена недоступна');set(statusId,(item&&item.message)||'Не найден инструмент в Capital.com');}
+  }
+ }catch(e){set('gold-price','Нет подключения');set('btc-price','Нет подключения');set('gold-status','Проверьте настройки API в Netlify');set('btc-status','Проверьте настройки API в Netlify');}
+}
+drawClock();renderTrades();loadPrices();setInterval(loadPrices,60000);
+</script>
+</body>
+</html>
