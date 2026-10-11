@@ -40,11 +40,16 @@ export default async (request) => {
       })
     });
 
-    if (!login.ok) {
-      return json({
-        error: "Capital.com не принял данные API. Проверьте настройки."
-      }, 502);
-    }
+   if (!login.ok) {
+  const details = await login.text();
+  console.error("Capital.com login error:", login.status, details);
+
+  return json({
+    error: "Capital.com: ошибка авторизации",
+    status: login.status,
+    details: details.slice(0, 300)
+  }, 502);
+}
 
     const cst = login.headers.get("CST");
     const securityToken = login.headers.get("X-SECURITY-TOKEN");
