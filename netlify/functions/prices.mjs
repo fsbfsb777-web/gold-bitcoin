@@ -149,8 +149,8 @@ ket("Gold", /GOLD|XAU.?USD/i),
       gold,
       bitcoin,
       history: {
-  gold: gold.history,
-  bitcoin: bitcoin.history
+        gold: gold.history,
+        bitcoin: bitcoin.history
 }
     });
   } catch {
