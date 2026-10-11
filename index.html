@@ -70,7 +70,7 @@ async function loadPrices(){
   }
  }catch(e){set('gold-price','Нет подключения');set('btc-price','Нет подключения');set('gold-status','Проверьте настройки API в Netlify');set('btc-status','Проверьте настройки API в Netlify');}
 }
-drawClock();renderTrades();loadPrices();setInterval(loadPrices,10000);
+drawClock();renderTrades();loadPrices();setInterval(loadPrices,1000);
 </script>
 </body>
 </html>
