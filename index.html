@@ -58,9 +58,41 @@ function period(btn,asset){const resolution=btn.dataset.resolution||'MINUTE';res
 function drawChart(id,values,color,noteId){const svg=document.getElementById(id),note=document.getElementById(noteId);if(!svg||!note)return;if(!values||values.length<2){svg.innerHTML='<text x="170" y="75" fill="#9eacbd" text-anchor="middle" font-size="11">История пока недоступна</text>';note.textContent='Источник не вернул достаточно исторических свечей.';return}const w=340,h=150,pad=10,min=Math.min(...values),max=Math.max(...values),range=max-min||Math.max(Math.abs(max)*0.001,1);const points=values.map((v,i)=>`${(i/(values.length-1))*w},${h-pad-((v-min)/range)*(h-2*pad)}`).join(' ');svg.innerHTML=`<g stroke="#293747" stroke-width="1"><path d="M0 30H340M0 60H340M0 90H340M0 120H340"/></g><polyline points="${points}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;note.textContent=`Исторические цены · ${values.length} точек · от ${min.toLocaleString('en-US',{maximumFractionDigits:2})} до ${max.toLocaleString('en-US',{maximumFractionDigits:2})}`}
 function calcSignal(values){if(!values||values.length<20)return {label:'ОЖИДАНИЕ',cls:'neutral',badge:'Недостаточно истории',hint:'Нужно не менее 20 исторических свечей для простой оценки.'};const closes=values.slice(-20),sma5=closes.slice(-5).reduce((a,b)=>a+b,0)/5,sma20=closes.reduce((a,b)=>a+b,0)/20,last=closes[closes.length-1],prev=closes[closes.length-2];let label='ОЖИДАНИЕ',cls='neutral',hint='Короткая и длинная средние близки; явного направления нет.';if(sma5>sma20&&last>prev){label='ВОЗМОЖНЫЙ РОСТ';cls='buy';hint='Цена выше средней за 20 свечей, а последняя свеча выросла.'}else if(sma5<sma20&&last<prev){label='ВОЗМОЖНОЕ СНИЖЕНИЕ';cls='sell';hint='Цена ниже средней за 20 свечей, а последняя свеча снизилась.'}return {label,cls,badge:'Расчёт по истории',hint}}
 function renderSignal(asset,values){const s=calcSignal(values),title=document.getElementById(asset+'-signal'),badge=document.getElementById(asset+'-signal-badge'),hint=document.getElementById(asset+'-signal-hint');if(title){title.textContent=s.label;title.className=s.cls}if(badge)badge.textContent=s.badge;if(hint)hint.textContent=s.hint+' Это не гарантия результата и не финансовая рекомендация.'}
-function drawClock(){let m=Math.floor(remaining/60),s=remaining%60;document.getElementById('clock').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
-function setTimer(n){pauseTimer();remaining=n;drawClock();document.querySelectorAll('.periods button').forEach(b=>{if(b.textContent===({60:'1 мин',300:'5 мин',900:'15 мин',1800:'30 мин'}[n]))b.classList.add('active');else if(['1 мин','5 мин','15 мин','30 мин'].includes(b.textContent))b.classList.remove('active')})}
-function startTimer(){if(interval)return;interval=setInterval(()=>{if(remaining>0){remaining--;drawClock()}else{pauseTimer();if(navigator.vibrate)navigator.vibrate([200,100,200]);alert('Таймер завершён')}},1000)}function pauseTimer(){if(interval){clearInterval(interval);interval=null}}function resetTimer(){pauseTimer();remaining=300;drawClock()}
+function drawClock() {
+  const resolution = resolutionByAsset.gold;
+  const durations = {
+    MINUTE: 60,
+    MINUTE_5: 300,
+    MINUTE_15: 900,
+    HOUR: 3600
+  };
+
+  const duration = durations[resolution] || 60;
+  const now = Math.floor(Date.now() / 1000);
+  const remaining = duration - (now % duration);
+  const m = Math.floor(remaining / 60);
+  const s = remaining % 60;
+
+  document.getElementById('clock').textContent =
+    String(m).padStart(2, '0') + ':' +
+    String(s).padStart(2, '0');
+
+  document.getElementById('timer-status').textContent =
+    'Период графика: ' +
+    ({
+      MINUTE: '1 минута',
+      MINUTE_5: '5 минут',
+      MINUTE_15: '15 минут',
+      HOUR: '1 час'
+    }[resolution] || '1 минута') +
+    '. Автоматический отсчёт.';
+}
+
+function startClock() {
+  drawClock();
+  if (clockInterval) clearInterval(clockInterval);
+  clockInterval = setInterval(drawClock, 250);
+}
 function getTrades(){try{return JSON.parse(localStorage.getItem('gb-trades')||'[]')}catch(e){return []}}function renderTrades(){let arr=getTrades(),el=document.getElementById('trades');if(!arr.length){el.textContent='Пока записей нет. Добавленные записи хранятся в этом браузере на устройстве.';return}el.innerHTML=arr.map(t=>'<div class="trade"><div><b>'+esc(t.asset)+'</b><br>'+esc(t.direction)+' · '+esc(t.entry||'цена не указана')+'<br><span class="label">'+esc(t.note||'Без заметки')+' · '+esc(t.date)+'</span></div></div>').join('')}function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function addTrade(){let arr=getTrades();arr.unshift({asset:document.getElementById('asset').value,direction:document.getElementById('direction').value,entry:document.getElementById('entry').value.trim(),note:document.getElementById('note').value.trim(),date:new Date().toLocaleString('ru-RU')});try{localStorage.setItem('gb-trades',JSON.stringify(arr));renderTrades();document.getElementById('entry').value='';document.getElementById('note').value='';alert('Запись сохранена')}catch(e){alert('Не удалось сохранить запись в браузере')}}function clearTrades(){if(confirm('Удалить все записи из журнала?')){localStorage.removeItem('gb-trades');renderTrades()}}
 async function loadPrices(){const set=(id,text)=>{const el=document.getElementById(id);if(el)el.textContent=text};try{const res=resolutionByAsset.gold===resolutionByAsset.btc?resolutionByAsset.gold:'MINUTE';const r=await fetch('/.netlify/functions/prices?resolution='+encodeURIComponent(res),{cache:'no-store'});const d=await r.json();if(!r.ok)throw new Error(d.error||'Источник не ответил');for(const [key,priceId,statusId,chartId,noteId,signalAsset,color] of [['gold','gold-price','gold-status','gold-chart','gold-chart-note','gold','#f0c35a'],['bitcoin','btc-price','btc-status','btc-chart','btc-chart-note','btc','#32d296']]){const item=d[key];if(item&&item.bid!=null){set(priceId,Number(item.bid).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' USD');set(statusId,`Capital.com · ${item.marketStatus||'статус неизвестен'} · обновлено ${new Date(d.updatedAt).toLocaleTimeString('ru-RU')}`)}else{set(priceId,'Цена недоступна');set(statusId,(item&&item.error)||'Не найден инструмент в Capital.com')}const candles=item&&Array.isArray(item.history)?item.history:[];const closes=candles.map(c=>Number(c.close)).filter(Number.isFinite);histories[key]=closes;drawChart(chartId,closes,color,noteId);renderSignal(signalAsset,closes)} }catch(e){set('gold-price','Нет подключения');set('btc-price','Нет подключения');set('gold-status','Проверьте API Capital.com в Netlify');set('btc-status','Проверьте API Capital.com в Netlify');drawChart('gold-chart',[],'#f0c35a','gold-chart-note');drawChart('btc-chart',[],'#32d296','btc-chart-note');renderSignal('gold',[]);renderSignal('btc',[])}}
