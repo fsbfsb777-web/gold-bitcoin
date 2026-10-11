@@ -97,8 +97,38 @@ export default async (request) => {
       }
 
      
+
+     
+    }
+
+    const [gold, bitcoin] = await Promise.all([
+      findMar
 const result = await details.json();
 const snapshot = result.snapshot || {};
+
+let history = [];
+
+try {
+  const historyResponse = await fetch(
+    `${base}/api/v1/prices/${encodeURIComponent(market.epic)}?resolution=MINUTE&max=100`,
+    { headers }
+  );
+
+  if (historyResponse.ok) {
+    const historyData = await historyResponse.json();
+
+    history = (historyData.prices || [])
+      .map(p => ({
+        time: p.snapshotTimeUTC || p.snapshotTime || null,
+        close: p.closePrice?.bid ?? p.closePrice?.ask ?? null
+      }))
+      .filter(
+        p => p.close !== null && Number.isFinite(Number(p.close))
+      );
+  }
+} catch (error) {
+  console.error("Ошибка загрузки истории:", error.message);
+}
 
 return {
   name: market.instrumentName || term,
@@ -106,13 +136,10 @@ return {
   bid: snapshot.bid ?? null,
   offer: snapshot.offer ?? null,
   marketStatus: snapshot.marketStatus || market.marketStatus,
-  time: snapshot.updateTime || null
+  time: snapshot.updateTime || null,
+  history
 };
-     
-    }
-
-    const [gold, bitcoin] = await Promise.all([
-      findMarket("Gold", /GOLD|XAU.?USD/i),
+ket("Gold", /GOLD|XAU.?USD/i),
       findMarket("Bitcoin", /BITCOIN|BTC.?USD/i)
     ]);
 
