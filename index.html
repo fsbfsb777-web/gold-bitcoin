@@ -47,7 +47,19 @@ header{padding:18px 4px 12px;display:flex;align-items:center;justify-content:spa
 let remaining=300, interval=null;
 function showTab(id,btn){document.querySelectorAll('section').forEach(s=>s.hidden=s.id!==id);document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));btn.classList.add('active')}
 function period(btn,asset){btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));btn.classList.add('active')}
-function drawClock(){let m=Math.floor(remaining/60),s=remaining%60;document.getElementById('clock').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
+
+function signalFromPrices(price, history) {
+  if (!price || !history || history.length < 2) {
+    return "ОЖИДАНИЕ";
+  }
+  const previous = history[history.length - 2];
+  const current = history[history.length - 1];
+  if (current > previous) return "BUY";
+  if (current < previous) return "SELL";
+  return "ОЖИДАНИЕ";
+}
+
+ function drawClock(){let m=Math.floor(remaining/60),s=remaining%60;document.getElementById('clock').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
 function setTimer(n){pauseTimer();remaining=n;drawClock();document.querySelectorAll('.periods button').forEach(b=>{if(b.textContent===({60:'1 мин',300:'5 мин',900:'15 мин',1800:'30 мин'}[n]))b.classList.add('active');else if(['1 мин','5 мин','15 мин','30 мин'].includes(b.textContent))b.classList.remove('active')})}
 function startTimer(){if(interval)return;interval=setInterval(()=>{if(remaining>0){remaining--;drawClock()}else{pauseTimer();if(navigator.vibrate)navigator.vibrate([200,100,200]);alert('Таймер завершён')}} ,1000)}
 function pauseTimer(){if(interval){clearInterval(interval);interval=null}}
