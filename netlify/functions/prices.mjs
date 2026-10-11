@@ -1,14 +1,31 @@
 
+
+
 export default async (request) => {
   const json = (data, status = 200) =>
     new Response(JSON.stringify(data), {
       status,
-      headers: { "Content-Type": "application/json; charset=utf-8" }
+      headers: {
+        "Content-Type": "application/json; charset=utf-8"
+      }
     });
 
   if (request.method !== "GET") {
     return json({ error: "Разрешён только GET-запрос" }, 405);
   }
+
+  const url = new URL(request.url);
+  const allowedResolutions = new Set([
+    "MINUTE",
+    "MINUTE_5",
+    "MINUTE_15",
+    "HOUR"
+  ]);
+  const requestedResolution =
+    url.searchParams.get("resolution") || "MINUTE";
+  const resolution = allowedResolutions.has(requestedResolution)
+    ? requestedResolution
+    : "MINUTE";
 
   const apiKey = process.env.CAPITAL_API_KEY;
   const identifier = process.env.CAPITAL_IDENTIFIER;
@@ -40,22 +57,28 @@ export default async (request) => {
       })
     });
 
-   if (!login.ok) {
-  const details = await login.text();
-  console.error("Capital.com login error:", login.status, details);
-
-  return json({
-    error: "Capital.com: ошибка авторизации",
-    status: login.status,
-    details: details.slice(0, 300)
-  }, 502);
-}
+    if (!login.ok) {
+      const details = await login.text();
+      console.error(
+        "Capital.com login error:",
+        login.status,
+        details
+      );
+      return json({
+        error: "Capital.com: ошибка авторизации",
+        status: login.status,
+        details: details.slice(0, 300)
+      }, 502);
+    }
 
     const cst = login.headers.get("CST");
-    const securityToken = login.headers.get("X-SECURITY-TOKEN");
+    const securityToken =
+      login.headers.get("X-SECURITY-TOKEN");
 
     if (!cst || !securityToken) {
-      return json({ error: "Не получен токен Capital.com" }, 502);
+      return json({
+        error: "Не получен токен Capital.com"
+      }, 502);
     }
 
     const headers = {
@@ -71,19 +94,29 @@ export default async (request) => {
         { headers }
       );
 
-      if (!response.ok) throw new Error("Не удалось найти инструмент");
+      if (!response.ok) {
+        throw new Error("Не удалось найти инструмент");
+      }
 
       const data = await response.json();
       const markets = data.markets || [];
 
-      const market = markets.find(m =>
-        preferred.test(`${m.instrumentName || ""} ${m.epic || ""}`)
-      ) || markets.find(m =>
-        /TRADEABLE|TRADEABLE_WITH_RESTRICTIONS/.test(m.marketStatus || "")
+      const market = markets.find((item) =>
+        preferred.test(
+          `${item.instrumentName || ""} ${item.epic || ""}`
+        )
+      ) || markets.find((item) =>
+        /TRADEABLE|TRADEABLE_WITH_RESTRICTIONS/.test(
+          item.marketStatus || ""
+        )
       );
 
       if (!market || !market.epic) {
-        return { name: term, error: "Инструмент не найден" };
+        return {
+          name: term,
+          error: "Инструмент не найден",
+          history: []
+        };
       }
 
       const details = await fetch(
@@ -92,70 +125,114 @@ export default async (request) => {
       );
 
       if (!details.ok) {
-        return { name: market.instrumentName || term,
-                 error: "Не удалось получить цену" };
+        return {
+          name: market.instrumentName || term,
+          epic: market.epic,
+          error: "Не удалось получить цену",
+          history: []
+        };
       }
 
-     
+      const result = await details.json();
+      const snapshot = result.snapshot || {};
+      let history = [];
 
-     
+      try {
+        const pricesResponse = await fetch(
+          `${base}/api/v1/prices/${encodeURIComponent(market.epic)}?resolution=${encodeURIComponent(resolution)}&max=100`,
+          { headers }
+        );
+
+        if (pricesResponse.ok) {
+          const pricesData = await pricesResponse.json();
+
+          history = (pricesData.prices || [])
+            .map((candle) => {
+              const close = candle.closePrice || {};
+              const bid = close.bid == null
+                ? NaN
+                : Number(close.bid);
+              const ask = close.ask == null
+                ? NaN
+                : Number(close.ask);
+
+              const value =
+                Number.isFinite(bid) && Number.isFinite(ask)
+                  ? (bid + ask) / 2
+                  : Number.isFinite(bid)
+                    ? bid
+                    : Number.isFinite(ask)
+                      ? ask
+                      : null;
+
+              return {
+                time:
+                  candle.snapshotTimeUTC ||
+                  candle.snapshotTime ||
+                  null,
+                close: value
+              };
+            })
+            .filter((candle) =>
+              candle.close !== null &&
+              Number.isFinite(candle.close)
+            );
+        } else {
+          console.warn(
+            "Capital.com history unavailable:",
+            pricesResponse.status,
+            market.epic
+          );
+        }
+      } catch (historyError) {
+        console.warn(
+          "Capital.com history request failed:",
+          market.epic,
+          historyError.message
+        );
+      }
+
+      return {
+        name: market.instrumentName || term,
+        epic: market.epic,
+        bid: snapshot.bid ?? null,
+        offer: snapshot.offer ?? null,
+        marketStatus:
+          snapshot.marketStatus ||
+          market.marketStatus ||
+          "UNKNOWN",
+        time: snapshot.updateTime || null,
+        history
+      };
     }
 
     const [gold, bitcoin] = await Promise.all([
-      findMar
-const result = await details.json();
-const snapshot = result.snapshot || {};
-
-let history = [];
-
-try {
-  const historyResponse = await fetch(
-    `${base}/api/v1/prices/${encodeURIComponent(market.epic)}?resolution=MINUTE&max=500`,
-    { headers }
-  );
-
-  if (historyResponse.ok) {
-    const historyData = await historyResponse.json();
-
-    history = (historyData.prices || [])
-      .map(p => ({
-        time: p.snapshotTimeUTC || p.snapshotTime || null,
-        close: p.closePrice?.bid ?? p.closePrice?.ask ?? null
-      }))
-      .filter(
-        p => p.close !== null && Number.isFinite(Number(p.close))
-      );
-  }
-} catch (error) {
-  console.error("Ошибка загрузки истории:", error.message);
-}
-
-return {
-  name: market.instrumentName || term,
-  epic: market.epic,
-  bid: snapshot.bid ?? null,
-  offer: snapshot.offer ?? null,
-  marketStatus: snapshot.marketStatus || market.marketStatus,
-  time: snapshot.updateTime || null,
-  history
-};
-ket("Gold", /GOLD|XAU.?USD/i),
+      findMarket("Gold", /GOLD|XAU.?USD/i),
       findMarket("Bitcoin", /BITCOIN|BTC.?USD/i)
     ]);
 
     return json({
-      source: demo ? "Capital.com demo" : "Capital.com live",
+      source: demo
+        ? "Capital.com demo"
+        : "Capital.com live",
+      resolution,
       updatedAt: new Date().toISOString(),
       gold,
       bitcoin,
       history: {
-        gold: gold.history,
-        bitcoin: bitcoin.history
-}
+        gold: Array.isArray(gold.history) ? gold.history : [],
+        bitcoin: Array.isArray(bitcoin.history)
+          ? bitcoin.history
+          : []
+      }
     });
-  } catch {
+  } catch (error) {
+    console.error("Prices function error:", error.message);
     return json({
-      error: "Не удалось связаться с Capital.com. Попробуйте позже."
+      error:
+        "Не удалось связаться с Capital.com. Попробуйте позже."
     }, 502);
   }
 };
+
+
