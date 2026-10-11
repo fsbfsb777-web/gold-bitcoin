@@ -96,17 +96,19 @@ export default async (request) => {
                  error: "Не удалось получить цену" };
       }
 
-      const result = await details.json();
-      const snapshot = result.snapshot || {};
+     
+const result = await details.json();
+const snapshot = result.snapshot || {};
 
-      return {
-        name: market.instrumentName || term,
-        epic: market.epic,
-        bid: snapshot.bid ?? null,
-        offer: snapshot.offer ?? null,
-        marketStatus: snapshot.marketStatus || market.marketStatus || "UNKNOWN",
-        time: snapshot.updateTime || null
-      };
+return {
+  name: market.instrumentName || term,
+  epic: market.epic,
+  bid: snapshot.bid ?? null,
+  offer: snapshot.offer ?? null,
+  marketStatus: snapshot.marketStatus || market.marketStatus,
+  time: snapshot.updateTime || null
+};
+     
     }
 
     const [gold, bitcoin] = await Promise.all([
