@@ -94,10 +94,7 @@ function drawClock() {
     }[resolution] || '1 минута') +
     '. Автоматический отсчёт.';
 }
-function startClock() {
-
 let clockResolution = 'MINUTE';
-
 function setClockPeriod(resolution, btn) {
   clockResolution = resolution;
   document.querySelectorAll('#signals .timer .periods button')
@@ -105,10 +102,10 @@ function setClockPeriod(resolution, btn) {
   btn.classList.add('active');
   drawClock();
 }
+function startClock() {
   drawClock();
   if (clockInterval) clearInterval(clockInterval);
   clockInterval = setInterval(drawClock, 250);
-
 }
 function getTrades(){try{return JSON.parse(localStorage.getItem('gb-trades')||'[]')}catch(e){return []}}function renderTrades(){let arr=getTrades(),el=document.getElementById('trades');if(!arr.length){el.textContent='Пока записей нет. Добавленные записи хранятся в этом браузере на устройстве.';return}el.innerHTML=arr.map(t=>'<div class="trade"><div><b>'+esc(t.asset)+'</b><br>'+esc(t.direction)+' · '+esc(t.entry||'цена не указана')+'<br><span class="label">'+esc(t.note||'Без заметки')+' · '+esc(t.date)+'</span></div></div>').join('')}function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function addTrade(){let arr=getTrades();arr.unshift({asset:document.getElementById('asset').value,direction:document.getElementById('direction').value,entry:document.getElementById('entry').value.trim(),note:document.getElementById('note').value.trim(),date:new Date().toLocaleString('ru-RU')});try{localStorage.setItem('gb-trades',JSON.stringify(arr));renderTrades();document.getElementById('entry').value='';document.getElementById('note').value='';alert('Запись сохранена')}catch(e){alert('Не удалось сохранить запись в браузере')}}function clearTrades(){if(confirm('Удалить все записи из журнала?')){localStorage.removeItem('gb-trades');renderTrades()}}
