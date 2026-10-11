@@ -96,6 +96,16 @@ function drawClock() {
 }
 
 function startClock() {
+
+let clockResolution = 'MINUTE';
+
+function setClockPeriod(resolution, btn) {
+  clockResolution = resolution;
+  document.querySelectorAll('#signals .timer .periods button')
+    .forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  drawClock();
+}
   drawClock();
   if (clockInterval) clearInterval(clockInterval);
   clockInterval = setInterval(drawClock, 250);
