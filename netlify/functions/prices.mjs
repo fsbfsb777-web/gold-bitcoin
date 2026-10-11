@@ -110,7 +110,7 @@ let history = [];
 
 try {
   const historyResponse = await fetch(
-    `${base}/api/v1/prices/${encodeURIComponent(market.epic)}?resolution=MINUTE&max=100`,
+    `${base}/api/v1/prices/${encodeURIComponent(market.epic)}?resolution=MINUTE&max=500`,
     { headers }
   );
 
