@@ -65,7 +65,7 @@ async function loadPrices(){
   if(!r.ok) throw new Error(d.error||'Источник не ответил');
   for(const [key,priceId,statusId] of [['gold','gold-price','gold-status'],['bitcoin','btc-price','btc-status']]){
    const item=d[key];
-   if(item && item.price!=null){set(priceId,Number(item.price).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' USD');set(statusId,'Capital.com · bid/offer котировка · обновлено '+new Date(d.updatedAt).toLocaleTimeString('ru-RU'));}
+   if(item && item.bid!=null){set(priceId,Number(item.bid).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' USD');set(statusId,'Capital.com · bid/offer котировка · обновлено '+new Date(d.updatedAt).toLocaleTimeString('ru-RU'));}
    else {set(priceId,'Цена недоступна');set(statusId,(item&&item.message)||'Не найден инструмент в Capital.com');}
   }
  }catch(e){set('gold-price','Нет подключения');set('btc-price','Нет подключения');set('gold-status','Проверьте настройки API в Netlify');set('btc-status','Проверьте настройки API в Netlify');}
