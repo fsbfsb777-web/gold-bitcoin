@@ -36,7 +36,13 @@ header{padding:18px 4px 12px;display:flex;align-items:center;justify-content:spa
 <section id="signals" hidden>
 <div class="card"><div class="signal"><div><div class="label">XAU/USD · Золото</div><strong class="neutral" id="gold-signal">ОЖИДАНИЕ</strong></div><span class="pill" id="gold-signal-badge">Нужно больше данных</span></div><div class="hint" id="gold-signal-hint">Сигнал рассчитывается по последним закрытиям, если история доступна.</div></div>
 <div class="card"><div class="signal"><div><div class="label">BTC/USD · Bitcoin</div><strong class="neutral" id="btc-signal">ОЖИДАНИЕ</strong></div><span class="pill" id="btc-signal-badge">Нужно больше данных</span></div><div class="hint" id="btc-signal-hint">Сигнал рассчитывается по последним закрытиям, если история доступна.</div></div>
-<div class="card timer"><div class="label">ТАЙМЕР СЕССИИ</div><div class="digits" id="clock">05:00</div><div class="row"><button class="btn" onclick="startTimer()">Старт</button><button class="btn secondary" onclick="pauseTimer()">Пауза</button><button class="btn secondary" onclick="resetTimer()">Сброс</button></div><div class="periods" style="justify-content:center"><button onclick="setTimer(60)">1 мин</button><button class="active" onclick="setTimer(300)">5 мин</button><button onclick="setTimer(900)">15 мин</button><button onclick="setTimer(1800)">30 мин</button></div></div>
+<div class="card timer">
+  <div class="label">ТАЙМЕР ДО ЗАКРЫТИЯ СВЕЧИ</div>
+  <div class="digits" id="clock">--:--</div>
+  <div class="hint" id="timer-status">
+    Синхронизация с периодом графика…
+  </div>
+</div>
 </section>
 <section id="journal" hidden>
 <div class="card"><h3 style="margin-top:0">Добавить сделку вручную</h3><label class="label" for="asset">Актив</label><select class="field" id="asset"><option>Золото XAU/USD</option><option>Bitcoin BTC/USD</option></select><label class="label" for="direction">Направление</label><select class="field" id="direction"><option>Покупка</option><option>Продажа</option></select><label class="label" for="entry">Цена входа (необязательно)</label><input class="field" id="entry" placeholder="Например, 2350.50" inputmode="decimal"><label class="label" for="note">Заметка</label><input class="field" id="note" placeholder="Почему открыл сделку"><button class="btn" style="width:100%" onclick="addTrade()">Сохранить запись</button></div>
