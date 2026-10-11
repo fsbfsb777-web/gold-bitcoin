@@ -147,7 +147,11 @@ ket("Gold", /GOLD|XAU.?USD/i),
       source: demo ? "Capital.com demo" : "Capital.com live",
       updatedAt: new Date().toISOString(),
       gold,
-      bitcoin
+      bitcoin,
+      history: {
+  gold: gold.history,
+  bitcoin: bitcoin.history
+}
     });
   } catch {
     return json({
