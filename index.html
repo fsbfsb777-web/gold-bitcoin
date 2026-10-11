@@ -50,7 +50,7 @@ header{padding:18px 4px 12px;display:flex;align-items:center;justify-content:spa
 </section>
 <div class="footer">Графики строятся по истории котировок Capital.com, если API её возвращает. Сигналы — простая техническая оценка, не гарантия результата. Сделки открываются вручную. Не является финансовой рекомендацией.</div>
 <script>
-let remaining=300, interval=null;
+let clockInterval = null;
 const resolutionByAsset={gold:'MINUTE',btc:'MINUTE'};
 const histories={gold:[],bitcoin:[]};
 function showTab(id,btn){document.querySelectorAll('section').forEach(s=>s.hidden=s.id!==id);document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));btn.classList.add('active')}
