@@ -41,7 +41,14 @@ header{padding:18px 4px 12px;display:flex;align-items:center;justify-content:spa
   <div class="digits" id="clock">--:--</div>
   <div class="hint" id="timer-status">
     Синхронизация с периодом графика…
-  </div>
+  </div> 
+<div class="periods" style="justify-content:center">
+  <button class="active" onclick="setClockPeriod('MINUTE',this)">1 мин</button>
+  <button onclick="setClockPeriod('MINUTE_5',this)">5 мин</button>
+  <button onclick="setClockPeriod('MINUTE_15',this)">15 мин</button>
+  <button onclick="setClockPeriod('HOUR',this)">1 час</button>
+</div>
+
 </div>
 </section>
 <section id="journal" hidden>
