@@ -2,53 +2,39 @@
 const LIVE_URL = "https://api-capital.backend-capital.com";
 const DEMO_URL = "https://demo-api-capital.backend-capital.com";
 
-function json(data, status = 200) {
+function json(data, status = 200, cache = false) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store"
+      "Cache-Control": cache
+        ? "public, max-age=15, s-maxage=30"
+        : "no-store"
     }
   });
 }
 
-async function apiFetch(url, options = {}) {
-  const response = await fetch(url, options);
-  const text = await response.text();
+function priceValue(value) {
+  if (!value || typeof value !== "object") return null;
 
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = {};
+  const bid = Number(value.bid);
+  const ask = Number(value.ask);
+
+  if (Number.isFinite(bid) && Number.isFinite(ask)) {
+    return (bid + ask) / 2;
   }
 
-  if (!response.ok) {
-    throw new Error(
-      data.errorCode || data.error || "Capital.com HTTP " + response.status
-    );
-  }
+  if (Number.isFinite(bid)) return bid;
+  if (Number.isFinite(ask)) return ask;
 
-  return { data, response };
+  return null;
 }
 
-function numberFromPrice(price) {
-  if (!price) return null;
-
-  const value = Number(
-    price.bid !== undefined && price.bid !== null
-      ? price.bid
-      : price.ask
-  );
-
-  return Number.isFinite(value) && value > 0 ? value : null;
-}
-
-function convertCandle(item) {
-  const open = numberFromPrice(item.openPrice);
-  const high = numberFromPrice(item.highPrice);
-  const low = numberFromPrice(item.lowPrice);
-  const close = numberFromPrice(item.closePrice);
+function convertPrice(item) {
+  const open = priceValue(item.openPrice);
+  const high = priceValue(item.highPrice);
+  const low = priceValue(item.lowPrice);
+  const close = priceValue(item.closePrice);
 
   if (
     open === null ||
@@ -60,7 +46,7 @@ function convertCandle(item) {
   }
 
   return {
-    time: item.snapshotTimeUTC || item.snapshotTime || null,
+    time: item.snapshotTimeUTC || item.snapshotTime,
     open,
     high,
     low,
@@ -68,19 +54,32 @@ function convertCandle(item) {
   };
 }
 
-export async function onRequest({ request, env }) {
-  if (request.method !== "GET") {
-    return json({ error: "Разрешён только GET-запрос" }, 405);
+async function apiFetch(url, options = {}) {
+  const response = await fetch(url, options);
+  const text = await response.text();
+
+  let data;
+
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error("Capital.com вернул некорректный ответ");
   }
 
-  const apiKey = env.CAPITAL_API_KEY;
-  const password = env.CAPITAL_API_PASSWORD;
-  const identifier = env.CAPITAL_IDENTIFIER;
+  if (!response.ok) {
+    throw new Error(
+      data.errorCode || data.error || `Capital.com HTTP ${response.status}`
+    );
+  }
 
-  if (!apiKey || !password || !identifier) {
-    return json({
-      error: "Не настроены секреты Capital.com в Cloudflare"
-    }, 500);
+  return data;
+}
+
+export async function onRequest(context) {
+  const { request, env } = context;
+
+  if (request.method !== "GET") {
+    return json({ error: "Method not allowed" }, 405);
   }
 
   const url = new URL(request.url);
@@ -89,72 +88,113 @@ export async function onRequest({ request, env }) {
     "MINUTE",
     "MINUTE_5",
     "MINUTE_15",
-    "HOUR"
+    "HOUR",
+    "HOUR_4",
+    "DAY"
   ];
 
-  const requested = url.searchParams.get("resolution") || "MINUTE";
-  const resolution = allowed.includes(requested)
-    ? requested
-    : "MINUTE";
+  const resolution = url.searchParams.get("resolution") || "MINUTE";
 
-  const rawCount = Number(url.searchParams.get("count") || 100);
-  const count = Number.isFinite(rawCount)
-    ? Math.min(200, Math.max(20, Math.floor(rawCount)))
-    : 100;
+  if (!allowed.includes(resolution)) {
+    return json({ error: "Unsupported resolution" }, 400);
+  }
 
-  const demo =
-    String(env.CAPITAL_DEMO || "").toLowerCase() === "true";
+  // Кэшируем готовые свечи, чтобы не создавать
+  // новую сессию Capital.com при каждом обновлении.
+  const cache = caches.default;
+  const cacheUrl = new URL(request.url);
+  cacheUrl.pathname = "/__cached_candles";
+  cacheUrl.search = `?resolution=${resolution}`;
 
-  const base = demo ? DEMO_URL : LIVE_URL;
+  const cacheKey = new Request(cacheUrl.toString(), {
+    method: "GET"
+  });
 
   try {
-    const session = await apiFetch(base + "/api/v1/session", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CAP-API-KEY": apiKey
-      },
-      body: JSON.stringify({
-        identifier,
-        password,
-        encryptedPassword: false
-      })
-    });
+    const cached = await cache.match(cacheKey);
 
-    const cst = session.response.headers.get("CST");
-    const security =
-      session.response.headers.get("X-SECURITY-TOKEN");
+    if (cached) {
+      return cached;
+    }
+  } catch {
+    // Если кэш недоступен, продолжаем запрос.
+  }
 
-    if (!cst || !security) {
-      throw new Error("Capital.com не вернул токены сессии");
+  const identifier = env.CAPITAL_IDENTIFIER;
+  const password = env.CAPITAL_API_PASSWORD;
+  const apiKey = env.CAPITAL_API_KEY;
+
+  if (!identifier || !password || !apiKey) {
+    return json({
+      error: "Capital.com credentials are missing"
+    }, 500);
+  }
+
+  const baseUrl =
+    env.CAPITAL_DEMO === "true" ? DEMO_URL : LIVE_URL;
+
+  try {
+    // Одна сессия на получение обоих инструментов.
+    const sessionResponse = await fetch(
+      `${baseUrl}/api/v1/session`,
+      {
+        method: "POST",
+        headers: {
+          "X-CAP-API-KEY": apiKey,
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Version": "1"
+        },
+        body: JSON.stringify({
+          identifier,
+          password,
+          encryptedPassword: false
+        })
+      }
+    );
+
+    if (!sessionResponse.ok) {
+      const errorText = await sessionResponse.text();
+
+      return json({
+        error: "Capital.com session failed",
+        details: errorText.slice(0, 500)
+      }, sessionResponse.status);
+    }
+
+    const cst = sessionResponse.headers.get("CST");
+    const securityToken =
+      sessionResponse.headers.get("X-SECURITY-TOKEN");
+
+    if (!cst || !securityToken) {
+      return json({
+        error: "Capital.com session tokens are missing"
+      }, 502);
     }
 
     const headers = {
+      "X-CAP-API-KEY": apiKey,
       "CST": cst,
-      "X-SECURITY-TOKEN": security,
-      "Accept": "application/json"
+      "X-SECURITY-TOKEN": securityToken,
+      "Accept": "application/json",
+      "Version": "1"
     };
 
     async function getCandles(epic) {
-      const endpoint =
-        base +
-        "/api/v1/prices/" +
-        encodeURIComponent(epic) +
-        "?resolution=" +
-        encodeURIComponent(resolution) +
-        "&max=" +
-        count;
+      const endpoint = new URL(
+        `${baseUrl}/api/v1/prices/${epic}`
+      );
 
-      const result = await apiFetch(endpoint, { headers });
+      endpoint.searchParams.set("resolution", resolution);
+      endpoint.searchParams.set("max", "100");
 
-      const candles = (result.data.prices || [])
-        .map(convertCandle)
+      const result = await apiFetch(endpoint.toString(), {
+        headers
+      });
+
+      return (result.prices || [])
+        .map(convertPrice)
         .filter(Boolean);
-
-      return {
-        epic,
-        candles
-      };
     }
 
     const [gold, bitcoin] = await Promise.all([
@@ -162,15 +202,25 @@ export async function onRequest({ request, env }) {
       getCandles("BTCUSD")
     ]);
 
-    return json({
+    const result = json({
       resolution,
-      gold: gold.candles,
-      bitcoin: bitcoin.candles,
+      gold,
+      bitcoin,
       updatedAt: new Date().toISOString()
-    });
+    }, 200, true);
+
+    try {
+      await cache.put(cacheKey, result.clone());
+    } catch {
+      // Ответ всё равно будет возвращён без кэширования.
+    }
+
+    return result;
+
   } catch (error) {
     return json({
-      error: "Не удалось получить свечи: " + error.message
+      error: error.message || "Failed to load candles"
     }, 502);
   }
 }
+
