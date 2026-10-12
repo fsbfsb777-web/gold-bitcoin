@@ -1,4 +1,5 @@
 
+
 const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store"
@@ -21,19 +22,16 @@ export async function onRequest(context) {
   const apiKey = env.CAPITAL_API_KEY;
   const identifier = env.CAPITAL_IDENTIFIER;
   const password = env.CAPITAL_API_PASSWORD;
-  const demo = String(env.CAPITAL_DEMO || "true") === "true";
 
   if (!apiKey || !identifier || !password) {
     return json({
-      error: "Не настроены ключи Capital.com в Cloudflare",
+      error: "Проверьте секреты Capital.com в Cloudflare",
       gold: null,
       bitcoin: null
     }, 503);
   }
 
-  const base = demo
-    ? "https://demo-api-capital.backend-capital.com"
-    : "https://api-capital.backend-capital.com";
+  const base = "https://demo-api-capital.backend-capital.com";
 
   try {
     const loginResponse = await fetch(base + "/api/v1/session", {
@@ -52,15 +50,18 @@ export async function onRequest(context) {
 
     if (!loginResponse.ok) {
       return json({
-        error: "Capital.com не принял вход. Проверьте API-ключ и режим Demo/Live."
+        error: "Вход в Capital.com Demo не выполнен. Проверьте секреты и API-доступ."
       }, 502);
     }
 
     const cst = loginResponse.headers.get("CST");
-    const securityToken = loginResponse.headers.get("X-SECURITY-TOKEN");
+    const securityToken =
+      loginResponse.headers.get("X-SECURITY-TOKEN");
 
     if (!cst || !securityToken) {
-      return json({ error: "Capital.com не вернул токены сессии" }, 502);
+      return json({
+        error: "Не получены токены демо-сессии"
+      }, 502);
     }
 
     const headers = {
@@ -70,40 +71,45 @@ export async function onRequest(context) {
       "Accept": "application/json"
     };
 
-    const searchInstrument = async (terms) => {
-      for (const term of terms) {
-        const response = await fetch(
-          base + "/api/v1/markets?searchTerm=" + encodeURIComponent(term),
-          { headers }
-        );
+    async function findMarket(searchTerm, type) {
+      const response = await fetch(
+        base + "/api/v1/markets?searchTerm=" +
+          encodeURIComponent(searchTerm),
+        { headers }
+      );
 
-        if (!response.ok) continue;
+      if (!response.ok) return null;
 
-        const body = await response.json();
-        const markets = body.markets || [];
+      const body = await response.json();
+      const markets = body.markets || [];
 
-        const exact = markets.find(m =>
-          String(m.epic || "").toUpperCase() === term.toUpperCase()
-        );
+      const valid = markets.filter(m =>
+        m.epic &&
+        m.instrumentType === type &&
+        m.marketStatus === "TRADEABLE"
+      );
 
-        const match = exact || markets.find(m =>
-          m.instrumentType === "COMMODITIES" ||
-          m.instrumentType === "CRYPTOCURRENCIES"
-        );
+      const exact = valid.find(m =>
+        String(m.epic).toUpperCase() ===
+        searchTerm.toUpperCase()
+      );
 
-        if (match && match.epic) return match.epic;
+      return exact || valid[0] || null;
+    }
+
+    const [goldMarket, bitcoinMarket] = await Promise.all([
+      findMarket("Gold", "COMMODITIES"),
+      findMarket("Bitcoin", "CRYPTOCURRENCIES")
+    ]);
+
+    async function getQuote(market) {
+      if (!market) {
+        return { error: "Рынок не найден или сейчас недоступен" };
       }
-      return null;
-    };
-
-    const goldEpic = await searchInstrument(["GOLD", "XAUUSD"]);
-    const bitcoinEpic = await searchInstrument(["BTCUSD", "BITCOIN"]);
-
-    const getMarket = async (epic) => {
-      if (!epic) return { error: "Инструмент не найден в Capital.com" };
 
       const response = await fetch(
-        base + "/api/v1/markets/" + encodeURIComponent(epic),
+        base + "/api/v1/markets/" +
+          encodeURIComponent(market.epic),
         { headers }
       );
 
@@ -117,27 +123,31 @@ export async function onRequest(context) {
       const offer = Number(snapshot.offer);
 
       if (!Number.isFinite(bid) || bid <= 0) {
-        return { error: "Capital.com не вернул цену" };
+        return { error: "Цена временно недоступна" };
       }
 
       return {
         bid,
-        offer: Number.isFinite(offer) ? offer : null,
-        epic,
-        history: []
+        offer: Number.isFinite(offer) && offer > 0
+          ? offer
+          : null,
+        epic: market.epic
       };
-    };
+    }
 
     const [gold, bitcoin] = await Promise.all([
-      getMarket(goldEpic),
-      getMarket(bitcoinEpic)
+      getQuote(goldMarket),
+      getQuote(bitcoinMarket)
     ]);
 
-    return json({ gold, bitcoin, updatedAt: new Date().toISOString() });
-  } catch (error) {
     return json({
-      error: "Ошибка соединения с Capital.com",
-      details: String(error && error.message || error)
+      gold,
+      bitcoin,
+      updatedAt: new Date().toISOString()
+    });
+  } catch {
+    return json({
+      error: "Ошибка соединения с Capital.com Demo"
     }, 502);
   }
 }
