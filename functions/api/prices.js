@@ -1,601 +1,136 @@
 
-<!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b1017">
-<title>Gold & Bitcoin</title>
-<style>
-:root {
-  color-scheme: dark;
-  --bg:#0b1017;
-  --card:#151d28;
-  --line:#293747;
-  --text:#f2f5f8;
-  --muted:#9eacbd;
-  --gold:#f0c35a;
-  --green:#32d296;
-  --red:#ff737d;
+const BASE_URL = "https://api-capital.backend-capital.com";
+const DEMO_URL = "https://demo-api-capital.backend-capital.com";
+
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store"
+    }
+  });
 }
-* { box-sizing:border-box; }
-body {
-  margin:0;
-  padding:env(safe-area-inset-top) 14px calc(24px + env(safe-area-inset-bottom));
-  background:var(--bg);
-  color:var(--text);
-  font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-}
-header {
-  display:flex; justify-content:space-between; align-items:center;
-  gap:12px; padding:20px 4px 14px;
-}
-h1 { font-size:25px; margin:0; }
-h3 { margin-top:0; }
-.sub { color:var(--muted); margin-top:5px; }
-.pill {
-  border:1px solid #66562f; color:var(--gold);
-  border-radius:20px; padding:7px 10px; font-size:12px;
-  white-space:nowrap;
-}
-.tabs,.periods,.row { display:flex; gap:8px; flex-wrap:wrap; }
-.tabs { margin:10px 0 16px; }
-button,select,input { font:inherit; }
-.tabs button,.periods button {
-  background:var(--card); border:1px solid var(--line);
-  color:var(--muted); border-radius:13px; padding:11px 13px;
-  font-weight:600;
-}
-.tabs button.active,.periods button.active {
-  background:#2b2b23; color:var(--gold); border-color:#66562f;
-}
-.card {
-  background:var(--card); border:1px solid var(--line);
-  border-radius:20px; padding:18px; margin:14px 0;
-  min-width:0;
-}
-.assethead,.signal {
-  display:flex; justify-content:space-between; align-items:center; gap:10px;
-}
-.assetname { font-size:19px; font-weight:750; }
-.coin {
-  display:inline-grid; place-items:center; width:38px; height:38px;
-  border-radius:50%; background:#282b30; margin-right:9px;
-  color:var(--gold); vertical-align:middle;
-}
-.price { font-size:clamp(27px,7vw,36px); font-weight:800; margin:18px 0 5px; overflow-wrap:anywhere; }
-.label,.hint,.chart-note { color:var(--muted); font-size:13px; line-height:1.5; }
-.periods { margin:14px 0; }
-.periods button { padding:9px 12px; }
-.chart {
-  display:block; width:100%; height:190px;
-  background:linear-gradient(180deg,rgba(50,210,150,.07),transparent);
-  border-radius:10px;
-}
-.chart-note { margin-top:10px; }
-.signal strong { font-size:17px; }
-.buy { color:var(--green); }
-.sell { color:var(--red); }
-.neutral { color:var(--gold); }
-.timer { text-align:center; }
-.digits { font-size:44px; font-weight:800; letter-spacing:2px; margin:12px 0 18px; }
-.btn {
-  border:0; border-radius:12px; padding:12px 14px;
-  background:var(--gold); color:#161616; font-weight:750;
-}
-.btn.secondary { background:#273344; color:var(--text); border:1px solid var(--line); }
-.row>* { flex:1; min-width:0; }
-.field {
-  width:100%; background:#0d141d; color:var(--text);
-  border:1px solid var(--line); border-radius:11px;
-  padding:12px; margin:7px 0 14px;
-}
-.trade { border-bottom:1px solid var(--line); padding:12px 0; line-height:1.7; }
-.footer { text-align:center; color:var(--muted); font-size:11px; line-height:1.6; padding:18px 4px; }
-[hidden] { display:none!important; }
-</style>
-</head>
-<body>
 
-<header>
-  <div>
-    <h1>Gold & Bitcoin</h1>
-    <div class="sub">Котировки, сигналы и ручная торговля</div>
-  </div>
-  <span class="pill">LIVE</span>
-</header>
+async function apiFetch(url, options = {}) {
+  const response = await fetch(url, options);
+  const text = await response.text();
 
-<div class="tabs">
-  <button class="active" onclick="showTab('market',this)">Рынок</button>
-  <button onclick="showTab('signals',this)">Сигналы</button>
-  <button onclick="showTab('journal',this)">Мои сделки</button>
-</div>
-
-<section id="market">
-  <div class="card">
-    <div class="assethead">
-      <div><span class="coin">Au</span><span class="assetname">Золото · XAU/USD</span></div>
-      <span class="pill">XAU</span>
-    </div>
-    <div class="price" id="gold-price">Загрузка цены…</div>
-    <div class="label" id="gold-status">Подключение к серверу…</div>
-    <div class="periods">
-      <button class="active" onclick="setPeriod('gold',1,this)">1м</button>
-      <button onclick="setPeriod('gold',5,this)">5м</button>
-      <button onclick="setPeriod('gold',15,this)">15м</button>
-      <button onclick="setPeriod('gold',60,this)">1ч</button>
-    </div>
-    <svg class="chart" id="gold-chart" viewBox="0 0 340 160" preserveAspectRatio="none"></svg>
-    <div class="chart-note" id="gold-chart-note">Собираем наблюдения за ценой…</div>
-  </div>
-
-  <div class="card">
-    <div class="assethead">
-      <div><span class="coin">₿</span><span class="assetname">Bitcoin · BTC/USD</span></div>
-      <span class="pill">BTC</span>
-    </div>
-    <div class="price" id="btc-price">Загрузка цены…</div>
-    <div class="label" id="btc-status">Подключение к серверу…</div>
-    <div class="periods">
-      <button class="active" onclick="setPeriod('btc',1,this)">1м</button>
-      <button onclick="setPeriod('btc',5,this)">5м</button>
-      <button onclick="setPeriod('btc',15,this)">15м</button>
-      <button onclick="setPeriod('btc',60,this)">1ч</button>
-    </div>
-    <svg class="chart" id="btc-chart" viewBox="0 0 340 160" preserveAspectRatio="none"></svg>
-    <div class="chart-note" id="btc-chart-note">Собираем наблюдения за ценой…</div>
-  </div>
-
-  <div class="hint">Котировки поступают от сервера Capital.com. Интервал обновления — 60 секунд. График строится по наблюдениям, собранным приложением на этом устройстве; это не исторические свечи брокера.</div>
-</section>
-
-<section id="signals" hidden>
-  <div class="card">
-    <div class="signal">
-      <div><div class="label">Золото · XAU/USD</div><strong class="neutral" id="gold-signal">ОЖИДАНИЕ</strong></div>
-      <span class="pill" id="gold-signal-badge">Мало данных</span>
-    </div>
-    <div class="hint" id="gold-signal-hint">Собираем наблюдения за ценой.</div>
-  </div>
-  <div class="card">
-    <div class="signal">
-      <div><div class="label">Bitcoin · BTC/USD</div><strong class="neutral" id="btc-signal">ОЖИДАНИЕ</strong></div>
-      <span class="pill" id="btc-signal-badge">Мало данных</span>
-    </div>
-    <div class="hint" id="btc-signal-hint">Собираем наблюдения за ценой.</div>
-  </div>
-
-  <div class="card timer">
-    <div class="label">ТАЙМЕР СЕССИИ</div>
-    <div class="digits" id="clock">05:00</div>
-    <div class="row">
-      <button class="btn" onclick="startTimer()">Старт</button>
-      <button class="btn secondary" onclick="pauseTimer()">Пауза</button>
-      <button class="btn secondary" onclick="resetTimer()">Сброс</button>
-    </div>
-    <div class="periods" style="justify-content:center">
-      <button onclick="setTimer(60)">1 мин</button>
-      <button class="active" onclick="setTimer(300)">5 мин</button>
-      <button onclick="setTimer(900)">15 мин</button>
-      <button onclick="setTimer(1800)">30 мин</button>
-    </div>
-  </div>
-  <div class="hint">Сигналы — экспериментальная техническая оценка по собранным наблюдениям, а не рекомендация купить или продать. При недостатке данных сигнал не формируется.</div>
-</section>
-
-<section id="journal" hidden>
-  <div class="card">
-    <h3>Добавить сделку вручную</h3>
-    <label class="label" for="asset">Актив</label>
-    <select class="field" id="asset">
-      <option>Золото XAU/USD</option>
-      <option>Bitcoin BTC/USD</option>
-    </select>
-    <label class="label" for="direction">Направление</label>
-    <select class="field" id="direction">
-      <option>Покупка</option>
-      <option>Продажа</option>
-    </select>
-    <label class="label" for="entry">Цена входа</label>
-    <input class="field" id="entry" inputmode="decimal" placeholder="Например, 4173.50">
-    <label class="label" for="note">Заметка</label>
-    <input class="field" id="note" placeholder="Причина сделки">
-    <button class="btn" style="width:100%" onclick="addTrade()">Сохранить сделку</button>
-  </div>
-  <div class="card">
-    <h3>История сделок</h3>
-    <div id="trades" class="hint">Записей пока нет.</div>
-    <button class="btn secondary" style="margin-top:12px" onclick="clearTrades()">Очистить журнал</button>
-  </div>
-</section>
-
-<div class="footer">
-  Gold & Bitcoin · Live API<br>
-  Сделки открываются вручную. Приложение не отправляет брокеру торговые ордера и не гарантирует прибыль.
-</div>
-
-<script>
-'use strict';
-
-const API_URL = '/api/prices';
-const REFRESH_MS = 60000;
-const HISTORY_KEY = 'gb-price-observations-v2';
-const TRADES_KEY = 'gb-trades';
-const MAX_POINTS = 1000;
-
-let remaining = 300;
-let timer = null;
-let requestBusy = false;
-let selectedMinutes = { gold: 1, btc: 1 };
-let histories = loadHistory();
-
-function safeRead(key, fallback) {
+  let data;
   try {
-    const value = localStorage.getItem(key);
-    return value ? JSON.parse(value) : fallback;
-  } catch (_) {
-    return fallback;
-  }
-}
-
-function safeWrite(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-    return true;
-  } catch (_) {
-    return false;
-  }
-}
-
-function loadHistory() {
-  const saved = safeRead(HISTORY_KEY, {});
-  return {
-    gold: Array.isArray(saved.gold) ? saved.gold : [],
-    btc: Array.isArray(saved.btc) ? saved.btc : []
-  };
-}
-
-function showTab(id, btn) {
-  document.querySelectorAll('body > section').forEach(section => {
-    section.hidden = section.id !== id;
-  });
-  document.querySelectorAll('.tabs button').forEach(button => {
-    button.classList.remove('active');
-  });
-  btn.classList.add('active');
-}
-
-function formatPrice(value) {
-  return Number(value).toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }) + ' USD';
-}
-
-function setStatus(id, message) {
-  document.getElementById(id).textContent = message;
-}
-
-function addObservation(asset, price) {
-  const now = Date.now();
-  const points = histories[asset];
-  const last = points[points.length - 1];
-
-  // Do not create duplicate samples for a refresh within the same minute.
-  if (last && now - last.time < 55000) {
-    last.price = price;
-    last.time = now;
-  } else {
-    points.push({ time: now, price });
+    data = JSON.parse(text);
+  } catch {
+    data = {};
   }
 
-  if (points.length > MAX_POINTS) {
-    points.splice(0, points.length - MAX_POINTS);
-  }
-
-  safeWrite(HISTORY_KEY, histories);
-}
-
-function drawChart(asset) {
-  const svg = document.getElementById(asset + '-chart');
-  const note = document.getElementById(asset + '-chart-note');
-  const minutes = selectedMinutes[asset];
-  const cutoff = Date.now() - minutes * 60 * 60 * 1000;
-  const all = histories[asset];
-  const points = all.filter(p => p.time >= cutoff);
-  const color = asset === 'gold' ? '#f0c35a' : '#32d296';
-
-  if (points.length < 2) {
-    svg.innerHTML =
-      '<text x="170" y="80" fill="#9eacbd" text-anchor="middle" font-size="12">Собираем историю</text>';
-    note.textContent = points.length === 1
-      ? 'Есть 1 наблюдение. Для линии нужно минимум 2.'
-      : 'График заполнится по мере получения котировок.';
-    return;
-  }
-
-  const values = points.map(p => p.price);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || Math.max(Math.abs(max) * 0.0001, 0.01);
-  const w = 340, h = 160, pad = 12;
-
-  const coordinates = values.map((value, index) => {
-    const x = pad + index / (values.length - 1) * (w - pad * 2);
-    const y = h - pad - (value - min) / range * (h - pad * 2);
-    return x.toFixed(2) + ',' + y.toFixed(2);
-  }).join(' ');
-
-  svg.innerHTML =
-    '<g stroke="#293747" stroke-width="1">' +
-    '<path d="M0 40H340 M0 80H340 M0 120H340"/>' +
-    '</g><polyline points="' + coordinates +
-    '" fill="none" stroke="' + color +
-    '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
-
-  note.textContent = 'Наблюдений: ' + points.length +
-    ' · минимум ' + min.toLocaleString('en-US') +
-    ' · максимум ' + max.toLocaleString('en-US');
-}
-
-function setPeriod(asset, minutes, btn) {
-  selectedMinutes[asset] = minutes;
-  btn.parentElement.querySelectorAll('button').forEach(button => {
-    button.classList.toggle('active', button === btn);
-  });
-  drawChart(asset);
-}
-
-function calculateSignal(asset) {
-  const points = histories[asset];
-  const values = points.map(p => p.price);
-  const signalId = asset === 'gold' ? 'gold' : 'btc';
-
-  const signalEl = document.getElementById(signalId + '-signal');
-  const badgeEl = document.getElementById(signalId + '-signal-badge');
-  const hintEl = document.getElementById(signalId + '-signal-hint');
-
-  function setSignal(label, cls, badge, hint) {
-    signalEl.textContent = label;
-    signalEl.className = cls;
-    badgeEl.textContent = badge;
-    hintEl.textContent = hint;
-  }
-
-  if (values.length < 20) {
-    setSignal(
-      'ОЖИДАНИЕ', 'neutral', 'Мало данных',
-      'Для экспериментальной оценки нужно 20 наблюдений. Сейчас: ' +
-      values.length + '.'
-    );
-    return;
-  }
-
-  const last20 = values.slice(-20);
-  const sma5 = last20.slice(-5).reduce((a, b) => a + b, 0) / 5;
-  const sma20 = last20.reduce((a, b) => a + b, 0) / 20;
-  const last = values[values.length - 1];
-  const previous = values[values.length - 2];
-
-  if (sma5 > sma20 && last > previous) {
-    setSignal(
-      'ВОЗМОЖНЫЙ РОСТ', 'buy', 'Техническая оценка',
-      'Краткосрочная средняя выше средней за 20 наблюдений, последняя цена выросла.'
-    );
-  } else if (sma5 < sma20 && last < previous) {
-    setSignal(
-      'ВОЗМОЖНОЕ СНИЖЕНИЕ', 'sell', 'Техническая оценка',
-      'Краткосрочная средняя ниже средней за 20 наблюдений, последняя цена снизилась.'
-    );
-  } else {
-    setSignal(
-      'ОЖИДАНИЕ', 'neutral', 'Нет ясного направления',
-      'Текущие условия не показывают ясного направления.'
+  if (!response.ok) {
+    throw new Error(
+      data.errorCode || data.error || "Capital.com HTTP " + response.status
     );
   }
+
+  return { data, response };
 }
 
-async function loadPrices() {
-  if (requestBusy) return;
-  requestBusy = true;
+export async function onRequest({ request, env }) {
+  if (request.method !== "GET") {
+    return json({ error: "Method not allowed" }, 405);
+  }
+
+  const apiKey = env.CAPITAL_API_KEY;
+  const password = env.CAPITAL_API_PASSWORD;
+  const identifier = env.CAPITAL_IDENTIFIER;
+
+  if (!apiKey || !password || !identifier) {
+    return json({
+      error: "Не настроены секреты Capital.com в Cloudflare"
+    }, 500);
+  }
+
+  const useDemo = String(env.CAPITAL_DEMO || "").toLowerCase() === "true";
+  const base = useDemo ? DEMO_URL : BASE_URL;
 
   try {
-    const response = await fetch(API_URL + '?_=' + Date.now(), {
-      method: 'GET',
-      cache: 'no-store',
-      headers: { 'Accept': 'application/json' }
+    const session = await apiFetch(base + "/api/v1/session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CAP-API-KEY": apiKey
+      },
+      body: JSON.stringify({
+        identifier,
+        password,
+        encryptedPassword: false
+      })
     });
 
-    const data = await response.json();
+    const cst = session.response.headers.get("CST");
+    const security = session.response.headers.get("X-SECURITY-TOKEN");
 
-    if (!response.ok) {
-      throw new Error(data.error || ('Ошибка сервера: ' + response.status));
+    if (!cst || !security) {
+      throw new Error("Capital.com не вернул токены сессии");
     }
 
-    if (!data || !data.gold || !data.bitcoin) {
-      throw new Error('Сервер вернул неполный ответ');
-    }
+    const headers = {
+      "CST": cst,
+      "X-SECURITY-TOKEN": security,
+      "Accept": "application/json"
+    };
 
-    const assets = [
-      { key: 'gold', priceId: 'gold-price', statusId: 'gold-status' },
-      { key: 'bitcoin', priceId: 'btc-price', statusId: 'btc-status' }
-    ];
+    async function findPrice(searchTerm, matcher) {
+      const url = base + "/api/v1/markets?searchTerm=" +
+        encodeURIComponent(searchTerm);
 
-    for (const asset of assets) {
-      const item = data[asset.key];
-      const uiKey = asset.key === 'gold' ? 'gold' : 'btc';
-      const priceEl = document.getElementById(asset.priceId);
-      const statusEl = document.getElementById(asset.statusId);
+      const result = await apiFetch(url, { headers });
+      const markets = result.data.markets || [];
 
-      const price = Number(item && item.bid);
+      const market = markets.find(item =>
+        item.marketStatus === "TRADEABLE" &&
+        item.streamingPricesAvailable !== false &&
+        matcher(item)
+      );
 
-      if (item && item.error) {
-        priceEl.textContent = 'Цена недоступна';
-        statusEl.textContent = item.error;
-        continue;
+      if (!market) {
+        return {
+          error: "Инструмент не найден или сейчас недоступен"
+        };
       }
 
-      if (!Number.isFinite(price) || price <= 0) {
-        priceEl.textContent = 'Цена недоступна';
-        statusEl.textContent = 'Сервер не вернул корректную цену';
-        continue;
+      const bid = Number(market.bid);
+      const ask = Number(market.offer);
+
+      if (!Number.isFinite(bid) || bid <= 0) {
+        return { error: "Capital.com не вернул цену покупки/продажи" };
       }
 
-      // Render the live price before drawing charts or calculating signals.
-      priceEl.textContent = formatPrice(price);
-      statusEl.textContent =
-        'Capital.com Live · обновлено ' +
-        new Date().toLocaleTimeString('ru-RU');
-
-      addObservation(uiKey, price);
-      drawChart(uiKey);
-      calculateSignal(uiKey);
+      return {
+        bid,
+        ask: Number.isFinite(ask) && ask > 0 ? ask : null,
+        epic: market.epic,
+        name: market.instrumentName,
+        updatedAt: new Date().toISOString()
+      };
     }
+
+    const [gold, bitcoin] = await Promise.all([
+      findPrice("Gold", item =>
+        /gold/i.test(item.instrumentName || "")
+      ),
+      findPrice("Bitcoin", item =>
+        /bitcoin/i.test(item.instrumentName || "") ||
+        /BTC/i.test(item.epic || "")
+      )
+    ]);
+
+    return json({
+      gold,
+      bitcoin,
+      updatedAt: new Date().toISOString()
+    });
 
   } catch (error) {
-    console.error('Gold & Bitcoin API error:', error);
-    const message = error && error.message
-      ? error.message
-      : 'Не удалось получить данные';
-
-    setStatus('gold-status', 'Ошибка загрузки: ' + message);
-    setStatus('btc-status', 'Ошибка загрузки: ' + message);
-
-    // Keep the last known prices visible during a temporary failure.
-    if (document.getElementById('gold-price').textContent === 'Загрузка цены…') {
-      document.getElementById('gold-price').textContent = 'Нет котировки';
-    }
-    if (document.getElementById('btc-price').textContent === 'Загрузка цены…') {
-      document.getElementById('btc-price').textContent = 'Нет котировки';
-    }
-  } finally {
-    requestBusy = false;
+    return json({
+      error: "Ошибка Capital.com: " + error.message
+    }, 502);
   }
 }
-
-function drawClock() {
-  const mins = Math.floor(remaining / 60);
-  const secs = remaining % 60;
-  document.getElementById('clock').textContent =
-    String(mins).padStart(2, '0') + ':' +
-    String(secs).padStart(2, '0');
-}
-
-function setTimer(seconds) {
-  pauseTimer();
-  remaining = seconds;
-  drawClock();
-
-  const labels = { 60:'1 мин', 300:'5 мин', 900:'15 мин', 1800:'30 мин' };
-  document.querySelectorAll('#signals .periods button').forEach(button => {
-    button.classList.toggle('active', button.textContent === labels[seconds]);
-  });
-}
-
-function startTimer() {
-  if (timer !== null) return;
-
-  timer = setInterval(() => {
-    if (remaining > 0) {
-      remaining--;
-      drawClock();
-    } else {
-      pauseTimer();
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-      alert('Таймер завершён');
-    }
-  }, 1000);
-}
-
-function pauseTimer() {
-  if (timer !== null) {
-    clearInterval(timer);
-    timer = null;
-  }
-}
-
-function resetTimer() {
-  setTimer(300);
-}
-
-function getTrades() {
-  const trades = safeRead(TRADES_KEY, []);
-  return Array.isArray(trades) ? trades : [];
-}
-
-function escapeHTML(value) {
-  return String(value).replace(/[&<>"']/g, char => ({
-    '&':'&amp;', '<':'&lt;', '>':'&gt;',
-    '"':'&quot;', "'":'&#39;'
-  })[char]);
-}
-
-function renderTrades() {
-  const trades = getTrades();
-  const element = document.getElementById('trades');
-
-  if (!trades.length) {
-    element.textContent = 'Записей пока нет. Сделки хранятся в памяти этого браузера.';
-    return;
-  }
-
-  element.innerHTML = trades.map(trade =>
-    '<div class="trade"><b>' + escapeHTML(trade.asset) + '</b><br>' +
-    escapeHTML(trade.direction) + ' · ' +
-    escapeHTML(trade.entry || 'цена не указана') + '<br>' +
-    '<span class="label">' + escapeHTML(trade.note || 'Без заметки') +
-    ' · ' + escapeHTML(trade.date) + '</span></div>'
-  ).join('');
-}
-
-function addTrade() {
-  const entry = document.getElementById('entry').value.trim();
-
-  if (entry && !Number.isFinite(Number(entry.replace(',', '.')))) {
-    alert('Введите корректную цену входа.');
-    return;
-  }
-
-  const trades = getTrades();
-  trades.unshift({
-    asset: document.getElementById('asset').value,
-    direction: document.getElementById('direction').value,
-    entry: entry.replace(',', '.'),
-    note: document.getElementById('note').value.trim(),
-    date: new Date().toLocaleString('ru-RU')
-  });
-
-  if (!safeWrite(TRADES_KEY, trades)) {
-    alert('Не удалось сохранить сделку. Проверьте свободное место в браузере.');
-    return;
-  }
-
-  renderTrades();
-  document.getElementById('entry').value = '';
-  document.getElementById('note').value = '';
-  alert('Сделка сохранена на этом устройстве.');
-}
-
-function clearTrades() {
-  if (confirm('Удалить все записи из журнала сделок?')) {
-    try {
-      localStorage.removeItem(TRADES_KEY);
-    } catch (_) {}
-    renderTrades();
-  }
-}
-
-drawClock();
-renderTrades();
-
-drawChart('gold');
-drawChart('btc');
-calculateSignal('gold');
-calculateSignal('btc');
-
-loadPrices();
-setInterval(loadPrices, REFRESH_MS);
-</script>
-</body>
-</html>
-
