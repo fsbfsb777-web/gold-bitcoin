@@ -31,7 +31,7 @@ export async function onRequest(context) {
     }, 503);
   }
 
-  const base = "https://demo-api-capital.backend-capital.com";
+  const base = "https://api-capital.backend-capital.com";
 
   try {
     const loginResponse = await fetch(base + "/api/v1/session", {
