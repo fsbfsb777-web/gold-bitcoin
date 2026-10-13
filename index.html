@@ -29,7 +29,7 @@ h2{font-size:16px;margin:0 0 12px}
 .switch button{font-weight:800;padding:13px}
 .periods{display:flex;gap:5px;flex-wrap:wrap}.periods button{padding:8px 11px}
 .chart{width:100%;height:310px;overflow:hidden}
-.note{margin-top:8px;line-height:1.5;overflow-wrap:anywhere}
+.note{margin-top:8px;line-height:1.5;overflow-wrap:anywhere;white-space:pre-line}
 .metric b{display:block;font-size:18px;margin:7px 0}.metric small{color:var(--muted)}
 .signal{font-size:21px;font-weight:800;margin:10px 0}
 .field{display:flex;flex-direction:column;gap:6px;margin:9px 0}
@@ -129,6 +129,7 @@ const state={
  busyPrice:false,busyRes:new Set(),chart:null,series:null,
  lastCandleAt:{},trades:loadTrades()
 };
+
 function loadTrades(){try{return JSON.parse(localStorage.getItem('gb-trades')||'[]')}catch{return []}}
 function saveTrades(){try{localStorage.setItem('gb-trades',JSON.stringify(state.trades))}catch{}}
 function fmt(n,d=2){return Number.isFinite(Number(n))?Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}):'—'}
@@ -225,8 +226,7 @@ async function loadPrices(){
  }finally{state.busyPrice=false}
 }
 
-/* Исправление: отдельный блокировщик для каждого таймфрейма.
-   Запрос 1м больше не мешает загрузке 5м и 15м. */
+/* Отдельная блокировка каждого таймфрейма */
 async function loadCandles(res,force=false){
  if(state.busyRes.has(res))return;
  const now=Date.now();
@@ -276,6 +276,7 @@ function rsi(arr,p=14){
   if(d>0)up+=d;else down-=d;
  }
  if(down===0)return 100;
+ if(up===0)return 0;
  return 100-100/(1+up/down);
 }
 function atr(arr,p=14){
@@ -305,38 +306,103 @@ function direction(arr){
  const a=ema(arr,9),b=ema(arr,21);
  return a>b?'Вверх':a<b?'Вниз':'Нейтрально';
 }
+
+/* Анализ тренда, ложного пробоя и пробоя с продолжением */
 function signalFor(asset){
  const m1=state.candles[asset].MINUTE||[];
  const m5=state.candles[asset].MINUTE_5||[];
  const m15=state.candles[asset].MINUTE_15||[];
  const d15=direction(m15),d5=direction(m5),d1=direction(m1);
+
  if([m1,m5,m15].some(a=>a.length<35)){
-  return {value:'WAIT',why:'Недостаточно свечей. Проверь соединение и дождись загрузки всех таймфреймов.',d15,d5,d1};
+  return {
+   value:'WAIT',
+   why:'Недостаточно свечей для подтверждения. Дождись загрузки таймфреймов.',
+   d15,d5,d1,setup:'Недостаточно данных',sweep:false,stop:null,target:null
+  };
  }
- const rv=rsi(m1),mv=macd(m1),last=m1[m1.length-1];
- const bullish=d15==='Вверх'&&d5==='Вверх'&&d1==='Вверх'&&rv!==null&&rv>=45&&rv<70&&mv&&mv.line>mv.signal;
- const bearish=d15==='Вниз'&&d5==='Вниз'&&d1==='Вниз'&&rv!==null&&rv<=55&&rv>30&&mv&&mv.line<mv.signal;
+
+ const rv=rsi(m1),mv=macd(m1),av=atr(m1);
+ const last=m1[m1.length-1];
+ const previous=m1.slice(-11,-1);
+ const priorLow=Math.min(...previous.map(c=>c.low));
+ const priorHigh=Math.max(...previous.map(c=>c.high));
+ const body=Math.abs(last.close-last.open);
+
+ // Ложный пробой: тень вышла за уровень, закрытие вернулось внутрь.
+ const sweepLow=last.low<priorLow&&last.close>priorLow;
+ const sweepHigh=last.high>priorHigh&&last.close<priorHigh;
+
+ // Пробой считается только при закрытии за уровнем и наличии тела.
+ const strongBody=av!==null&&body>=av*0.25;
+ const breakoutUp=last.close>priorHigh&&last.close>last.open&&strongBody;
+ const breakoutDown=last.close<priorLow&&last.close<last.open&&strongBody;
+
+ let setup='Явного пробоя не обнаружено';
+ if(sweepLow){
+  setup='Сбор ликвидности снизу: цена проколола минимум и закрылась выше уровня';
+ }else if(sweepHigh){
+  setup='Сбор ликвидности сверху: цена проколола максимум и закрылась ниже уровня';
+ }else if(breakoutUp){
+  setup='Пробой вверх: свеча закрылась выше предыдущего максимума';
+ }else if(breakoutDown){
+  setup='Пробой вниз: свеча закрылась ниже предыдущего минимума';
+ }
+
+ const bullish=
+  d15==='Вверх'&&d5==='Вверх'&&d1==='Вверх'&&
+  rv!==null&&rv>=45&&rv<70&&mv&&mv.line>mv.signal;
+
+ const bearish=
+  d15==='Вниз'&&d5==='Вниз'&&d1==='Вниз'&&
+  rv!==null&&rv<=55&&rv>30&&mv&&mv.line<mv.signal;
+
  const reasons=[];
  if(d15!==d5)reasons.push('тренды 15м и 5м расходятся');
  if(d5!==d1)reasons.push('тренды 5м и 1м расходятся');
- if(rv!==null&&(rv>=70||rv<=30))reasons.push('RSI в экстремальной зоне');
- if(mv&&d1==='Вверх'&&mv.line<=mv.signal)reasons.push('MACD не подтверждает рост');
- if(mv&&d1==='Вниз'&&mv.line>=mv.signal)reasons.push('MACD не подтверждает снижение');
- let why=bullish
-  ?'Тренд вверх на всех таймфреймах, RSI и MACD подтверждают импульс.'
-  :bearish
-  ?'Тренд вниз на всех таймфреймах, RSI и MACD подтверждают импульс.'
-  :reasons.length?reasons.join('; ')+'.':'Нет одновременного подтверждения всех условий.';
- const recent=m1.slice(-10,-1);
- const sweep=recent.length&&(
-  (last.low<Math.min(...recent.map(x=>x.low))&&last.close>Math.min(...recent.map(x=>x.low)))||
-  (last.high>Math.max(...recent.map(x=>x.high))&&last.close<Math.max(...recent.map(x=>x.high)))
- );
- return {value:bullish?'BUY':bearish?'SELL':'WAIT',why,d15,d5,d1,rv,mv,last,sweep};
+ if(rv!==null&&rv>=70)reasons.push('RSI указывает на перекупленность');
+ if(rv!==null&&rv<=30)reasons.push('RSI указывает на перепроданность');
+ if(mv&&d1==='Вверх'&&mv.line<=mv.signal)reasons.push('MACD не подтвердил рост');
+ if(mv&&d1==='Вниз'&&mv.line>=mv.signal)reasons.push('MACD не подтвердил снижение');
+ if(sweepLow&&!bullish&&!bearish)reasons.push('сбор ликвидности снизу пока не подтверждён трендом');
+ if(sweepHigh&&!bullish&&!bearish)reasons.push('сбор ликвидности сверху пока не подтверждён трендом');
+ if(breakoutUp&&!bullish)reasons.push('пробой вверх не подтверждён всеми таймфреймами');
+ if(breakoutDown&&!bearish)reasons.push('пробой вниз не подтверждён всеми таймфреймами');
+
+ let value='WAIT';
+ let why=reasons.length?reasons.join('; ')+'.':'Нет одновременного подтверждения всех условий.';
+ if(bullish){
+  value='BUY';
+  why='Тренд вверх на 15м, 5м и 1м; RSI и MACD подтверждают импульс.';
+ }else if(bearish){
+  value='SELL';
+  why='Тренд вниз на 15м, 5м и 1м; RSI и MACD подтверждают импульс.';
+ }
+
+ if((sweepLow||sweepHigh)&&value!=='WAIT'){
+  why+=' Обнаружен сбор ликвидности: дождись подтверждения следующей свечой.';
+ }
+ if(breakoutUp&&value==='BUY')why+=' Пробой вверх совпадает с направлением сигнала.';
+ if(breakoutDown&&value==='SELL')why+=' Пробой вниз совпадает с направлением сигнала.';
+
+ let stop=null,target=null;
+ if(av!==null&&av>0&&value==='BUY'){
+  stop=last.close-1.5*av;
+  target=last.close+2*av;
+ }else if(av!==null&&av>0&&value==='SELL'){
+  stop=last.close+1.5*av;
+  target=last.close-2*av;
+ }
+
+ return {value,why,d15,d5,d1,rv,mv,last,av,sweep:sweepLow||sweepHigh,setup,stop,target,breakoutUp,breakoutDown};
 }
+
 function renderAnalysis(){
- const a=state.asset,m1=state.candles[a].MINUTE||[],m15=state.candles[a].MINUTE_15||[];
+ const a=state.asset;
+ const m1=state.candles[a].MINUTE||[];
+ const m15=state.candles[a].MINUTE_15||[];
  const e9=ema(m15,9),e21=ema(m15,21),rv=rsi(m1),mv=macd(m1),av=atr(m1);
+
  $('ema').textContent=e9!==null&&e21!==null?fmt(e9)+' / '+fmt(e21):'—';
  $('trend').textContent=direction(m15);
  $('rsi').textContent=rv===null?'—':fmt(rv,1);
@@ -344,14 +410,27 @@ function renderAnalysis(){
  $('macd').textContent=mv?fmt(mv.line,4):'—';
  $('macdInfo').textContent=mv?(mv.line>mv.signal?'Импульс вверх':'Импульс вниз'):'Недостаточно данных';
  $('atr').textContent=av===null?'—':fmt(av,4);
- const s=signalFor(a);
- note('marketSignal','Сигнал: '+s.value+' — '+s.why);
+
+ const marketSignal=signalFor(a);
+ note('marketSignal','Сигнал: '+marketSignal.value+' — '+marketSignal.why+'\nСценарий: '+marketSignal.setup);
+
  const selected=signalFor(state.signalAsset);
  $('signal').textContent=selected.value;
  $('signal').className='signal '+(selected.value==='BUY'?'green':selected.value==='SELL'?'red':'yellow');
- note('signalInfo',selected.why);
- note('tf15',selected.d15);note('tf5',selected.d5);note('tf1',selected.d1);
- note('liquidity',selected.sweep?'Возможен ложный пробой. Требуется дополнительное подтверждение.':'Ложный пробой не подтверждён по последним свечам.');
+
+ let info=selected.why+'\nСценарий: '+selected.setup;
+ if(selected.stop!==null&&selected.target!==null){
+  info+='\nОриентировочный стоп-лосс: '+fmt(selected.stop,2);
+  info+='\nОриентировочная цель: '+fmt(selected.target,2);
+  info+='\nУровни рассчитаны по ATR от последней свечи; учитывай спред и проскальзывание.';
+ }else{
+  info+='\nУровни стоп-лосса и цели появятся при подтверждённом BUY или SELL.';
+ }
+ note('signalInfo',info);
+ note('tf15','Направление: '+selected.d15);
+ note('tf5','Направление: '+selected.d5);
+ note('tf1','Направление: '+selected.d1);
+ note('liquidity','Анализ пробоя: '+selected.setup);
 }
 
 function renderTrades(){
@@ -364,6 +443,7 @@ function renderTrades(){
   state.trades.splice(+b.dataset.del,1);saveTrades();renderTrades();
  });
 }
+
 $('tradeForm').onsubmit=e=>{
  e.preventDefault();
  state.trades.unshift({
@@ -383,7 +463,11 @@ async function refreshAll(){
  await Promise.all(['MINUTE','MINUTE_5','MINUTE_15'].map(r=>loadCandles(r)));
  drawChart();renderAnalysis();
 }
-makeChart();renderTrades();setAsset('gold');setSignalAsset('gold');
+
+makeChart();
+renderTrades();
+setAsset('gold');
+setSignalAsset('gold');
 refreshAll();
 setInterval(loadPrices,10000);
 setInterval(()=>loadCandles(state.resolution,true),15000);
@@ -392,3 +476,4 @@ setInterval(()=>Promise.all(['MINUTE','MINUTE_5','MINUTE_15'].map(r=>loadCandles
 </script>
 </body>
 </html>
+
