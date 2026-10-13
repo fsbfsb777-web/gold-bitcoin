@@ -42,7 +42,7 @@ h2{font-size:13px;margin:0 0 7px}
 .countdown{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#101721;border:1px solid var(--line);border-radius:8px;padding:7px 9px;margin-top:6px}
 .countdown b{font-size:15px;font-variant-numeric:tabular-nums;color:var(--gold)}
 .chart{height:clamp(190px,28vh,245px);width:100%;overflow:hidden}
-.note{line-height:1.4;margin-top:5px;overflow-wrap:anywhere;white-space:pre-line}
+.note{line-height:1.45;margin-top:5px;overflow-wrap:anywhere;white-space:pre-line}
 .signalbox{border:1px solid var(--line);border-radius:9px;background:#101721;padding:9px}
 .signalbox.buy{border-color:#28664b;background:#132820}
 .signalbox.sell{border-color:#713840;background:#29191d}
@@ -52,7 +52,7 @@ h2{font-size:13px;margin:0 0 7px}
 .level b{display:block;font-size:clamp(14px,4vw,18px);margin-top:3px;overflow-wrap:anywhere}
 .metrics{margin-top:7px}
 .metric{background:#101721;border:1px solid var(--line);border-radius:8px;padding:7px;min-width:0}
-.metric b{display:block;font-size:15px;margin-top:4px;overflow-wrap:anywhere}
+.metric b{display:block;font-size:14px;margin-top:4px;overflow-wrap:anywhere}
 .metric small{font-size:10px;color:var(--muted)}
 .field{display:flex;flex-direction:column;gap:5px;margin:8px 0}
 label{font-size:11px;color:var(--muted)}
@@ -66,15 +66,15 @@ input,select,textarea{width:100%;min-width:0;background:#0f1620;color:var(--text
 .empty{text-align:center;color:var(--muted);padding:18px 6px}
 .foot{text-align:center;color:var(--muted);font-size:10px;padding:7px 0}
 @media(max-width:600px){
- .wrap{padding:5px 8px calc(80px + env(safe-area-inset-bottom))}
- .brand{font-size:19px}
- nav{position:fixed;z-index:1000;left:7px;right:7px;bottom:0;margin:0;padding:6px 5px calc(6px + env(safe-area-inset-bottom));background:rgba(15,22,32,.97);border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;box-shadow:0 -4px 16px #0004;backdrop-filter:blur(12px)}
- nav button{min-height:40px;font-size:12px}
- .panel{padding:8px;margin-bottom:6px}
- .price{font-size:clamp(15px,4.3vw,21px)}
- .chart{height:clamp(185px,28vh,245px)}
- .countdown{padding:6px 8px}
- .signalvalue{font-size:21px}
+.wrap{padding:5px 8px calc(80px + env(safe-area-inset-bottom))}
+.brand{font-size:19px}
+nav{position:fixed;z-index:1000;left:7px;right:7px;bottom:0;margin:0;padding:6px 5px calc(6px + env(safe-area-inset-bottom));background:rgba(15,22,32,.97);border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;box-shadow:0 -4px 16px #0004;backdrop-filter:blur(12px)}
+nav button{min-height:40px;font-size:12px}
+.panel{padding:8px;margin-bottom:6px}
+.price{font-size:clamp(15px,4.3vw,21px)}
+.chart{height:clamp(185px,28vh,245px)}
+.countdown{padding:6px 8px}
+.signalvalue{font-size:21px}
 }
 @media(max-width:380px){.chart{height:190px}.panel{padding:7px}.periods button{min-width:29px;padding:4px}nav button{font-size:11px}}
 </style>
@@ -82,105 +82,92 @@ input,select,textarea{width:100%;min-width:0;background:#0f1620;color:var(--text
 <body>
 <div class="wrap">
 <header>
- <div><div class="brand"><span>Gold</span> & Bitcoin</div><div class="muted">Рынок · сигналы · сделки</div></div>
- <div id="connection" class="muted">Подключение…</div>
+<div><div class="brand"><span>Gold</span> & Bitcoin</div><div class="muted">Рынок · сигналы · сделки</div></div>
+<div id="connection" class="muted">Подключение…</div>
 </header>
-
 <nav>
- <button class="active" data-tab="market">Рынок</button>
- <button data-tab="signals">Сигналы</button>
- <button data-tab="trades">Мои сделки</button>
+<button class="active" data-tab="market">Рынок</button>
+<button data-tab="signals">Сигналы</button>
+<button data-tab="trades">Мои сделки</button>
 </nav>
 
 <main id="marketPage">
- <section class="panel">
-  <div class="row"><h2>Котировки LIVE</h2><span class="muted" id="priceUpdated">Загрузка…</span></div>
-  <div class="prices">
-   <div class="tile"><div class="asset">ЗОЛОТО · XAU/USD</div><div class="price gold" id="goldPrice">—</div><div class="muted" id="goldSpread">Bid / Ask: —</div></div>
-   <div class="tile"><div class="asset">BITCOIN · BTC/USD</div><div class="price btc" id="btcPrice">—</div><div class="muted" id="btcSpread">Bid / Ask: —</div></div>
-  </div>
- </section>
-
- <section class="panel">
-  <div class="switch"><button id="assetGold" class="active">Золото</button><button id="assetBitcoin">Bitcoin</button></div>
-  <div class="charthead">
-   <h2 id="chartTitle">Золото · свечи</h2>
-   <div class="periods">
-    <button class="active" data-resolution="MINUTE">1м</button>
-    <button data-resolution="MINUTE_5">5м</button>
-    <button data-resolution="MINUTE_15">15м</button>
-    <button data-resolution="HOUR">1ч</button>
-   </div>
-  </div>
-  <div id="priceChart" class="chart"><div class="empty">Загрузка графика…</div></div>
-  <div class="countdown"><span class="muted" id="countdownLabel">До закрытия свечи · 1м</span><b id="candleCountdown">--:--</b></div>
-  <div class="note" id="chartNote">Свечи загружаются…</div>
- </section>
-
- <section class="panel">
-  <div class="row"><h2>Торговый сигнал</h2><span class="muted" id="signalAssetLabel">Золото</span></div>
-  <div id="marketSignalCard" class="signalbox wait">
-   <div class="asset">РЕШЕНИЕ ПО СТРАТЕГИИ</div>
-   <div id="marketSignalValue" class="signalvalue yellow">WAIT</div>
-   <div id="marketSignalReason" class="note">Ожидание подтверждения.</div>
-   <div class="levels">
-    <div class="level"><div class="asset">STOP-LOSS</div><b id="marketStop" class="error">—</b></div>
-    <div class="level"><div class="asset">ЦЕЛЬ</div><b id="marketTarget" class="good">—</b></div>
-   </div>
-   <div id="marketSignalSetup" class="note">Анализ 15м → 5м → 1м</div>
-  </div>
- </section>
+<section class="panel">
+<div class="row"><h2>Котировки LIVE</h2><span class="muted" id="priceUpdated">Загрузка…</span></div>
+<div class="prices">
+<div class="tile"><div class="asset">ЗОЛОТО · XAU/USD</div><div class="price gold" id="goldPrice">—</div><div class="muted" id="goldSpread">Bid / Ask: —</div></div>
+<div class="tile"><div class="asset">BITCOIN · BTC/USD</div><div class="price btc" id="btcPrice">—</div><div class="muted" id="btcSpread">Bid / Ask: —</div></div>
+</div>
+</section>
+<section class="panel">
+<div class="switch"><button id="assetGold" class="active">Золото</button><button id="assetBitcoin">Bitcoin</button></div>
+<div class="charthead"><h2 id="chartTitle">Золото · свечи</h2>
+<div class="periods">
+<button class="active" data-resolution="MINUTE">1м</button>
+<button data-resolution="MINUTE_5">5м</button>
+<button data-resolution="MINUTE_15">15м</button>
+<button data-resolution="HOUR">1ч</button>
+</div></div>
+<div id="priceChart" class="chart"><div class="empty">Загрузка графика…</div></div>
+<div class="countdown"><span class="muted" id="countdownLabel">До закрытия свечи · 1м</span><b id="candleCountdown">--:--</b></div>
+<div class="note" id="chartNote">Свечи загружаются…</div>
+</section>
+<section class="panel">
+<div class="row"><h2>Торговый сигнал</h2><span class="muted" id="signalAssetLabel">Золото</span></div>
+<div id="marketSignalCard" class="signalbox wait">
+<div class="asset">РЕШЕНИЕ ПО СТРАТЕГИИ</div><div id="marketSignalValue" class="signalvalue yellow">WAIT</div>
+<div id="marketSignalReason" class="note">Ожидание подтверждения.</div>
+<div class="levels"><div class="level"><div class="asset">STOP-LOSS</div><b id="marketStop" class="error">—</b></div><div class="level"><div class="asset">ЦЕЛЬ</div><b id="marketTarget" class="good">—</b></div></div>
+<div id="marketSignalSetup" class="note">Анализ 4ч → 1ч → 15м → 5м → 1м</div>
+</div>
+</section>
 </main>
 
 <main id="signalsPage" class="hidden">
- <section class="panel">
-  <div class="row"><h2>Подробный анализ</h2><span class="muted">15м → 5м → 1м</span></div>
-  <div class="switch"><button id="detailGold" class="active">Золото</button><button id="detailBitcoin">Bitcoin</button></div>
-  <div id="detailSignalCard" class="signalbox wait">
-   <div class="asset">СИГНАЛ</div><div id="detailSignalValue" class="signalvalue yellow">WAIT</div>
-   <div id="detailSignalReason" class="note">Сбор данных…</div>
-   <div class="levels">
-    <div class="level"><div class="asset">STOP-LOSS</div><b id="detailStop" class="error">—</b></div>
-    <div class="level"><div class="asset">ЦЕЛЬ</div><b id="detailTarget" class="good">—</b></div>
-   </div>
-  </div>
-  <div class="metrics">
-   <div class="metric"><small>EMA 9 / 21 · 5м</small><b id="indEMA">—</b></div>
-   <div class="metric"><small>RSI 14 · 5м</small><b id="indRSI">—</b></div>
-   <div class="metric"><small>MACD · 5м</small><b id="indMACD">—</b></div>
-   <div class="metric"><small>ATR 14 · 5м</small><b id="indATR">—</b></div>
-  </div>
-  <div class="note" id="tfStatus">Ожидание данных таймфреймов.</div>
- </section>
- <section class="panel">
-  <h2>Как читать сигнал</h2>
-  <div class="note"><b class="good">BUY</b> — восходящий тренд, импульс и подтверждение входа.
-  <br><br><b class="error">SELL</b> — нисходящий тренд, импульс и подтверждение входа.
-  <br><br><b class="yellow">WAIT</b> — условия не совпали или данных недостаточно.
-  <br><br>Сбор ликвидности — цена выходит за предыдущий максимум или минимум и закрывается обратно внутри диапазона. Пробой требует сильной свечи и подтверждения.</div>
-  <p class="note">Сигналы не гарантируют прибыль и не являются финансовой рекомендацией. Проверяй спред и риск перед сделкой.</p>
- </section>
+<section class="panel">
+<div class="row"><h2>Подробный анализ</h2><span class="muted">4ч → 1ч → 15м → 5м → 1м</span></div>
+<div class="switch"><button id="detailGold" class="active">Золото</button><button id="detailBitcoin">Bitcoin</button></div>
+<div id="detailSignalCard" class="signalbox wait">
+<div class="asset">СИГНАЛ</div><div id="detailSignalValue" class="signalvalue yellow">WAIT</div>
+<div id="detailSignalReason" class="note">Сбор данных…</div>
+<div class="levels"><div class="level"><div class="asset">STOP-LOSS</div><b id="detailStop" class="error">—</b></div><div class="level"><div class="asset">ЦЕЛЬ</div><b id="detailTarget" class="good">—</b></div></div>
+</div>
+<div class="metrics">
+<div class="metric"><small>EMA 9 / 21 · 5м</small><b id="indEMA">—</b></div>
+<div class="metric"><small>RSI 14 · 5м</small><b id="indRSI">—</b></div>
+<div class="metric"><small>MACD · 5м</small><b id="indMACD">—</b></div>
+<div class="metric"><small>ATR 14 · 5м</small><b id="indATR">—</b></div>
+</div>
+<div class="note" id="tfStatus">Ожидание данных таймфреймов.</div>
+</section>
+<section class="panel">
+<h2>Как читать сигнал</h2>
+<div class="note"><b class="good">BUY</b> — несколько подтверждений роста.
+<br><br><b class="error">SELL</b> — несколько подтверждений снижения.
+<br><br><b class="yellow">WAIT</b> — преимущество одной стороны недостаточно или старшие таймфреймы противоречат друг другу.
+<br><br>Стратегия оценивает тренд на 4ч и 1ч, структуру на 15м, импульс на 5м и подтверждение на 1м. Пробой и сбор ликвидности являются возможными подтверждениями, но не обязательны одновременно.</div>
+<p class="note">Сигналы не гарантируют прибыль и не являются финансовой рекомендацией. Перед реальной сделкой проверяй спред и риск.</p>
+</section>
 </main>
 
 <main id="tradesPage" class="hidden">
- <section class="panel">
-  <h2>Добавить сделку</h2>
-  <form id="tradeForm">
-   <div class="formgrid">
-    <div class="field"><label for="tradeAsset">Инструмент</label><select id="tradeAsset"><option value="gold">Золото XAU/USD</option><option value="bitcoin">Bitcoin BTC/USD</option></select></div>
-    <div class="field"><label for="tradeSide">Направление</label><select id="tradeSide"><option value="BUY">Покупка BUY</option><option value="SELL">Продажа SELL</option></select></div>
-    <div class="field"><label for="tradeEntry">Цена входа</label><input id="tradeEntry" type="number" min="0" step="any" required placeholder="Цена"></div>
-    <div class="field"><label for="tradeSize">Объём (необязательно)</label><input id="tradeSize" type="number" min="0" step="any" placeholder="0"></div>
-   </div>
-   <div class="field"><label for="tradeNote">Заметка</label><textarea id="tradeNote" rows="2" placeholder="Причина входа…"></textarea></div>
-   <button class="primary" type="submit" style="width:100%">Сохранить сделку</button>
-  </form>
- </section>
- <section class="panel">
-  <div class="row"><h2>Журнал сделок</h2><button id="clearTrades" class="danger">Очистить</button></div>
-  <div id="tradeStats" class="note">Сделок: 0</div>
-  <div id="tradeList"><div class="empty">Сделок пока нет.</div></div>
- </section>
+<section class="panel">
+<h2>Добавить сделку</h2>
+<form id="tradeForm">
+<div class="formgrid">
+<div class="field"><label for="tradeAsset">Инструмент</label><select id="tradeAsset"><option value="gold">Золото XAU/USD</option><option value="bitcoin">Bitcoin BTC/USD</option></select></div>
+<div class="field"><label for="tradeSide">Направление</label><select id="tradeSide"><option value="BUY">Покупка BUY</option><option value="SELL">Продажа SELL</option></select></div>
+<div class="field"><label for="tradeEntry">Цена входа</label><input id="tradeEntry" type="number" min="0" step="any" required placeholder="Цена"></div>
+<div class="field"><label for="tradeSize">Объём (необязательно)</label><input id="tradeSize" type="number" min="0" step="any" placeholder="0"></div>
+</div>
+<div class="field"><label for="tradeNote">Заметка</label><textarea id="tradeNote" rows="2" placeholder="Причина входа…"></textarea></div>
+<button class="primary" type="submit" style="width:100%">Сохранить сделку</button>
+</form>
+</section>
+<section class="panel">
+<div class="row"><h2>Журнал сделок</h2><button id="clearTrades" class="danger">Очистить</button></div>
+<div id="tradeStats" class="note">Сделок: 0</div><div id="tradeList"><div class="empty">Сделок пока нет.</div></div>
+</section>
 </main>
 <div class="foot">Только анализ рынка · автоматические сделки не выполняются</div>
 </div>
@@ -190,204 +177,236 @@ input,select,textarea{width:100%;min-width:0;background:#0f1620;color:var(--text
 'use strict';
 const $=id=>document.getElementById(id);
 const PRICE_URL='/api/prices',CANDLES_URL='/api/candles',TRADE_KEY='gb-trades';
-const SEC={MINUTE:60,MINUTE_5:300,MINUTE_15:900,HOUR:3600};
-const LABEL={MINUTE:'1м',MINUTE_5:'5м',MINUTE_15:'15м',HOUR:'1ч'};
+const SEC={MINUTE:60,MINUTE_5:300,MINUTE_15:900,HOUR:3600,HOUR_4:14400,DAY:86400};
+const LABEL={MINUTE:'1м',MINUTE_5:'5м',MINUTE_15:'15м',HOUR:'1ч',HOUR_4:'4ч',DAY:'1д'};
 const state={asset:'gold',detailAsset:'gold',resolution:'MINUTE',prices:{gold:null,bitcoin:null},candlesByResolution:{},candles:[],chart:null,candleSeries:null,ema9Series:null,ema21Series:null,strategy:{gold:null,bitcoin:null}};
 function fmt(v){return Number.isFinite(Number(v))?Number(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}
 function clock(v){return new Date(v).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}
 function safe(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function showTab(tab){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));['market','signals','trades'].forEach(t=>$(t+'Page').classList.toggle('hidden',t!==tab));setTimeout(resizeChart,80)}
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
-
 function updateCountdown(){
- const seconds=SEC[state.resolution]||60;
- const now=Math.floor(Date.now()/1000);
- const remaining=seconds-(now%seconds);
- const m=Math.floor(remaining/60),s=remaining%60;
- $('countdownLabel').textContent='До закрытия свечи · '+LABEL[state.resolution];
- $('candleCountdown').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+const seconds=SEC[state.resolution]||60,now=Math.floor(Date.now()/1000),remaining=seconds-(now%seconds);
+$('countdownLabel').textContent='До закрытия свечи · '+LABEL[state.resolution];
+$('candleCountdown').textContent=String(Math.floor(remaining/60)).padStart(2,'0')+':'+String(remaining%60).padStart(2,'0');
 }
 function initChart(){
- const el=$('priceChart');
- if(!window.LightweightCharts){el.innerHTML='<div class="empty error">График не загрузился. Проверь интернет.</div>';return}
- el.innerHTML='';
- state.chart=LightweightCharts.createChart(el,{width:el.clientWidth,height:el.clientHeight,layout:{background:{type:'solid',color:'#151d28'},textColor:'#9eacbd',fontSize:11},grid:{vertLines:{color:'#202b39'},horzLines:{color:'#202b39'}},rightPriceScale:{borderColor:'#293747'},timeScale:{borderColor:'#293747',timeVisible:true,secondsVisible:false},crosshair:{mode:LightweightCharts.CrosshairMode.Normal},handleScroll:true,handleScale:true});
- state.candleSeries=state.chart.addCandlestickSeries({upColor:'#32d296',downColor:'#ff737d',borderUpColor:'#32d296',borderDownColor:'#ff737d',wickUpColor:'#32d296',wickDownColor:'#ff737d'});
- state.ema9Series=state.chart.addLineSeries({color:'#55aaff',lineWidth:2,title:'EMA 9',lastValueVisible:false});
- state.ema21Series=state.chart.addLineSeries({color:'#f0c35a',lineWidth:2,title:'EMA 21',lastValueVisible:false});
- if(window.ResizeObserver)new ResizeObserver(resizeChart).observe(el);
+const el=$('priceChart');
+if(!window.LightweightCharts){el.innerHTML='<div class="empty error">График не загрузился. Проверь интернет.</div>';return}
+el.innerHTML='';
+state.chart=LightweightCharts.createChart(el,{width:el.clientWidth,height:el.clientHeight,layout:{background:{type:'solid',color:'#151d28'},textColor:'#9eacbd',fontSize:11},grid:{vertLines:{color:'#202b39'},horzLines:{color:'#202b39'}},rightPriceScale:{borderColor:'#293747'},timeScale:{borderColor:'#293747',timeVisible:true,secondsVisible:false},crosshair:{mode:LightweightCharts.CrosshairMode.Normal},handleScroll:true,handleScale:true});
+state.candleSeries=state.chart.addCandlestickSeries({upColor:'#32d296',downColor:'#ff737d',borderUpColor:'#32d296',borderDownColor:'#ff737d',wickUpColor:'#32d296',wickDownColor:'#ff737d'});
+state.ema9Series=state.chart.addLineSeries({color:'#55aaff',lineWidth:2,title:'EMA 9',lastValueVisible:false});
+state.ema21Series=state.chart.addLineSeries({color:'#f0c35a',lineWidth:2,title:'EMA 21',lastValueVisible:false});
+if(window.ResizeObserver)new ResizeObserver(resizeChart).observe(el);
 }
 function resizeChart(){if(state.chart){const el=$('priceChart');try{state.chart.applyOptions({width:el.clientWidth,height:el.clientHeight})}catch(e){}}}
 function chartTime(v){
- if(typeof v==='number')return Math.floor(v);
- let s=String(v||'');if(!/Z$|[+-]\d\d:\d\d$/.test(s))s=s.replace(' ','T')+'Z';
- const n=Date.parse(s);return Number.isFinite(n)?Math.floor(n/1000):null;
+if(typeof v==='number')return Math.floor(v>1e12?v/1000:v);
+let s=String(v||'');if(!/Z$|[+-]\d\d:\d\d$/.test(s))s=s.replace(' ','T')+'Z';
+const n=Date.parse(s);return Number.isFinite(n)?Math.floor(n/1000):null;
 }
 function normalize(list){
- if(!Array.isArray(list))return [];
- const map=new Map();
- for(const x of list){const time=chartTime(x.time),open=Number(x.open),high=Number(x.high),low=Number(x.low),close=Number(x.close);if(time!==null&&[open,high,low,close].every(Number.isFinite))map.set(time,{time,open,high,low,close})}
- return [...map.values()].sort((a,b)=>a.time-b.time);
+if(!Array.isArray(list))return [];
+const map=new Map();
+for(const x of list){const time=chartTime(x.time),open=Number(x.open),high=Number(x.high),low=Number(x.low),close=Number(x.close);if(time!==null&&[open,high,low,close].every(Number.isFinite))map.set(time,{time,open,high,low,close})}
+return [...map.values()].sort((a,b)=>a.time-b.time);
 }
 async function fetchSet(res){
- const response=await fetch(CANDLES_URL+'?resolution='+encodeURIComponent(res),{cache:'no-store'});
- let data;try{data=await response.json()}catch(e){throw Error('Сервер вернул неверный ответ')}
- if(!response.ok||data.error)throw Error(data.error||data.details||('HTTP '+response.status));
- state.candlesByResolution[res]={gold:normalize(data.gold),bitcoin:normalize(data.bitcoin)};
- return state.candlesByResolution[res];
+const response=await fetch(CANDLES_URL+'?resolution='+encodeURIComponent(res),{cache:'no-store'});
+let data;try{data=await response.json()}catch(e){throw Error('Сервер вернул неверный ответ')}
+if(!response.ok||data.error)throw Error(data.error||data.details||('HTTP '+response.status));
+state.candlesByResolution[res]={gold:normalize(data.gold),bitcoin:normalize(data.bitcoin)};
+return state.candlesByResolution[res];
 }
 function closed(list,res){const cutoff=Math.floor(Date.now()/1000);return(list||[]).filter(c=>c.time+(SEC[res]||60)<=cutoff)}
 function ema(values,period){
- if(values.length<period)return [];
- const out=Array(values.length).fill(null),k=2/(period+1);
- let v=values.slice(0,period).reduce((a,b)=>a+b,0)/period;out[period-1]=v;
- for(let i=period;i<values.length;i++){v=values[i]*k+out[i-1]*(1-k);out[i]=v}
- return out;
+if(values.length<period)return [];
+const out=Array(values.length).fill(null),k=2/(period+1);
+let v=values.slice(0,period).reduce((a,b)=>a+b,0)/period;out[period-1]=v;
+for(let i=period;i<values.length;i++){v=values[i]*k+out[i-1]*(1-k);out[i]=v}
+return out;
 }
 function calcRSI(values,p=14){
- if(values.length<p+1)return null;
- let gains=0,losses=0;
- for(let i=values.length-p;i<values.length;i++){const d=values[i]-values[i-1];if(d>0)gains+=d;else losses-=d}
- if(losses===0)return 100;
- return 100-100/(1+(gains/p)/(losses/p));
+if(values.length<p+1)return null;
+let gains=0,losses=0;
+for(let i=values.length-p;i<values.length;i++){const d=values[i]-values[i-1];if(d>0)gains+=d;else losses-=d}
+if(losses===0)return gains===0?50:100;
+return 100-100/(1+(gains/p)/(losses/p));
 }
 function calcMACD(values){
- if(values.length<35)return null;
- const a=ema(values,12),b=ema(values,26),line=values.map((v,i)=>a[i]!=null&&b[i]!=null?a[i]-b[i]:null),valid=line.filter(Number.isFinite),sig=ema(valid,9);
- if(!sig.length)return null;
- return{line:valid.at(-1),signal:sig.at(-1),hist:valid.at(-1)-sig.at(-1)};
+if(values.length<35)return null;
+const a=ema(values,12),b=ema(values,26),line=values.map((v,i)=>a[i]!=null&&b[i]!=null?a[i]-b[i]:null),valid=line.filter(Number.isFinite),sig=ema(valid,9);
+if(!sig.length)return null;
+return{line:valid.at(-1),signal:sig.at(-1),hist:valid.at(-1)-sig.at(-1)};
 }
 function calcATR(list,p=14){
- if(list.length<p+1)return null;
- const tr=[];for(let i=1;i<list.length;i++){const c=list[i],prev=list[i-1];tr.push(Math.max(c.high-c.low,Math.abs(c.high-prev.close),Math.abs(c.low-prev.close)))}
- return tr.slice(-p).reduce((a,b)=>a+b,0)/p;
+if(list.length<p+1)return null;
+const tr=[];for(let i=1;i<list.length;i++){const c=list[i],prev=list[i-1];tr.push(Math.max(c.high-c.low,Math.abs(c.high-prev.close),Math.abs(c.low-prev.close)))}
+return tr.slice(-p).reduce((a,b)=>a+b,0)/p;
 }
 function lastEMA(values,p){const e=ema(values,p);return e.length?e.at(-1):null}
+function trendFor(asset,res,min=25){
+const list=closed(state.candlesByResolution[res]?.[asset]||[],res);
+if(list.length<min)return{ready:false,dir:0,count:list.length};
+const c=list.map(x=>x.close),e9=lastEMA(c,9),e21=lastEMA(c,21),last=list.at(-1);
+if(e9==null||e21==null)return{ready:false,dir:0,count:list.length};
+const dir=e9>e21&&last.close>=e9?1:e9<e21&&last.close<=e9?-1:0;
+return{ready:true,dir,e9,e21,last,count:list.length};
+}
 function analyze(asset){
- const one=closed(state.candlesByResolution.MINUTE?.[asset]||[],'MINUTE');
- const five=closed(state.candlesByResolution.MINUTE_5?.[asset]||[],'MINUTE_5');
- const fifteen=closed(state.candlesByResolution.MINUTE_15?.[asset]||[],'MINUTE_15');
- if(one.length<35||five.length<35||fifteen.length<25)return{ready:false,label:'WAIT · НЕТ СИГНАЛА',cls:'wait',reason:'Недостаточно закрытых свечей. Нужна история 1м, 5м и 15м.',detail:'Ожидание данных.',stop:null,target:null};
- const c5=five.map(c=>c.close),c15=fifteen.map(c=>c.close),e9=lastEMA(c5,9),e21=lastEMA(c5,21),t9=lastEMA(c15,9),t21=lastEMA(c15,21),rsi=calcRSI(c5),macd=calcMACD(c5),atr=calcATR(five);
- if([e9,e21,t9,t21,rsi,atr].some(x=>x==null)||!macd)return{ready:false,label:'WAIT · НЕТ СИГНАЛА',cls:'wait',reason:'Недостаточно данных для расчёта индикаторов.',detail:'Ожидание данных.',stop:null,target:null};
- const last5=five.at(-1),last1=one.at(-1),prev1=one.at(-2),prior=five.slice(-13,-1);
- const hi=Math.max(...prior.map(c=>c.high)),lo=Math.min(...prior.map(c=>c.low));
- const trendUp=t9>t21,trendDown=t9<t21,emaUp=e9>e21,emaDown=e9<e21,rsiUp=rsi>=50&&rsi<=70,rsiDown=rsi<=50&&rsi>=30,macdUp=macd.hist>0,macdDown=macd.hist<0;
- const sweepLow=last5.low<lo&&last5.close>lo&&last5.close>last5.open,sweepHigh=last5.high>hi&&last5.close<hi&&last5.close<last5.open;
- const breakoutUp=last5.close>hi&&last5.close>last5.open&&(last5.close-last5.open)>=.25*atr,breakoutDown=last5.close<lo&&last5.close<last5.open&&(last5.open-last5.close)>=.25*atr;
- const confirmUp=last1.close>prev1.high&&last1.close>last1.open,confirmDown=last1.close<prev1.low&&last1.close<last1.open;
- let side='WAIT',cls='wait',reasons=[];
- if(sweepLow)reasons.push('Сбор ликвидности под минимумом');
- if(sweepHigh)reasons.push('Сбор ликвидности над максимумом');
- if(breakoutUp)reasons.push('Пробой вверх');
- if(breakoutDown)reasons.push('Пробой вниз');
- if(trendUp&&emaUp&&rsiUp&&macdUp&&confirmUp&&(sweepLow||breakoutUp)){side='BUY';cls='buy'}
- else if(trendDown&&emaDown&&rsiDown&&macdDown&&confirmDown&&(sweepHigh||breakoutDown)){side='SELL';cls='sell'}
- if(side==='BUY')reasons.push('Тренд 15м вверх','EMA 9 выше EMA 21','RSI '+rsi.toFixed(1),'MACD положительный','Подтверждение 1м');
- else if(side==='SELL')reasons.push('Тренд 15м вниз','EMA 9 ниже EMA 21','RSI '+rsi.toFixed(1),'MACD отрицательный','Подтверждение 1м');
- else{if(!reasons.length)reasons.push('Нет подтверждённого сбора ликвидности или пробоя');if(!confirmUp&&!confirmDown)reasons.push('Нет подтверждения на 1м');reasons.push('RSI '+rsi.toFixed(1))}
- const entry=one.at(-1).close,stop=side==='BUY'?entry-1.5*atr:side==='SELL'?entry+1.5*atr:null,target=side==='BUY'?entry+2*atr:side==='SELL'?entry-2*atr:null;
- return{ready:true,side,label:side==='BUY'?'BUY · ПОКУПКА':side==='SELL'?'SELL · ПРОДАЖА':'WAIT · НЕТ ВХОДА',cls,reason:reasons.join(' · '),detail:'EMA 9/21: '+(emaUp?'вверх':'вниз')+' · RSI: '+rsi.toFixed(1)+' · MACD: '+(macd.hist>=0?'плюс':'минус')+' · ATR: '+fmt(atr),stop,target,entry,ema9:e9,ema21:e21,rsi,macd,atr,trendUp,trendDown};
+const one=closed(state.candlesByResolution.MINUTE?.[asset]||[],'MINUTE');
+const five=closed(state.candlesByResolution.MINUTE_5?.[asset]||[],'MINUTE_5');
+const fifteen=closed(state.candlesByResolution.MINUTE_15?.[asset]||[],'MINUTE_15');
+const hour=trendFor(asset,'HOUR',25),four=trendFor(asset,'HOUR_4',20);
+if(one.length<35||five.length<35||fifteen.length<25||!hour.ready||!four.ready){
+return{ready:false,side:'WAIT',label:'WAIT · СБОР ДАННЫХ',cls:'wait',reason:'Недостаточно закрытых свечей для всех таймфреймов. Нужны данные 4ч, 1ч, 15м, 5м и 1м.',detail:'Проверка старших таймфреймов…',stop:null,target:null};
+}
+const c5=five.map(c=>c.close),c15=fifteen.map(c=>c.close);
+const e9=lastEMA(c5,9),e21=lastEMA(c5,21),t9=lastEMA(c15,9),t21=lastEMA(c15,21);
+const rsi=calcRSI(c5),macd=calcMACD(c5),atr=calcATR(five);
+if([e9,e21,t9,t21,rsi,atr].some(x=>x==null)||!macd)return{ready:false,side:'WAIT',label:'WAIT · СБОР ДАННЫХ',cls:'wait',reason:'Недостаточно данных для расчёта индикаторов.',detail:'Ожидание данных.',stop:null,target:null};
+const last5=five.at(-1),last1=one.at(-1),prev1=one.at(-2),prior=five.slice(-13,-1);
+const hi=Math.max(...prior.map(c=>c.high)),lo=Math.min(...prior.map(c=>c.low));
+const trend15=t9>t21?1:t9<t21?-1:0,trend5=e9>e21?1:e9<e21?-1:0;
+const rsiDir=rsi>=52&&rsi<72?1:rsi<=48&&rsi>28?-1:0;
+const macdDir=macd.hist>0?1:macd.hist<0?-1:0;
+const sweepLow=last5.low<lo&&last5.close>lo&&last5.close>last5.open;
+const sweepHigh=last5.high>hi&&last5.close<hi&&last5.close<last5.open;
+const breakoutUp=last5.close>hi&&last5.close>last5.open&&(last5.close-last5.open)>=.2*atr;
+const breakoutDown=last5.close<lo&&last5.close<last5.open&&(last5.open-last5.close)>=.2*atr;
+const confirmUp=last1.close>prev1.high&&last1.close>last1.open;
+const confirmDown=last1.close<prev1.low&&last1.close<last1.open;
+let buy=0,sell=0,reasons=[];
+if(four.dir===1)buy+=2;if(four.dir===-1)sell+=2;
+if(hour.dir===1)buy+=2;if(hour.dir===-1)sell+=2;
+if(trend15===1)buy+=2;if(trend15===-1)sell+=2;
+if(trend5===1)buy++;if(trend5===-1)sell++;
+if(rsiDir===1)buy++;if(rsiDir===-1)sell++;
+if(macdDir===1)buy++;if(macdDir===-1)sell++;
+if(sweepLow){buy+=2;reasons.push('Сбор ликвидности под минимумом')}
+if(sweepHigh){sell+=2;reasons.push('Сбор ликвидности над максимумом')}
+if(breakoutUp){buy+=2;reasons.push('Подтверждённый пробой вверх')}
+if(breakoutDown){sell+=2;reasons.push('Подтверждённый пробой вниз')}
+if(confirmUp)buy++;if(confirmDown)sell++;
+const higherConflict=four.dir!==0&&hour.dir!==0&&four.dir!==hour.dir;
+let side='WAIT',cls='wait';
+if(!higherConflict&&buy>=7&&buy>=sell+2&&(confirmUp||breakoutUp||sweepLow)){side='BUY';cls='buy'}
+else if(!higherConflict&&sell>=7&&sell>=buy+2&&(confirmDown||breakoutDown||sweepHigh)){side='SELL';cls='sell'}
+if(side==='BUY')reasons.unshift('BUY: перевес подтверждений '+buy+' против '+sell);
+else if(side==='SELL')reasons.unshift('SELL: перевес подтверждений '+sell+' против '+buy);
+else if(higherConflict)reasons.unshift('WAIT: тренды 4ч и 1ч противоречат друг другу');
+else reasons.unshift('WAIT: подтверждений пока недостаточно — BUY '+buy+', SELL '+sell);
+reasons.push('4ч: '+(four.dir===1?'вверх':four.dir===-1?'вниз':'нейтрально'));
+reasons.push('1ч: '+(hour.dir===1?'вверх':hour.dir===-1?'вниз':'нейтрально'));
+reasons.push('15м: '+(trend15===1?'вверх':trend15===-1?'вниз':'нейтрально'));
+reasons.push('5м EMA: '+(trend5===1?'вверх':trend5===-1?'вниз':'нейтрально'));
+reasons.push('RSI '+rsi.toFixed(1));
+reasons.push('MACD '+(macdDir===1?'положительный':macdDir===-1?'отрицательный':'нейтральный'));
+reasons.push('1м: '+(confirmUp?'подтверждение вверх':confirmDown?'подтверждение вниз':'нет подтверждения'));
+const entry=last1.close;
+const stop=side==='BUY'?entry-1.5*atr:side==='SELL'?entry+1.5*atr:null;
+const target=side==='BUY'?entry+2*atr:side==='SELL'?entry-2*atr:null;
+return{ready:true,side,label:side==='BUY'?'BUY · ПОКУПКА':side==='SELL'?'SELL · ПРОДАЖА':'WAIT · НЕТ ВХОДА',cls,reason:reasons.join(' · '),detail:'Оценка BUY '+buy+' / SELL '+sell+' · ATR 5м '+fmt(atr),stop,target,entry,ema9:e9,ema21:e21,rsi,macd,atr,trendUp:trend15===1,trendDown:trend15===-1,buyScore:buy,sellScore:sell,four,hour,trend15,trend5};
 }
 function renderSignal(asset){
- const result=analyze(asset);state.strategy[asset]=result;
- if(asset===state.asset){
-  $('signalAssetLabel').textContent=asset==='gold'?'Золото':'Bitcoin';
-  $('marketSignalCard').className='signalbox '+result.cls;
-  $('marketSignalValue').textContent=result.label;
-  $('marketSignalValue').className='signalvalue '+(result.cls==='buy'?'good':result.cls==='sell'?'error':'yellow');
-  $('marketSignalReason').textContent=result.reason||'Ожидание данных';
-  $('marketStop').textContent=result.stop==null?'—':fmt(result.stop);
-  $('marketTarget').textContent=result.target==null?'—':fmt(result.target);
-  $('marketSignalSetup').textContent=result.detail||'Анализ 15м → 5м → 1м';
- }
- if(asset===state.detailAsset){
-  $('detailSignalCard').className='signalbox '+result.cls;
-  $('detailSignalValue').textContent=result.label;
-  $('detailSignalValue').className='signalvalue '+(result.cls==='buy'?'good':result.cls==='sell'?'error':'yellow');
-  $('detailSignalReason').textContent=result.reason||'Ожидание данных';
-  $('detailStop').textContent=result.stop==null?'—':fmt(result.stop);
-  $('detailTarget').textContent=result.target==null?'—':fmt(result.target);
-  $('indEMA').textContent=result.ema9==null?'—':fmt(result.ema9)+' / '+fmt(result.ema21);
-  $('indRSI').textContent=result.rsi==null?'—':result.rsi.toFixed(1);
-  $('indMACD').textContent=result.macd==null?'—':(result.macd.hist>=0?'+':'')+fmt(result.macd.hist);
-  $('indATR').textContent=result.atr==null?'—':fmt(result.atr);
-  $('tfStatus').textContent=result.ready?'15м: '+(result.trendUp?'вверх':'вниз')+' · 5м: EMA '+(result.ema9>result.ema21?'вверх':'вниз')+' · 1м: подтверждение проверено.':'Недостаточно данных для анализа на всех таймфреймах.';
- }
+const result=analyze(asset);state.strategy[asset]=result;
+if(asset===state.asset){
+$('signalAssetLabel').textContent=asset==='gold'?'Золото':'Bitcoin';
+$('marketSignalCard').className='signalbox '+result.cls;
+$('marketSignalValue').textContent=result.label;
+$('marketSignalValue').className='signalvalue '+(result.cls==='buy'?'good':result.cls==='sell'?'error':'yellow');
+$('marketSignalReason').textContent=result.reason||'Ожидание данных';
+$('marketStop').textContent=result.stop==null?'—':fmt(result.stop);
+$('marketTarget').textContent=result.target==null?'—':fmt(result.target);
+$('marketSignalSetup').textContent=result.detail||'Анализ 4ч → 1ч → 15м → 5м → 1м';
+}
+if(asset===state.detailAsset){
+$('detailSignalCard').className='signalbox '+result.cls;
+$('detailSignalValue').textContent=result.label;
+$('detailSignalValue').className='signalvalue '+(result.cls==='buy'?'good':result.cls==='sell'?'error':'yellow');
+$('detailSignalReason').textContent=result.reason||'Ожидание данных';
+$('detailStop').textContent=result.stop==null?'—':fmt(result.stop);
+$('detailTarget').textContent=result.target==null?'—':fmt(result.target);
+$('indEMA').textContent=result.ema9==null?'—':fmt(result.ema9)+' / '+fmt(result.ema21);
+$('indRSI').textContent=result.rsi==null?'—':result.rsi.toFixed(1);
+$('indMACD').textContent=result.macd==null?'—':(result.macd.hist>=0?'+':'')+fmt(result.macd.hist);
+$('indATR').textContent=result.atr==null?'—':fmt(result.atr);
+$('tfStatus').textContent=result.ready?'4ч: '+(result.four.dir===1?'вверх':result.four.dir===-1?'вниз':'нейтрально')+' · 1ч: '+(result.hour.dir===1?'вверх':result.hour.dir===-1?'вниз':'нейтрально')+' · 15м: '+(result.trend15===1?'вверх':result.trend15===-1?'вниз':'нейтрально')+' · 5м: '+(result.trend5===1?'вверх':result.trend5===-1?'вниз':'нейтрально')+' · баллы BUY '+result.buyScore+' / SELL '+result.sellScore:'Ожидание достаточной истории 4ч, 1ч, 15м, 5м и 1м.';
+}
 }
 function renderChart(){
- const list=state.candlesByResolution[state.resolution]?.[state.asset]||[];state.candles=list;
- if(!list.length){$('chartNote').textContent='Нет свечей для выбранного таймфрейма.';$('chartNote').className='note error';return}
- if(state.candleSeries){
-  state.candleSeries.setData(list);
-  const values=list.map(c=>c.close),a=ema(values,9),b=ema(values,21);
-  state.ema9Series.setData(list.map((c,i)=>a[i]==null?null:{time:c.time,value:a[i]}).filter(Boolean));
-  state.ema21Series.setData(list.map((c,i)=>b[i]==null?null:{time:c.time,value:b[i]}).filter(Boolean));
-  state.chart.timeScale().fitContent();
- }
- $('chartTitle').textContent=(state.asset==='gold'?'Золото':'Bitcoin')+' · свечи';
- $('chartNote').textContent='Свечей: '+list.length+' · '+LABEL[state.resolution]+' · обновлено '+clock(Date.now());
- $('chartNote').className='note good';
+const list=state.candlesByResolution[state.resolution]?.[state.asset]||[];state.candles=list;
+if(!list.length){$('chartNote').textContent='Нет свечей для выбранного таймфрейма.';$('chartNote').className='note error';return}
+if(state.candleSeries){
+state.candleSeries.setData(list);
+const values=list.map(c=>c.close),a=ema(values,9),b=ema(values,21);
+state.ema9Series.setData(list.map((c,i)=>a[i]==null?null:{time:c.time,value:a[i]}).filter(Boolean));
+state.ema21Series.setData(list.map((c,i)=>b[i]==null?null:{time:c.time,value:b[i]}).filter(Boolean));
+state.chart.timeScale().fitContent();
+}
+$('chartTitle').textContent=(state.asset==='gold'?'Золото':'Bitcoin')+' · свечи';
+$('chartNote').textContent='Свечей: '+list.length+' · '+LABEL[state.resolution]+' · обновлено '+clock(Date.now());
+$('chartNote').className='note good';
 }
 async function loadCurrentChart(){
- $('chartNote').textContent='Загрузка свечей '+LABEL[state.resolution]+'…';
- try{await fetchSet(state.resolution);renderChart()}catch(e){$('chartNote').textContent='Ошибка свечей: '+e.message;$('chartNote').className='note error'}
+$('chartNote').textContent='Загрузка свечей '+LABEL[state.resolution]+'…';
+try{await fetchSet(state.resolution);renderChart()}catch(e){$('chartNote').textContent='Ошибка свечей: '+e.message;$('chartNote').className='note error'}
 }
 async function loadPrices(){
- try{
-  const r=await fetch(PRICE_URL,{cache:'no-store'}),d=await r.json();
-  if(!r.ok||d.error)throw Error(d.error||'HTTP '+r.status);
-  const g=d.gold||{},b=d.bitcoin||{},gb=Number(g.bid),ga=Number(g.ask),bb=Number(b.bid),ba=Number(b.ask);
-  state.prices.gold=Number.isFinite(gb)?gb:Number.isFinite(ga)?ga:null;
-  state.prices.bitcoin=Number.isFinite(bb)?bb:Number.isFinite(ba)?ba:null;
-  $('goldPrice').textContent=fmt(state.prices.gold);$('btcPrice').textContent=fmt(state.prices.bitcoin);
-  $('goldSpread').textContent='Bid '+fmt(gb)+' / Ask '+fmt(ga);$('btcSpread').textContent='Bid '+fmt(bb)+' / Ask '+fmt(ba);
-  $('priceUpdated').textContent='Обновлено '+clock(Date.now());$('connection').textContent='LIVE · '+clock(Date.now());$('connection').className='good';
- }catch(e){$('connection').textContent='Нет связи с API';$('connection').className='error';$('priceUpdated').textContent=e.message||'Ошибка котировок'}
+try{
+const r=await fetch(PRICE_URL,{cache:'no-store'}),d=await r.json();
+if(!r.ok||d.error)throw Error(d.error||'HTTP '+r.status);
+const g=d.gold||{},b=d.bitcoin||{},gb=Number(g.bid),ga=Number(g.ask),bb=Number(b.bid),ba=Number(b.ask);
+state.prices.gold=Number.isFinite(gb)?gb:Number.isFinite(ga)?ga:null;
+state.prices.bitcoin=Number.isFinite(bb)?bb:Number.isFinite(ba)?ba:null;
+$('goldPrice').textContent=fmt(state.prices.gold);$('btcPrice').textContent=fmt(state.prices.bitcoin);
+$('goldSpread').textContent='Bid '+fmt(gb)+' / Ask '+fmt(ga);$('btcSpread').textContent='Bid '+fmt(bb)+' / Ask '+fmt(ba);
+$('priceUpdated').textContent='Обновлено '+clock(Date.now());$('connection').textContent='LIVE · '+clock(Date.now());$('connection').className='good';
+}catch(e){$('connection').textContent='Нет связи с API';$('connection').className='error';$('priceUpdated').textContent=e.message||'Ошибка котировок'}
 }
 async function refreshAll(){
- for(const res of ['MINUTE_15','MINUTE_5','MINUTE']){try{await fetchSet(res)}catch(e){console.warn(res,e.message)}}
- if(!state.candlesByResolution[state.resolution])try{await fetchSet(state.resolution)}catch(e){}
- renderChart();renderSignal('gold');renderSignal('bitcoin');
+const resolutions=['HOUR_4','HOUR','MINUTE_15','MINUTE_5','MINUTE'];
+await Promise.all(resolutions.map(async res=>{try{await fetchSet(res)}catch(e){console.warn(res,e.message)}}));
+if(!state.candlesByResolution[state.resolution])try{await fetchSet(state.resolution)}catch(e){}
+renderChart();renderSignal('gold');renderSignal('bitcoin');
 }
 function setAsset(asset){state.asset=asset;$('assetGold').classList.toggle('active',asset==='gold');$('assetBitcoin').classList.toggle('active',asset==='bitcoin');renderChart();renderSignal(asset)}
 $('assetGold').addEventListener('click',()=>setAsset('gold'));
 $('assetBitcoin').addEventListener('click',()=>setAsset('bitcoin'));
 document.querySelectorAll('.periods button').forEach(b=>b.addEventListener('click',async()=>{
- document.querySelectorAll('.periods button').forEach(x=>x.classList.toggle('active',x===b));
- state.resolution=b.dataset.resolution;updateCountdown();await loadCurrentChart();
+document.querySelectorAll('.periods button').forEach(x=>x.classList.toggle('active',x===b));
+state.resolution=b.dataset.resolution;updateCountdown();await loadCurrentChart();
 }));
 $('detailGold').addEventListener('click',()=>{state.detailAsset='gold';$('detailGold').classList.add('active');$('detailBitcoin').classList.remove('active');renderSignal('gold')});
 $('detailBitcoin').addEventListener('click',()=>{state.detailAsset='bitcoin';$('detailBitcoin').classList.add('active');$('detailGold').classList.remove('active');renderSignal('bitcoin')});
-
 function getTrades(){try{const a=JSON.parse(localStorage.getItem(TRADE_KEY)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
 function saveTrades(a){localStorage.setItem(TRADE_KEY,JSON.stringify(a));renderTrades()}
 function renderTrades(){
- const trades=getTrades(),box=$('tradeList');
- $('tradeStats').textContent='Всего сделок: '+trades.length+' · Открытых: '+trades.filter(t=>!t.closed).length;
- if(!trades.length){box.innerHTML='<div class="empty">Сделок пока нет.</div>';return}
- box.innerHTML=trades.slice().reverse().map(t=>{
-  const asset=t.asset==='bitcoin'?'Bitcoin BTC/USD':'Золото XAU/USD',side=t.side==='SELL'?'SELL':'BUY',closed=!!t.closed;
-  let result='';
-  if(closed&&Number.isFinite(Number(t.exit))&&Number(t.entry)>0){const p=(side==='BUY'?(Number(t.exit)-Number(t.entry)):(Number(t.entry)-Number(t.exit)))/Number(t.entry)*100;result='<div class="note '+(p>=0?'good':'error')+'">Выход: '+fmt(t.exit)+' · '+(p>=0?'+':'')+p.toFixed(3)+'%</div>'}
-  return '<div class="trade"><div class="tradehead"><span>'+safe(asset)+' · '+side+'</span><span>'+(closed?'Закрыта':'Открыта')+'</span></div><div class="note">Вход: '+fmt(t.entry)+' · '+safe(new Date(t.created).toLocaleString('ru-RU'))+(t.size?' · Объём: '+safe(t.size):'')+'</div>'+result+(t.note?'<div class="note">'+safe(t.note)+'</div>':'')+'<div class="row" style="margin-top:7px">'+(!closed?'<button data-close="'+safe(t.id)+'">Закрыть по текущей цене</button>':'')+'<button class="danger" data-delete="'+safe(t.id)+'">Удалить</button></div></div>';
- }).join('');
- box.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{
-  const a=getTrades(),t=a.find(x=>String(x.id)===b.dataset.close),price=state.prices[t?.asset];
-  if(!t||!Number.isFinite(price)){alert('Нет актуальной цены. Обнови котировки.');return}
-  t.closed=true;t.exit=price;t.closedAt=new Date().toISOString();saveTrades(a);
- }));
- box.querySelectorAll('[data-delete]').forEach(b=>b.addEventListener('click',()=>{if(confirm('Удалить эту сделку?'))saveTrades(getTrades().filter(t=>String(t.id)!==b.dataset.delete))}));
+const trades=getTrades(),box=$('tradeList');
+$('tradeStats').textContent='Всего сделок: '+trades.length+' · Открытых: '+trades.filter(t=>!t.closed).length;
+if(!trades.length){box.innerHTML='<div class="empty">Сделок пока нет.</div>';return}
+box.innerHTML=trades.slice().reverse().map(t=>{
+const asset=t.asset==='bitcoin'?'Bitcoin BTC/USD':'Золото XAU/USD',side=t.side==='SELL'?'SELL':'BUY',closed=!!t.closed;
+let result='';
+if(closed&&Number.isFinite(Number(t.exit))&&Number(t.entry)>0){const p=(side==='BUY'?(Number(t.exit)-Number(t.entry)):(Number(t.entry)-Number(t.exit)))/Number(t.entry)*100;result='<div class="note '+(p>=0?'good':'error')+'">Выход: '+fmt(t.exit)+' · '+(p>=0?'+':'')+p.toFixed(3)+'%</div>'}
+return '<div class="trade"><div class="tradehead"><span>'+safe(asset)+' · '+side+'</span><span>'+(closed?'Закрыта':'Открыта')+'</span></div><div class="note">Вход: '+fmt(t.entry)+' · '+safe(new Date(t.created).toLocaleString('ru-RU'))+(t.size?' · Объём: '+safe(t.size):'')+'</div>'+result+(t.note?'<div class="note">'+safe(t.note)+'</div>':'')+'<div class="row" style="margin-top:7px">'+(!closed?'<button data-close="'+safe(t.id)+'">Закрыть по текущей цене</button>':'')+'<button class="danger" data-delete="'+safe(t.id)+'">Удалить</button></div></div>';
+}).join('');
+box.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{
+const a=getTrades(),t=a.find(x=>String(x.id)===b.dataset.close),price=state.prices[t?.asset];
+if(!t||!Number.isFinite(price)){alert('Нет актуальной цены. Обнови котировки.');return}
+t.closed=true;t.exit=price;t.closedAt=new Date().toISOString();saveTrades(a);
+}));
+box.querySelectorAll('[data-delete]').forEach(b=>b.addEventListener('click',()=>{if(confirm('Удалить эту сделку?'))saveTrades(getTrades().filter(t=>String(t.id)!==b.dataset.delete))}));
 }
 $('tradeForm').addEventListener('submit',e=>{
- e.preventDefault();
- const asset=$('tradeAsset').value,side=$('tradeSide').value,entry=Number($('tradeEntry').value),size=Number($('tradeSize').value)||0;
- if(!Number.isFinite(entry)||entry<=0){alert('Введи корректную цену входа.');return}
- const a=getTrades();a.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),asset,side,entry,size,note:$('tradeNote').value.trim(),created:new Date().toISOString(),closed:false});
- saveTrades(a);$('tradeForm').reset();
+e.preventDefault();
+const asset=$('tradeAsset').value,side=$('tradeSide').value,entry=Number($('tradeEntry').value),size=Number($('tradeSize').value)||0;
+if(!Number.isFinite(entry)||entry<=0){alert('Введи корректную цену входа.');return}
+const a=getTrades();a.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),asset,side,entry,size,note:$('tradeNote').value.trim(),created:new Date().toISOString(),closed:false});
+saveTrades(a);$('tradeForm').reset();
 });
 $('clearTrades').addEventListener('click',()=>{if(confirm('Удалить весь журнал сделок на этом устройстве?'))saveTrades([])});
-
 initChart();renderTrades();updateCountdown();loadPrices();refreshAll();
 setInterval(updateCountdown,250);
 setInterval(loadPrices,10000);
@@ -398,5 +417,4 @@ window.addEventListener('online',()=>{loadPrices();refreshAll()});
 </script>
 </body>
 </html>
-
 
