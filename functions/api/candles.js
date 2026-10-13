@@ -1,57 +1,76 @@
+
 const LIVE_URL = "https://api-capital.backend-capital.com";
 const DEMO_URL = "https://demo-api-capital.backend-capital.com";
-function json(data, status = 200, cache = false) {
+
+// Повторно используем сессию, пока она действительна.
+// Cloudflare может сбрасывать память между запросами.
+let savedSession = null;
+let sessionExpiresAt = 0;
+let sessionPromise = null;
+
+const ALLOWED_RESOLUTIONS = new Set([
+  "MINUTE",
+  "MINUTE_5",
+  "MINUTE_15",
+  "HOUR",
+  "HOUR_4",
+  "DAY"
+]);
+
+function json(data, status = 200, maxAge = 0) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": cache
-        ? "public, max-age=15, s-maxage=30"
+      "Cache-Control": maxAge
+        ? `public, max-age=${maxAge}, s-maxage=${maxAge}`
         : "no-store"
     }
   });
 }
+
 function priceValue(value) {
   if (!value || typeof value !== "object") return null;
+
   const bid = Number(value.bid);
   const ask = Number(value.ask);
+
   if (Number.isFinite(bid) && Number.isFinite(ask)) {
     return (bid + ask) / 2;
   }
+
   if (Number.isFinite(bid)) return bid;
   if (Number.isFinite(ask)) return ask;
+
   return null;
 }
+
 function convertPrice(item) {
   const open = priceValue(item.openPrice);
   const high = priceValue(item.highPrice);
   const low = priceValue(item.lowPrice);
   const close = priceValue(item.closePrice);
-  if (
-    open === null ||
-    high === null ||
-    low === null ||
-    close === null
-  ) {
+
+  if ([open, high, low, close].some(v => v === null)) {
     return null;
   }
-  return {
-    time: item.snapshotTimeUTC || item.snapshotTime,
-    open,
-    high,
-    low,
-    close
-  };
+
+  const time = item.snapshotTimeUTC || item.snapshotTime;
+  if (!time) return null;
+
+  return { time, open, high, low, close };
 }
-async function apiFetch(url, options = {}) {
-  const response = await fetch(url, options);
+
+async function readJson(response) {
   const text = await response.text();
+
   let data;
   try {
     data = JSON.parse(text);
   } catch {
     throw new Error("Capital.com вернул некорректный ответ");
   }
+
   if (!response.ok) {
     throw new Error(
       data.errorCode ||
@@ -59,154 +78,187 @@ async function apiFetch(url, options = {}) {
       `Capital.com HTTP ${response.status}`
     );
   }
+
   return data;
 }
-// Авторизация с повторной попыткой при временном сбое.
-async function createSession(baseUrl, apiKey, identifier, password) {
-  let lastError = "Capital.com session failed";
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    let response;
-    try {
-      response = await fetch(
-        `${baseUrl}/api/v1/session`,
-        {
-          method: "POST",
-          headers: {
-            "X-CAP-API-KEY": apiKey,
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "Version": "1"
-          },
-          body: JSON.stringify({
-            identifier,
-            password,
-            encryptedPassword: false
-          })
-        }
-      );
-    } catch (error) {
-      lastError = error.message || "Network error";
-      if (attempt < 2) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        continue;
+
+async function createSession(baseUrl, env) {
+  const response = await fetch(`${baseUrl}/api/v1/session`, {
+    method: "POST",
+    headers: {
+      "X-CAP-API-KEY": env.CAPITAL_API_KEY,
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "Version": "1"
+    },
+    body: JSON.stringify({
+      identifier: env.CAPITAL_IDENTIFIER,
+      password: env.CAPITAL_API_PASSWORD,
+      encryptedPassword: false
+    })
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(
+      `Capital.com session HTTP ${response.status}: ${body.slice(0, 180)}`
+    );
+  }
+
+  const cst = response.headers.get("CST");
+  const securityToken = response.headers.get("X-SECURITY-TOKEN");
+
+  if (!cst || !securityToken) {
+    throw new Error("Capital.com не вернул токены сессии");
+  }
+
+  return { cst, securityToken };
+}
+
+async function getSession(baseUrl, env, forceRefresh = false) {
+  if (
+    !forceRefresh &&
+    savedSession &&
+    Date.now() < sessionExpiresAt
+  ) {
+    return savedSession;
+  }
+
+  // Не создаём несколько сессий одновременно в одном изоляте.
+  if (sessionPromise) return sessionPromise;
+
+  sessionPromise = (async () => {
+    const session = await createSession(baseUrl, env);
+    savedSession = session;
+
+    // Обновляем сессию заранее, не дожидаясь истечения.
+    sessionExpiresAt = Date.now() + 7 * 60 * 1000;
+
+    return session;
+  })();
+
+  try {
+    return await sessionPromise;
+  } finally {
+    sessionPromise = null;
+  }
+}
+
+async function capitalFetch(url, baseUrl, env) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const session = await getSession(
+      baseUrl,
+      env,
+      attempt === 1
+    );
+
+    const response = await fetch(url, {
+      headers: {
+        "X-CAP-API-KEY": env.CAPITAL_API_KEY,
+        "CST": session.cst,
+        "X-SECURITY-TOKEN": session.securityToken,
+        "Accept": "application/json",
+        "Version": "1"
       }
-      throw new Error(`Capital.com: ${lastError}`);
-    }
-    if (response.ok) {
-      return response;
-    }
-    const errorText = await response.text();
-    lastError = `HTTP ${response.status}: ${errorText.slice(0, 300)}`;
-    // Повторяем только при временных ошибках сервера
-    // или ограничении частоты запросов.
-    const temporary =
-      response.status === 408 ||
-      response.status === 429 ||
-      response.status >= 500;
-    if (temporary && attempt < 2) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    });
+
+    if (
+      attempt === 0 &&
+      (response.status === 401 || response.status === 403)
+    ) {
+      savedSession = null;
+      sessionExpiresAt = 0;
       continue;
     }
-    throw new Error(`Capital.com session failed: ${lastError}`);
+
+    return readJson(response);
   }
-  throw new Error(`Capital.com session failed: ${lastError}`);
+
+  throw new Error("Не удалось обновить сессию Capital.com");
 }
+
 export async function onRequest(context) {
   const { request, env } = context;
+
   if (request.method !== "GET") {
     return json({ error: "Method not allowed" }, 405);
   }
+
   const url = new URL(request.url);
-  const allowed = [
-    "MINUTE",
-    "MINUTE_5",
-    "MINUTE_15",
-    "HOUR",
-    "HOUR_4",
-    "DAY"
-  ];
-  const resolution =
-    url.searchParams.get("resolution") || "MINUTE";
-  if (!allowed.includes(resolution)) {
+  const resolution = url.searchParams.get("resolution") || "MINUTE";
+
+  if (!ALLOWED_RESOLUTIONS.has(resolution)) {
     return json({ error: "Unsupported resolution" }, 400);
   }
-  // Кэш свечей: сокращает количество обращений к API.
-  const cache = caches.default;
-  const cacheUrl = new URL(request.url);
-  cacheUrl.pathname = "/__cached_candles";
-  cacheUrl.search = `?resolution=${resolution}`;
-  const cacheKey = new Request(cacheUrl.toString(), {
-    method: "GET"
-  });
-  try {
-    const cached = await cache.match(cacheKey);
-    if (cached) {
-      return cached;
-    }
-  } catch {
-    // Продолжаем, даже если кэш недоступен.
-  }
+
   const identifier = env.CAPITAL_IDENTIFIER;
   const password = env.CAPITAL_API_PASSWORD;
   const apiKey = env.CAPITAL_API_KEY;
+
   if (!identifier || !password || !apiKey) {
     return json({
       error: "Capital.com credentials are missing"
     }, 500);
   }
+
   const baseUrl =
     env.CAPITAL_DEMO === "true" ? DEMO_URL : LIVE_URL;
+
+  // Кэшируем каждый таймфрейм отдельно.
+  const cache = caches.default;
+  const cacheUrl = new URL(request.url);
+  cacheUrl.pathname = "/__cached_candles";
+  cacheUrl.search = `?resolution=${encodeURIComponent(resolution)}`;
+
+  const cacheKey = new Request(cacheUrl.toString(), {
+    method: "GET"
+  });
+
   try {
-    // Создаём сессию с повтором при временном сбое.
-    const sessionResponse = await createSession(
-      baseUrl,
-      apiKey,
-      identifier,
-      password
-    );
-    const cst = sessionResponse.headers.get("CST");
-    const securityToken =
-      sessionResponse.headers.get("X-SECURITY-TOKEN");
-    if (!cst || !securityToken) {
-      return json({
-        error: "Capital.com session tokens are missing"
-      }, 502);
-    }
-    const headers = {
-      "X-CAP-API-KEY": apiKey,
-      "CST": cst,
-      "X-SECURITY-TOKEN": securityToken,
-      "Accept": "application/json",
-      "Version": "1"
-    };
-    async function getCandles(epic) {
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+  } catch {
+    // Если кэш недоступен, запрашиваем данные напрямую.
+  }
+
+  try {
+    const getCandles = async epic => {
       const endpoint = new URL(
         `${baseUrl}/api/v1/prices/${epic}`
       );
+
       endpoint.searchParams.set("resolution", resolution);
       endpoint.searchParams.set("max", "100");
-      const result = await apiFetch(endpoint.toString(), {
-        headers
-      });
+
+      const result = await capitalFetch(
+        endpoint.toString(),
+        baseUrl,
+        env
+      );
+
       return (result.prices || [])
         .map(convertPrice)
         .filter(Boolean);
-    }
+    };
+
     const [gold, bitcoin] = await Promise.all([
       getCandles("GOLD"),
       getCandles("BTCUSD")
     ]);
+
     const result = json({
       resolution,
       gold,
       bitcoin,
       updatedAt: new Date().toISOString()
-    }, 200, true);
+    }, 200, 10);
+
     try {
       await cache.put(cacheKey, result.clone());
     } catch {
-      // Возвращаем данные, даже если сохранить кэш не удалось.
+      // Отдаём результат и без кэширования.
     }
+
     return result;
   } catch (error) {
     return json({
