@@ -1152,6 +1152,210 @@ renderTrades();
 refreshAll();
 setInterval(refreshAll,30000);
 </script>
+
+<style>
+/* Gold & Bitcoin — карточка Demo-счёта */
+.account-card {
+  background: linear-gradient(145deg,#172638,#111a26);
+  border: 1px solid #34475e;
+  border-radius: 14px;
+  padding: 13px;
+  margin: 0 0 9px;
+}
+.account-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:13px;
+}
+.account-title {font-size:14px;font-weight:850}
+.account-badge {
+  font-size:10px;color:#32d296;background:#15382e;
+  padding:5px 8px;border-radius:7px;font-weight:800;
+}
+.account-balance-label {font-size:11px;color:#92a2b7}
+.account-balance {
+  font-size:clamp(26px,7vw,34px);
+  font-weight:900;margin:5px 0 13px;
+  font-variant-numeric:tabular-nums;
+}
+.account-grid {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+}
+.account-item {background:#1b2634;border-radius:9px;padding:10px;min-width:0}
+.account-item-label {font-size:10px;color:#92a2b7;margin-bottom:6px}
+.account-item-value {
+  font-size:15px;font-weight:850;overflow-wrap:anywhere;
+  font-variant-numeric:tabular-nums;
+}
+.account-positions {margin-top:12px}
+.account-position {
+  padding:10px 0;border-top:1px solid #2b3748;
+  font-size:11px;line-height:1.6;overflow-wrap:anywhere;
+}
+.account-muted {font-size:10px;color:#92a2b7;line-height:1.5}
+.account-error {color:#ffad5c}
+@media(min-width:650px) {
+  .account-grid {grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+</style>
+
+<section class="account-card" id="demoAccountCard">
+  <div class="account-head">
+    <div class="account-title">Мой счёт</div>
+    <span class="account-badge">DEMO · ТЕСТОВЫЙ</span>
+  </div>
+
+  <div class="account-balance-label">Баланс счёта</div>
+  <div class="account-balance" id="demoBalance">$—</div>
+
+  <div class="account-grid">
+    <div class="account-item">
+      <div class="account-item-label">Доступно</div>
+      <div class="account-item-value" id="demoAvailable">—</div>
+    </div>
+    <div class="account-item">
+      <div class="account-item-label">Средства в залоге</div>
+      <div class="account-item-value" id="demoDeposit">—</div>
+    </div>
+    <div class="account-item">
+      <div class="account-item-label">Прибыль / убыток</div>
+      <div class="account-item-value" id="demoProfitLoss">—</div>
+    </div>
+    <div class="account-item">
+      <div class="account-item-label">Открытые позиции</div>
+      <div class="account-item-value" id="demoPositionCount">—</div>
+    </div>
+  </div>
+
+  <div class="account-positions">
+    <div class="panel-title">Открытые позиции</div>
+    <div id="demoPositions" class="account-muted">
+      Загрузка данных Demo-счёта…
+    </div>
+  </div>
+  <div class="account-muted" id="demoAccountUpdated" style="margin-top:10px">
+    Подключение к Demo API…
+  </div>
+</section>
+
+<script>
+(function () {
+  "use strict";
+
+  const accountEl = id => document.getElementById(id);
+
+  function accountMoney(value) {
+    if (value === null || value === undefined ||
+        !Number.isFinite(Number(value))) return "—";
+    return "$" + Number(value).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function accountSet(id, value) {
+    const el = accountEl(id);
+    if (el) el.textContent = value;
+  }
+
+  async function refreshDemoAccount() {
+    try {
+      const response = await fetch("/api/account", {
+        method: "GET",
+        cache: "no-store",
+        headers: {"Accept": "application/json"}
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || "HTTP " + response.status);
+      }
+
+      if (data.mode !== "DEMO") {
+        throw new Error("Получен неожиданный режим счёта");
+      }
+
+      accountSet("demoBalance", accountMoney(data.balance));
+      accountSet("demoAvailable", accountMoney(data.available));
+      accountSet("demoDeposit", accountMoney(data.deposit));
+
+      const pnlEl = accountEl("demoProfitLoss");
+      const pnl = Number(data.profitLoss);
+      if (pnlEl) {
+        pnlEl.textContent = accountMoney(data.profitLoss);
+        pnlEl.style.color = Number.isFinite(pnl)
+          ? (pnl > 0 ? "#32d296" : pnl < 0 ? "#ff6474" : "#edf3fb")
+          : "#edf3fb";
+      }
+
+      const positions = Array.isArray(data.openPositions)
+        ? data.openPositions : [];
+
+      accountSet("demoPositionCount", String(positions.length));
+
+      const list = accountEl("demoPositions");
+      list.replaceChildren();
+
+      if (!positions.length) {
+        list.textContent = "Открытых позиций нет.";
+      } else {
+        positions.forEach(position => {
+          const row = document.createElement("div");
+          row.className = "account-position";
+
+          const title = document.createElement("strong");
+          title.textContent =
+            (position.name || position.epic || "Инструмент") +
+            " · " + (position.direction || "—");
+
+          const details = document.createElement("div");
+          details.className = "account-muted";
+          details.textContent =
+            "Размер: " + (position.size ?? "—") +
+            " · Вход: " + accountMoney(position.level) +
+            " · Текущая цена: " +
+            accountMoney(position.currentPrice);
+
+          const profit = document.createElement("div");
+          const value = Number(position.profitLoss);
+          profit.textContent =
+            "P/L: " + accountMoney(position.profitLoss);
+          profit.style.color = Number.isFinite(value)
+            ? (value > 0 ? "#32d296" :
+               value < 0 ? "#ff6474" : "#edf3fb")
+            : "#edf3fb";
+
+          row.append(title, details, profit);
+          list.appendChild(row);
+        });
+      }
+
+      accountSet(
+        "demoAccountUpdated",
+        "Обновлено: " + new Date().toLocaleTimeString("ru-RU") +
+        " · Автообновление каждые 30 секунд"
+      );
+      accountEl("demoAccountUpdated").classList.remove("account-error");
+
+    } catch (error) {
+      accountSet(
+        "demoAccountUpdated",
+        "Не удалось обновить Demo-счёт: " +
+        (error.message || "ошибка соединения") +
+        ". Повторная попытка через 30 секунд."
+      );
+      accountEl("demoAccountUpdated").classList.add("account-error");
+    }
+  }
+
+  refreshDemoAccount();
+  setInterval(refreshDemoAccount, 30000);
+})();
+</script>
 </body>
 </html>
 
