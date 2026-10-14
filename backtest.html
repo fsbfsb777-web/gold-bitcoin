@@ -1,715 +1,654 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#10151d">
-<title>Gold & Bitcoin — Backtest</title>
+<title>Gold & Bitcoin — Backtest Pro</title>
 <style>
-:root {
-  color-scheme: dark;
+:root{
+  color-scheme:dark;
   --bg:#10151d;
-  --panel:#19212c;
-  --panel2:#202b39;
-  --text:#edf2f8;
-  --muted:#9baabd;
-  --line:#344254;
-  --green:#36d399;
-  --red:#ff6878;
-  --gold:#f3c969;
-  --blue:#78aaff;
+  --panel:#18212d;
+  --panel2:#202c3a;
+  --border:#2b394a;
+  --text:#edf3fa;
+  --muted:#91a1b5;
+  --green:#24d69a;
+  --red:#ff6378;
+  --gold:#f2bd58;
+  --blue:#65aaff;
 }
-* { box-sizing:border-box; }
-body {
-  margin:0;
-  background:var(--bg);
-  color:var(--text);
-  font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:14px;line-height:1.5;
 }
-main {
-  width:min(100%,850px);
-  margin:auto;
-  padding:16px 13px 32px;
+header{
+  padding:22px 15px 18px;
+  background:linear-gradient(135deg,#192638,#10151d);
+  border-bottom:1px solid var(--border);
 }
-header { margin-bottom:16px; }
-h1 { font-size:23px; margin:0 0 5px; }
-h2 { font-size:16px; margin:0 0 12px; }
-h3 { font-size:14px; margin:0 0 8px; }
-p { line-height:1.5; }
-.sub { color:var(--muted); font-size:12px; }
-.panel {
-  background:var(--panel);
-  border:1px solid var(--line);
-  border-radius:14px;
-  padding:14px;
-  margin-bottom:12px;
+.wrap{max-width:1100px;margin:auto}
+.brand{font-size:22px;font-weight:850}
+.brand span{color:var(--gold)}
+.subtitle{color:var(--muted);font-size:12px;margin-top:5px}
+main{max-width:1100px;margin:auto;padding:14px}
+.panel{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:15px;padding:15px;margin-bottom:13px;
 }
-.row {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:10px;
+h2{font-size:16px;margin:0 0 12px}
+h3{font-size:14px;margin:16px 0 9px}
+p{margin:8px 0}
+.note,.sub{font-size:12px;color:var(--muted)}
+.controls{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px
 }
-.grid {
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:9px;
-}
-.metric {
-  padding:12px;
-  background:var(--panel2);
-  border-radius:10px;
-  min-width:0;
-}
-.metric .label {
-  font-size:11px;
-  color:var(--muted);
-  margin-bottom:7px;
-}
-.metric .value {
-  font-size:20px;
-  font-weight:750;
-  overflow-wrap:anywhere;
-}
-.metric .small {
-  color:var(--muted);
-  font-size:11px;
-  margin-top:5px;
-}
-button,select {
-  border:1px solid var(--line);
-  background:var(--panel2);
-  color:var(--text);
-  border-radius:9px;
-  min-height:42px;
-  padding:10px 12px;
+label{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}
+select,input,button{
+  width:100%;min-height:42px;padding:9px 10px;
+  color:var(--text);background:var(--panel2);
+  border:1px solid var(--border);border-radius:10px;
   font:inherit;
 }
-button { cursor:pointer; }
-button.primary {
-  width:100%;
-  background:#245c4c;
-  border-color:#327d66;
-  font-weight:700;
+button{
+  background:var(--gold);color:#17130a;border:0;
+  font-weight:800;cursor:pointer
 }
-button:disabled { opacity:.55; cursor:wait; }
-.controls {
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:9px;
-  margin:12px 0;
+button:disabled{opacity:.55;cursor:wait}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+.status{
+  margin-top:12px;padding:11px 12px;border-radius:10px;
+  background:var(--panel2);color:var(--muted);overflow-wrap:anywhere
 }
-label {
-  display:block;
-  color:var(--muted);
-  font-size:12px;
+.status.ok{color:#9af0ce;border:1px solid #27664f}
+.status.error{color:#ffb1bc;border:1px solid #733b48}
+.progress{height:5px;background:#283445;border-radius:5px;overflow:hidden;margin-top:10px}
+.progress div{height:100%;width:0;background:var(--gold);transition:width .2s}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.metric{
+  min-width:0;padding:11px;border:1px solid var(--border);
+  background:#141d28;border-radius:11px
 }
-label select {
-  display:block;
-  width:100%;
-  margin-top:6px;
+.metric .name{font-size:11px;color:var(--muted);margin-bottom:5px}
+.metric .value{font-size:20px;font-weight:800;overflow-wrap:anywhere}
+.metric .small{font-size:11px;color:var(--muted);margin-top:4px}
+.green{color:var(--green)!important}
+.red{color:var(--red)!important}
+.gold{color:var(--gold)!important}
+.blue{color:var(--blue)!important}
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:10px}
+table{width:100%;border-collapse:collapse;min-width:720px;font-size:12px}
+th,td{
+  padding:9px;text-align:right;border-bottom:1px solid var(--border);
+  white-space:nowrap
 }
-.pill {
-  display:inline-block;
-  padding:5px 8px;
-  border-radius:7px;
-  background:var(--panel2);
-  font-size:11px;
-}
-.green { color:var(--green); }
-.red { color:var(--red); }
-.gold { color:var(--gold); }
-.muted { color:var(--muted); }
-.status {
-  padding:11px;
-  background:var(--panel2);
-  border-radius:9px;
-  line-height:1.5;
-  overflow-wrap:anywhere;
-}
-table {
-  border-collapse:collapse;
-  width:100%;
-  font-size:12px;
-}
-th,td {
-  padding:9px 6px;
-  border-bottom:1px solid var(--line);
-  text-align:right;
-  white-space:nowrap;
-}
-th:first-child,td:first-child { text-align:left; }
-.table-wrap { overflow-x:auto; }
-.rule {
-  padding:10px 0;
-  border-bottom:1px solid var(--line);
-  line-height:1.5;
-}
-.rule:last-child { border-bottom:0; }
-footer {
-  text-align:center;
-  color:var(--muted);
-  font-size:11px;
-  padding:12px 0;
-}
-@media(min-width:600px) {
-  .grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+th{color:var(--muted);background:#141d28;font-weight:600}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:0}
+.empty{text-align:center;padding:22px;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.legend span{font-size:11px;color:var(--muted);background:var(--panel2);padding:5px 8px;border-radius:8px}
+details{margin-top:12px}
+summary{cursor:pointer;color:var(--blue);font-weight:650}
+footer{color:var(--muted);font-size:11px;text-align:center;padding:10px 15px 28px}
+@media(max-width:650px){
+  header{padding:17px 13px}
+  main{padding:10px}
+  .panel{padding:11px;border-radius:12px}
+  .controls{grid-template-columns:1fr 1fr}
+  .controls .full{grid-column:1/-1}
+  .cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .metric{padding:9px}
+  .metric .value{font-size:18px}
+  .actions{grid-template-columns:1fr}
+  .brand{font-size:20px}
 }
 </style>
 </head>
 <body>
-<main>
 <header>
-  <div class="row">
-    <div>
-      <h1>Gold & Bitcoin</h1>
-      <div class="sub">Исторический тест торговой стратегии</div>
-    </div>
-    <span class="pill gold">BACKTEST 2.0</span>
+  <div class="wrap">
+    <div class="brand">GOLD <span>&</span> BITCOIN</div>
+    <div class="subtitle">Backtest Pro · Bollinger Bands · RSI · ADX · ATR</div>
   </div>
 </header>
-
-<section class="panel">
-  <h2>Настройки теста</h2>
-  <div class="controls">
-    <label>Инструмент
-      <select id="asset">
-        <option value="gold">Золото XAU/USD</option>
-        <option value="bitcoin">Bitcoin BTC/USD</option>
-        <option value="both">Оба инструмента</option>
-      </select>
-    </label>
-    <label>Таймфрейм входа
-      <select id="entryTf">
-        <option value="MINUTE_5">5 минут</option>
-        <option value="MINUTE_15" selected>15 минут</option>
-      </select>
-    </label>
-    <label>Длина диапазона
-      <select id="rangeLength">
-        <option value="8">8 свечей</option>
-        <option value="12" selected>12 свечей</option>
-        <option value="20">20 свечей</option>
-        <option value="30">30 свечей</option>
-      </select>
-    </label>
-    <label>Минимальное соотношение
-      <select id="rr">
-        <option value="1.5">1 : 1.5</option>
-        <option value="2" selected>1 : 2</option>
-        <option value="2.5">1 : 2.5</option>
-      </select>
-    </label>
-  </div>
-  <button class="primary" id="run">Запустить бэктест</button>
-  <div class="sub" style="margin-top:9px">
-    Используются исторические свечи, которые доступны через API проекта.
-  </div>
-</section>
-
-<section class="panel">
-  <h2>Состояние теста</h2>
-  <div id="status" class="status">Нажми «Запустить бэктест».</div>
-</section>
-
-<div id="results"></div>
-
-<section class="panel">
-  <h2>Правила стратегии</h2>
-  <div class="rule"><b>1. Боковик.</b> Анализируем диапазон предыдущих завершённых свечей. Вход возможен возле верхней или нижней границы.</div>
-  <div class="rule"><b>2. Дневные уровни.</b> Учитываем максимум и минимум предыдущего завершённого дня, если эти данные доступны в загруженной истории.</div>
-  <div class="rule"><b>3. Трендовая линия.</b> Ищем последние подтверждённые локальные минимумы для поддержки и локальные максимумы для сопротивления.</div>
-  <div class="rule"><b>4. Подтверждение.</b> Свеча должна проколоть уровень и закрыться обратно в сторону предполагаемого отскока.</div>
-  <div class="rule"><b>5. Фильтр 4H.</b> Покупки проверяются по направлению старшего тренда вверх, продажи — по направлению вниз.</div>
-  <div class="rule"><b>6. Риск.</b> Стоп размещается за экстремумом сигнальной свечи с запасом ATR. Цель — не ближе выбранного соотношения риска к прибыли; при наличии подходящей границы диапазона она может быть целью раньше.</div>
-  <div class="rule"><b>7. Одна позиция.</b> Пока сделка открыта, новые сделки по этому инструменту не открываются.</div>
-</section>
-
-<section class="panel">
-  <h2>Как читать результат</h2>
-  <p class="sub">R — единица риска. Например, если расстояние от входа до стопа равно 10 долларов, то +2R соответствует прибыли 20 долларов на единицу цены до учёта размера позиции, комиссий и проскальзывания.</p>
-  <p class="sub">Процент прибыльных сделок сам по себе не показывает качество стратегии. Важны средний результат в R, максимальная просадка и достаточная выборка сделок.</p>
-</section>
-
-<footer>Gold & Bitcoin · Backtest · Результаты теста не являются гарантией будущей прибыли.</footer>
+<main>
+  <section class="panel">
+    <h2>Настройки тестирования</h2>
+    <div class="controls">
+      <div>
+        <label for="asset">Инструмент</label>
+        <select id="asset">
+          <option value="both">Золото и Bitcoin</option>
+          <option value="gold">Золото XAU/USD</option>
+          <option value="bitcoin">Bitcoin BTC/USD</option>
+        </select>
+      </div>
+      <div>
+        <label for="tf">Таймфрейм</label>
+        <select id="tf">
+          <option value="MINUTE_5">5 минут</option>
+          <option value="MINUTE_15">15 минут</option>
+        </select>
+      </div>
+      <div>
+        <label for="limit">Свечей максимум</label>
+        <select id="limit">
+          <option value="250">250</option>
+          <option value="500">500</option>
+          <option value="1000" selected>1000</option>
+        </select>
+      </div>
+      <div>
+        <label for="adxMax">ADX: максимум для входа</label>
+        <select id="adxMax">
+          <option value="18">18 — строгий фильтр</option>
+          <option value="22" selected>22 — основной</option>
+          <option value="25">25 — больше сделок</option>
+          <option value="30">30 — мягкий фильтр</option>
+        </select>
+      </div>
+      <div>
+        <label for="slAtr">Стоп, ATR</label>
+        <select id="slAtr">
+          <option value="1">1,0 ATR</option>
+          <option value="1.2" selected>1,2 ATR</option>
+          <option value="1.5">1,5 ATR</option>
+          <option value="1.8">1,8 ATR</option>
+        </select>
+      </div>
+      <div>
+        <label for="cost">Издержки за сделку, % цены</label>
+        <input id="cost" type="number" min="0" max="2" step="0.01" value="0.03">
+      </div>
+    </div>
+    <div class="actions">
+      <button id="run">Запустить бэктест</button>
+      <button id="export" class="secondary" disabled>Экспорт CSV</button>
+    </div>
+    <div id="status" class="status">
+      Готов к запуску. Данные будут загружены через API свечей сайта.
+    </div>
+    <div class="progress"><div id="progress"></div></div>
+    <p class="note">
+      Это историческая симуляция. Реальные ордера не размещаются,
+      основной сайт и журнал сделок не изменяются.
+    </p>
+  </section>
+  <section class="panel">
+    <h2>Результаты стратегии</h2>
+    <div id="results">
+      <div class="empty">Запусти тест, чтобы рассчитать результаты.</div>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Правила стратегии</h2>
+    <p class="sub">
+      <b>1. Bollinger Bands (20, 2).</b>
+      Используются средняя линия и две внешние полосы для определения
+      чрезмерного отклонения цены.
+    </p>
+    <p class="sub">
+      <b>2. RSI (14).</b>
+      Для покупки ищем выход RSI из зоны перепроданности.
+      Для продажи — снижение RSI после зоны перекупленности.
+    </p>
+    <p class="sub">
+      <b>3. ADX (14).</b>
+      Новые позиции разрешены, только если ADX ниже выбранного порога.
+      Это попытка исключить сильные направленные движения, опасные
+      для стратегии возврата к средней.
+    </p>
+    <p class="sub">
+      <b>4. Вход.</b>
+      Покупка: предыдущая свеча закрылась ниже нижней полосы, а текущая
+      закрылась обратно выше неё; RSI подтверждает разворот.
+      Продажа — зеркальное условие для верхней полосы.
+      Вход моделируется по открытию следующей свечи.
+    </p>
+    <p class="sub">
+      <b>5. Выход.</b>
+      Тейк-профит ставится у средней линии Bollinger на момент сигнала.
+      Стоп рассчитывается через ATR. Если цель слишком близко относительно
+      риска, сделка пропускается.
+    </p>
+    <p class="sub">
+      <b>6. Издержки.</b>
+      Указанный процент цены вычитается из результата закрытой сделки
+      как оценка суммарных расходов на вход и выход. Это приблизительная
+      модель, а не точное воспроизведение комиссий и спреда брокера.
+    </p>
+    <p class="sub">
+      <b>Важно.</b>
+      Win rate 70–80% — цель проверки, а не обещанный результат.
+      Учитывай количество сделок, средний результат, Profit Factor,
+      просадку и влияние издержек.
+    </p>
+  </section>
 </main>
-
+<footer>Gold & Bitcoin · Backtest Pro · Не является финансовой рекомендацией</footer>
 <script>
 "use strict";
-
+const API = "/api/candles";
 const $ = id => document.getElementById(id);
-
-function setStatus(message) {
+const resultsByAsset = {};
+function setStatus(message, type = "") {
   $("status").textContent = message;
+  $("status").className = "status" + (type ? " " + type : "");
 }
-
-function number(value) {
+function setProgress(value) {
+  $("progress").style.width =
+    Math.max(0, Math.min(100, value)) + "%";
+}
+function assetName(asset) {
+  return asset === "gold" ? "Золото XAU/USD" : "Bitcoin BTC/USD";
+}
+function num(value) {
+  if (value && typeof value === "object") {
+    value = value.close ?? value.bid ?? value.price ?? value.value;
+  }
   const n = Number(value);
   return Number.isFinite(n) ? n : NaN;
 }
-
 function normalizeTime(value) {
   if (typeof value === "string" && !/^\d+(\.\d+)?$/.test(value)) {
     const parsed = Date.parse(value);
-    return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : NaN;
+    return Number.isFinite(parsed) ? parsed : NaN;
   }
-
   let t = Number(value);
   if (!Number.isFinite(t)) return NaN;
-  if (t > 1e12) t = Math.floor(t / 1000);
-  return Math.floor(t);
+  // Внутри программы время хранится в миллисекундах.
+  if (t < 1e11) t *= 1000;
+  return t;
 }
-
 function normalizeCandle(raw) {
+  if (Array.isArray(raw)) {
+    const time = normalizeTime(raw[0]);
+    const open = num(raw[1]);
+    const high = num(raw[2]);
+    const low = num(raw[3]);
+    const close = num(raw[4]);
+    if (![time, open, high, low, close].every(Number.isFinite)) return null;
+    if (high < low || high < open || high < close ||
+        low > open || low > close) return null;
+    return {time, open, high, low, close};
+  }
   if (!raw || typeof raw !== "object") return null;
-
   const time = normalizeTime(
-    raw.time ?? raw.timestamp ?? raw.date ??
-    raw.datetime ?? raw.t
+    raw.time ?? raw.timestamp ?? raw.snapshotTimeUTC ??
+    raw.snapshotTime ?? raw.openTime ?? raw.open_time ??
+    raw.date ?? raw.datetime ?? raw.t
   );
-
-  const open = number(raw.open ?? raw.o);
-  const high = number(raw.high ?? raw.h);
-  const low = number(raw.low ?? raw.l);
-  const close = number(raw.close ?? raw.c);
-
+  const open = num(raw.open ?? raw.openPrice ?? raw.o);
+  const high = num(raw.high ?? raw.highPrice ?? raw.h);
+  const low = num(raw.low ?? raw.lowPrice ?? raw.l);
+  const close = num(raw.close ?? raw.closePrice ?? raw.c ?? raw.bid);
   if (![time, open, high, low, close].every(Number.isFinite)) return null;
   if (high < low || high < open || high < close ||
       low > open || low > close) return null;
-
-  return {
-    time, open, high, low, close,
-    volume: number(raw.volume ?? raw.v) || 0
-  };
+  return {time, open, high, low, close};
 }
-
 function extractCandles(payload, asset) {
   let value = payload?.data?.[asset] ?? payload?.[asset];
-
   if (value && !Array.isArray(value)) {
-    value = value.candles ?? value.prices ?? value.history ?? value.data;
+    value = value.candles ?? value.prices ??
+      value.history ?? value.data ?? value.results;
   }
-
   if (!Array.isArray(value) && Array.isArray(payload?.data)) {
     value = payload.data;
   }
-
   if (!Array.isArray(value) && Array.isArray(payload?.candles)) {
     value = payload.candles;
   }
-
+  if (!Array.isArray(value) && Array.isArray(payload?.prices)) {
+    value = payload.prices;
+  }
   if (!Array.isArray(value)) return [];
-
   return value
     .map(normalizeCandle)
     .filter(Boolean)
     .sort((a, b) => a.time - b.time)
     .filter((c, i, arr) => i === 0 || c.time !== arr[i - 1].time);
 }
-
-async function loadCandles(resolution, asset) {
-  const url = "/api/candles?resolution=" + encodeURIComponent(resolution);
-  const response = await fetch(url, { cache: "no-store" });
-
-  if (!response.ok) {
-    throw new Error("API " + resolution + ": HTTP " + response.status);
+async function fetchCandles(asset, resolution, limit) {
+  const aliases = asset === "gold"
+    ? ["gold", "XAUUSD", "XAU/USD"]
+    : ["bitcoin", "BTCUSD", "BTC/USD"];
+  const errors = [];
+  for (const key of aliases) {
+    for (const param of ["asset", "symbol"]) {
+      const url = new URL(API, location.href);
+      url.searchParams.set("resolution", resolution);
+      url.searchParams.set(param, key);
+      url.searchParams.set("limit", String(limit));
+      try {
+        const response = await fetch(url.toString(), {
+          cache: "no-store",
+          headers: {"Accept": "application/json"}
+        });
+        const body = await response.text();
+        if (!response.ok) {
+          errors.push(`${param}=${key}: HTTP ${response.status}`);
+          continue;
+        }
+        let payload;
+        try {
+          payload = JSON.parse(body);
+        } catch {
+          errors.push(`${param}=${key}: ответ не JSON`);
+          continue;
+        }
+        const candles = extractCandles(payload, asset);
+        if (candles.length) return candles.slice(-limit);
+        errors.push(`${param}=${key}: свечи не распознаны`);
+      } catch (error) {
+        errors.push(`${param}=${key}: ${error.message || "ошибка сети"}`);
+      }
+    }
   }
-
-  const payload = await response.json();
-  const candles = extractCandles(payload, asset);
-
-  if (!candles.length) {
-    throw new Error(
-      "API не вернул распознаваемые свечи для " +
-      assetName(asset) + " (" + resolution + ")."
-    );
-  }
-
-  return candles;
+  throw new Error(
+    `Не удалось получить свечи для ${assetName(asset)} (${resolution}). ` +
+    errors.slice(-4).join("; ")
+  );
 }
-
-function assetName(asset) {
-  return asset === "gold" ? "Золото" : "Bitcoin";
-}
-
-function ema(values, period) {
-  const result = Array(values.length).fill(null);
-  if (values.length < period) return result;
-
+function sma(values, period) {
+  const out = Array(values.length).fill(null);
   let sum = 0;
-  for (let i = 0; i < period; i++) sum += values[i];
-
-  let previous = sum / period;
-  result[period - 1] = previous;
-
-  const k = 2 / (period + 1);
-
-  for (let i = period; i < values.length; i++) {
-    previous = values[i] * k + previous * (1 - k);
-    result[i] = previous;
+  for (let i = 0; i < values.length; i++) {
+    sum += values[i];
+    if (i >= period) sum -= values[i - period];
+    if (i >= period - 1) out[i] = sum / period;
   }
-
-  return result;
+  return out;
 }
-
-function atr(candles, period = 14) {
-  const tr = candles.map((c, i) => {
-    if (i === 0) return c.high - c.low;
-
-    const prev = candles[i - 1].close;
-    return Math.max(
-      c.high - c.low,
-      Math.abs(c.high - prev),
-      Math.abs(c.low - prev)
-    );
-  });
-
-  const result = Array(candles.length).fill(null);
-  if (tr.length < period) return result;
-
-  let value = tr.slice(0, period).reduce((a, b) => a + b, 0) / period;
-  result[period - 1] = value;
-
-  for (let i = period; i < tr.length; i++) {
-    value = ((value * (period - 1)) + tr[i]) / period;
-    result[i] = value;
+function standardDeviation(values, period, means) {
+  const out = Array(values.length).fill(null);
+  for (let i = period - 1; i < values.length; i++) {
+    const mean = means[i];
+    if (!Number.isFinite(mean)) continue;
+    let sum = 0;
+    for (let j = i - period + 1; j <= i; j++) {
+      sum += (values[j] - mean) ** 2;
+    }
+    out[i] = Math.sqrt(sum / period);
   }
-
-  return result;
+  return out;
 }
-
 function rsi(values, period = 14) {
-  const result = Array(values.length).fill(null);
-  if (values.length <= period) return result;
-
-  let gain = 0, loss = 0;
-
+  const out = Array(values.length).fill(null);
+  if (values.length <= period) return out;
+  let gains = 0;
+  let losses = 0;
   for (let i = 1; i <= period; i++) {
-    const change = values[i] - values[i - 1];
-    if (change > 0) gain += change;
-    else loss -= change;
+    const d = values[i] - values[i - 1];
+    if (d > 0) gains += d;
+    else losses -= d;
   }
-
-  let avgGain = gain / period;
-  let avgLoss = loss / period;
-
-  result[period] = avgLoss === 0 ? 100 :
-    100 - 100 / (1 + avgGain / avgLoss);
-
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+  out[period] = avgLoss === 0
+    ? (avgGain === 0 ? 50 : 100)
+    : 100 - 100 / (1 + avgGain / avgLoss);
   for (let i = period + 1; i < values.length; i++) {
-    const change = values[i] - values[i - 1];
-    avgGain = (avgGain * (period - 1) + Math.max(change, 0)) / period;
-    avgLoss = (avgLoss * (period - 1) + Math.max(-change, 0)) / period;
-
-    result[i] = avgLoss === 0 ? 100 :
-      100 - 100 / (1 + avgGain / avgLoss);
+    const d = values[i] - values[i - 1];
+    avgGain = (avgGain * (period - 1) + Math.max(d, 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + Math.max(-d, 0)) / period;
+    out[i] = avgLoss === 0
+      ? (avgGain === 0 ? 50 : 100)
+      : 100 - 100 / (1 + avgGain / avgLoss);
   }
-
-  return result;
+  return out;
 }
-
-function groupByUtcDay(candles) {
-  const map = new Map();
-
-  for (const c of candles) {
-    const day = new Date(c.time * 1000).toISOString().slice(0, 10);
-
-    if (!map.has(day)) {
-      map.set(day, {
-        day,
-        high: c.high,
-        low: c.low,
-        lastTime: c.time
-      });
-    } else {
-      const d = map.get(day);
-      d.high = Math.max(d.high, c.high);
-      d.low = Math.min(d.low, c.low);
-      d.lastTime = Math.max(d.lastTime, c.time);
-    }
-  }
-
-  return [...map.values()].sort((a, b) => a.day.localeCompare(b.day));
-}
-
-function previousDayLevels(hourly, time) {
-  const day = new Date(time * 1000).toISOString().slice(0, 10);
-  const days = groupByUtcDay(hourly);
-  const previous = days.filter(d => d.day < day).at(-1);
-  return previous || null;
-}
-
-function confirmedPivots(candles, endIndex, lookback = 2) {
-  const lows = [];
-  const highs = [];
-
-  // Для подтверждения pivot нужны свечи и слева, и справа.
-  for (let i = lookback; i < endIndex - lookback; i++) {
+function atr(candles, period = 14) {
+  const tr = Array(candles.length).fill(null);
+  for (let i = 1; i < candles.length; i++) {
     const c = candles[i];
-    let isLow = true;
-    let isHigh = true;
-
-    for (let j = i - lookback; j <= i + lookback; j++) {
-      if (j === i) continue;
-      if (candles[j].low <= c.low) isLow = false;
-      if (candles[j].high >= c.high) isHigh = false;
-    }
-
-    if (isLow) lows.push({ index: i, time: c.time, price: c.low });
-    if (isHigh) highs.push({ index: i, time: c.time, price: c.high });
+    const previousClose = candles[i - 1].close;
+    tr[i] = Math.max(
+      c.high - c.low,
+      Math.abs(c.high - previousClose),
+      Math.abs(c.low - previousClose)
+    );
   }
-
-  return { lows, highs };
-}
-
-function projectedLine(pivots, time) {
-  if (pivots.length < 2) return null;
-
-  const a = pivots[pivots.length - 2];
-  const b = pivots[pivots.length - 1];
-
-  if (b.time <= a.time) return null;
-
-  const slope = (b.price - a.price) / (b.time - a.time);
-  return b.price + slope * (time - b.time);
-}
-
-function latestClosedHigher(candles, time) {
-  let lo = 0, hi = candles.length - 1, answer = -1;
-
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-
-    if (candles[mid].time < time) {
-      answer = mid;
-      lo = mid + 1;
-    } else {
-      hi = mid - 1;
-    }
+  const out = Array(candles.length).fill(null);
+  if (candles.length <= period) return out;
+  let sum = 0;
+  for (let i = 1; i <= period; i++) sum += tr[i];
+  let previous = sum / period;
+  out[period] = previous;
+  for (let i = period + 1; i < candles.length; i++) {
+    previous = (previous * (period - 1) + tr[i]) / period;
+    out[i] = previous;
   }
-
-  return answer;
+  return out;
 }
-
-function calculateSignals(entryCandles, hourly, fourHour, settings) {
-  const closes4h = fourHour.map(c => c.close);
-  const ema21_4h = ema(closes4h, 21);
-  const atrEntry = atr(entryCandles, 14);
-  const rsiEntry = rsi(entryCandles.map(c => c.close), 14);
-
+function adx(candles, period = 14) {
+  const n = candles.length;
+  const tr = Array(n).fill(null);
+  const plusDM = Array(n).fill(null);
+  const minusDM = Array(n).fill(null);
+  for (let i = 1; i < n; i++) {
+    const c = candles[i];
+    const p = candles[i - 1];
+    const up = c.high - p.high;
+    const down = p.low - c.low;
+    plusDM[i] = up > down && up > 0 ? up : 0;
+    minusDM[i] = down > up && down > 0 ? down : 0;
+    tr[i] = Math.max(
+      c.high - c.low,
+      Math.abs(c.high - p.close),
+      Math.abs(c.low - p.close)
+    );
+  }
+  const dx = Array(n).fill(null);
+  let smoothTR = 0;
+  let smoothPlus = 0;
+  let smoothMinus = 0;
+  if (n <= period * 2) return Array(n).fill(null);
+  for (let i = 1; i <= period; i++) {
+    smoothTR += tr[i] || 0;
+    smoothPlus += plusDM[i] || 0;
+    smoothMinus += minusDM[i] || 0;
+  }
+  function calcDX(i) {
+    const pdi = smoothTR ? 100 * smoothPlus / smoothTR : 0;
+    const mdi = smoothTR ? 100 * smoothMinus / smoothTR : 0;
+    const total = pdi + mdi;
+    dx[i] = total ? 100 * Math.abs(pdi - mdi) / total : 0;
+  }
+  calcDX(period);
+  for (let i = period + 1; i < n; i++) {
+    smoothTR = smoothTR - smoothTR / period + (tr[i] || 0);
+    smoothPlus = smoothPlus - smoothPlus / period + (plusDM[i] || 0);
+    smoothMinus = smoothMinus - smoothMinus / period + (minusDM[i] || 0);
+    calcDX(i);
+  }
+  const out = Array(n).fill(null);
+  const first = period * 2;
+  let sum = 0;
+  for (let i = period; i < first; i++) sum += dx[i] || 0;
+  out[first - 1] = sum / period;
+  for (let i = first; i < n; i++) {
+    out[i] = ((out[i - 1] * (period - 1)) + (dx[i] || 0)) / period;
+  }
+  return out;
+}
+function indicators(candles) {
+  const close = candles.map(c => c.close);
+  const middle = sma(close, 20);
+  const deviation = standardDeviation(close, 20, middle);
+  return {
+    middle,
+    upper: middle.map((v, i) =>
+      v == null || deviation[i] == null ? null : v + 2 * deviation[i]
+    ),
+    lower: middle.map((v, i) =>
+      v == null || deviation[i] == null ? null : v - 2 * deviation[i]
+    ),
+    rsi: rsi(close, 14),
+    atr: atr(candles, 14),
+    adx: adx(candles, 14)
+  };
+}
+function calculateBacktest(asset, candles, settings) {
+  const ind = indicators(candles);
   const trades = [];
   let position = null;
-  let equityR = 0;
-  let peakR = 0;
-  let maxDrawdownR = 0;
-
-  // Истории должно хватить и на индикаторы, и на поиск структуры.
-  const start = Math.max(35, settings.rangeLength + 15);
-
-  for (let i = start; i < entryCandles.length; i++) {
-    const candle = entryCandles[i];
-    const previous = entryCandles[i - 1];
-    const currentAtr = atrEntry[i];
-
-    if (!Number.isFinite(currentAtr) || currentAtr <= 0) continue;
-
-    // Выход проверяем до поиска следующего входа.
+  let ambiguous = 0;
+  let skipped = 0;
+  const start = 35;
+  for (let i = start; i < candles.length; i++) {
+    const c = candles[i];
     if (position) {
-      let exitPrice = null;
-      let reason = "";
-
-      if (position.side === "BUY") {
-        // Если стоп и цель попали в одну свечу, считаем стоп первым.
-        if (candle.low <= position.sl) {
-          exitPrice = position.sl;
-          reason = "SL";
-        } else if (candle.high >= position.tp) {
-          exitPrice = position.tp;
-          reason = "TP";
-        }
-      } else {
-        if (candle.high >= position.sl) {
-          exitPrice = position.sl;
-          reason = "SL";
-        } else if (candle.low <= position.tp) {
-          exitPrice = position.tp;
-          reason = "TP";
-        }
+      // После входа проверяем стоп и цель по каждой последующей свече.
+      const hitSL = position.side === "BUY"
+        ? c.low <= position.sl
+        : c.high >= position.sl;
+      const hitTP = position.side === "BUY"
+        ? c.high >= position.tp
+        : c.low <= position.tp;
+      if (hitSL && hitTP) {
+        // Консервативное допущение: если порядок неизвестен, первым
+        // срабатывает стоп.
+        closePosition(position, position.sl, c.time, "SL", settings, trades);
+        position = null;
+        ambiguous++;
+        continue;
       }
-
-      if (exitPrice !== null) {
-        const r = position.side === "BUY"
-          ? (exitPrice - position.entry) / position.risk
-          : (position.entry - exitPrice) / position.risk;
-
-        equityR += r;
-        peakR = Math.max(peakR, equityR);
-        maxDrawdownR = Math.max(maxDrawdownR, peakR - equityR);
-
-        trades.push({
-          ...position,
-          exitTime: candle.time,
-          exit: exitPrice,
-          reason,
-          resultR: r,
-          equityR
-        });
-
+      if (hitSL || hitTP) {
+        const exit = hitSL ? position.sl : position.tp;
+        closePosition(
+          position, exit, c.time, hitSL ? "SL" : "TP", settings, trades
+        );
         position = null;
       }
-
       continue;
     }
-
-    const history = entryCandles.slice(
-      Math.max(0, i - settings.rangeLength),
-      i
-    );
-
-    if (history.length < settings.rangeLength) continue;
-
-    const rangeHigh = Math.max(...history.map(c => c.high));
-    const rangeLow = Math.min(...history.map(c => c.low));
-    const rangeWidth = rangeHigh - rangeLow;
-
-    // Не называем рынок боковиком, если диапазон чрезмерно широк.
-    if (rangeWidth <= 0 || rangeWidth > currentAtr * settings.rangeAtrMax) {
+    const prev = candles[i - 1];
+    const values = [
+      ind.middle[i], ind.upper[i], ind.lower[i],
+      ind.rsi[i], ind.rsi[i - 1], ind.atr[i], ind.adx[i]
+    ];
+    if (!values.every(Number.isFinite) || ind.atr[i] <= 0) {
+      skipped++;
       continue;
     }
-
-    const higherIndex = latestClosedHigher(fourHour, candle.time);
-    if (higherIndex < 22) continue;
-
-    const htfClose = fourHour[higherIndex].close;
-    const htfEma = ema21_4h[higherIndex];
-    const olderEma = ema21_4h[Math.max(0, higherIndex - 3)];
-
-    if (!Number.isFinite(htfEma) || !Number.isFinite(olderEma)) continue;
-
-    const upTrend = htfClose > htfEma && htfEma > olderEma;
-    const downTrend = htfClose < htfEma && htfEma < olderEma;
-
-    const daily = previousDayLevels(hourly, candle.time);
-    const pivots = confirmedPivots(entryCandles, i, 2);
-
-    const supportLine = projectedLine(pivots.lows, candle.time);
-    const resistanceLine = projectedLine(pivots.highs, candle.time);
-
-    const tolerance = currentAtr * 0.30;
-    const nearRangeLow = candle.low <= rangeLow + tolerance;
-    const nearRangeHigh = candle.high >= rangeHigh - tolerance;
-
-    const nearDailyLow = daily && candle.low <= daily.low + tolerance;
-    const nearDailyHigh = daily && candle.high >= daily.high - tolerance;
-
-    const nearSupportLine = supportLine !== null &&
-      Math.abs(candle.low - supportLine) <= tolerance;
-
-    const nearResistanceLine = resistanceLine !== null &&
-      Math.abs(candle.high - resistanceLine) <= tolerance;
-
-    const sweptLow = candle.low < previous.low &&
-      candle.close > previous.low;
-    const sweptHigh = candle.high > previous.high &&
-      candle.close < previous.high;
-
-    const bullishCandle = candle.close > candle.open &&
-      candle.close > previous.close;
-
-    const bearishCandle = candle.close < candle.open &&
-      candle.close < previous.close;
-
-    const rsiValue = rsiEntry[i];
-
-    const buyLocation = nearRangeLow || nearDailyLow || nearSupportLine;
-    const sellLocation = nearRangeHigh || nearDailyHigh || nearResistanceLine;
-
-    const buySignal = upTrend && buyLocation && sweptLow && bullishCandle &&
-      Number.isFinite(rsiValue) && rsiValue < 70;
-
-    const sellSignal = downTrend && sellLocation && sweptHigh && bearishCandle &&
-      Number.isFinite(rsiValue) && rsiValue > 30;
-
+    // Фильтр бокового рынка.
+    if (ind.adx[i] >= settings.adxMax) continue;
+    // Возврат цены внутрь полосы после выхода за неё.
+    const buySignal =
+      prev.close < ind.lower[i - 1] &&
+      c.close > ind.lower[i] &&
+      ind.rsi[i - 1] < 35 &&
+      ind.rsi[i] > ind.rsi[i - 1] &&
+      c.close > c.open;
+    const sellSignal =
+      prev.close > ind.upper[i - 1] &&
+      c.close < ind.upper[i] &&
+      ind.rsi[i - 1] > 65 &&
+      ind.rsi[i] < ind.rsi[i - 1] &&
+      c.close < c.open;
     if (!buySignal && !sellSignal) continue;
-
     const side = buySignal ? "BUY" : "SELL";
-    const entry = candle.close;
-    const buffer = currentAtr * 0.25;
-
-    let sl, risk, tp, target;
-
+    const next = candles[i + 1];
+    // Нельзя моделировать вход, если следующей свечи нет.
+    if (!next) continue;
+    const entry = next.open;
+    const riskDistance = ind.atr[i] * settings.slAtr;
+    const middle = ind.middle[i];
+    let sl;
+    let tp;
     if (side === "BUY") {
-      sl = Math.min(candle.low, rangeLow) - buffer;
-      risk = entry - sl;
-      if (risk <= 0) continue;
-
-      const candidates = [rangeHigh];
-
-      if (daily && daily.high > entry) candidates.push(daily.high);
-      if (resistanceLine !== null && resistanceLine > entry) {
-        candidates.push(resistanceLine);
-      }
-
-      target = Math.min(...candidates.filter(x => x > entry));
-      if (!Number.isFinite(target)) target = entry + risk * settings.rr;
-
-      // Не входим, если уровень мешает получить заданное соотношение.
-      if ((target - entry) / risk < settings.rr) continue;
-
-      tp = target;
+      sl = entry - riskDistance;
+      tp = middle;
+      if (tp <= entry) continue;
     } else {
-      sl = Math.max(candle.high, rangeHigh) + buffer;
-      risk = sl - entry;
-      if (risk <= 0) continue;
-
-      const candidates = [rangeLow];
-
-      if (daily && daily.low < entry) candidates.push(daily.low);
-      if (supportLine !== null && supportLine < entry) {
-        candidates.push(supportLine);
-      }
-
-      target = Math.max(...candidates.filter(x => x < entry));
-      if (!Number.isFinite(target)) target = entry - risk * settings.rr;
-
-      if ((entry - target) / risk < settings.rr) continue;
-
-      tp = target;
+      sl = entry + riskDistance;
+      tp = middle;
+      if (tp >= entry) continue;
     }
-
+    const reward = Math.abs(tp - entry);
+    const rr = reward / riskDistance;
+    // Отсекаем цели, слишком маленькие относительно риска.
+    if (rr < settings.minRR) {
+      skipped++;
+      continue;
+    }
     position = {
+      asset,
       side,
+      signalTime: c.time,
+      entryTime: next.time,
       entry,
       sl,
       tp,
-      risk,
-      entryTime: candle.time,
-      rangeHigh,
-      rangeLow,
-      rsi: rsiValue,
-      atr: currentAtr,
-      dailyHigh: daily?.high ?? null,
-      dailyLow: daily?.low ?? null
+      atr: ind.atr[i],
+      rsi: ind.rsi[i],
+      adx: ind.adx[i],
+      riskDistance,
+      rr,
+      status: "OPEN",
+      exit: null,
+      exitTime: null,
+      resultR: null,
+      note: ""
     };
+    // Следующая итерация обработает свечу входа, включая её диапазон.
+    i++;
+    if (i < candles.length) {
+      const entryCandle = candles[i];
+      const hitSL = side === "BUY"
+        ? entryCandle.low <= sl
+        : entryCandle.high >= sl;
+      const hitTP = side === "BUY"
+        ? entryCandle.high >= tp
+        : entryCandle.low <= tp;
+      if (hitSL || hitTP) {
+        const exit = hitSL ? sl : tp;
+        closePosition(
+          position, exit, entryCandle.time,
+          hitSL ? "SL" : "TP", settings, trades
+        );
+        if (hitSL && hitTP) ambiguous++;
+        position = null;
+      }
+    }
   }
-
-  // Открытая в конце истории сделка не считается закрытой.
   return {
+    asset,
     trades,
     openPosition: position,
-    equityR,
-    maxDrawdownR,
-    candleCount: entryCandles.length,
-    firstTime: entryCandles[0]?.time,
-    lastTime: entryCandles.at(-1)?.time
+    candleCount: candles.length,
+    firstTime: candles[0]?.time,
+    lastTime: candles[candles.length - 1]?.time,
+    ambiguous,
+    skipped
   };
 }
-
+function closePosition(position, exit, exitTime, reason, settings, trades) {
+  const sign = position.side === "BUY" ? 1 : -1;
+  const grossR = ((exit - position.entry) * sign) / position.riskDistance;
+  // Приблизительные издержки на круговую сделку в долях цены.
+  const costPrice = position.entry * (settings.costPct / 100);
+  const costR = costPrice / position.riskDistance;
+  const resultR = grossR - costR;
+  position.status = resultR > 0 ? "WIN" : "LOSS";
+  position.exit = exit;
+  position.exitTime = exitTime;
+  position.resultR = resultR;
+  position.grossR = grossR;
+  position.costR = costR;
+  position.note = reason;
+  trades.push(position);
+}
 function summarize(result) {
   const trades = result.trades;
   const wins = trades.filter(t => t.resultR > 0).length;
-  const losses = trades.filter(t => t.resultR < 0).length;
+  const losses = trades.filter(t => t.resultR <= 0).length;
   const netR = trades.reduce((sum, t) => sum + t.resultR, 0);
   const avgR = trades.length ? netR / trades.length : 0;
   const grossWins = trades
@@ -718,7 +657,14 @@ function summarize(result) {
   const grossLosses = Math.abs(trades
     .filter(t => t.resultR < 0)
     .reduce((sum, t) => sum + t.resultR, 0));
-
+  let equity = 0;
+  let peak = 0;
+  let maxDrawdown = 0;
+  for (const trade of trades) {
+    equity += trade.resultR;
+    peak = Math.max(peak, equity);
+    maxDrawdown = Math.max(maxDrawdown, peak - equity);
+  }
   return {
     count: trades.length,
     wins,
@@ -729,10 +675,9 @@ function summarize(result) {
     profitFactor: grossLosses > 0
       ? grossWins / grossLosses
       : grossWins > 0 ? Infinity : 0,
-    maxDrawdownR: result.maxDrawdownR
+    maxDrawdown
   };
 }
-
 function fmt(value, digits = 2) {
   if (!Number.isFinite(value)) return "—";
   return value.toLocaleString("ru-RU", {
@@ -740,201 +685,205 @@ function fmt(value, digits = 2) {
     maximumFractionDigits: digits
   });
 }
-
-function dateFmt(seconds) {
-  if (!Number.isFinite(seconds)) return "—";
-  return new Date(seconds * 1000).toLocaleString("ru-RU", {
-    day:"2-digit", month:"2-digit", year:"2-digit",
-    hour:"2-digit", minute:"2-digit"
+function fmtPrice(value) {
+  if (!Number.isFinite(value)) return "—";
+  return value.toLocaleString("ru-RU", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 5
   });
 }
-
+function dateFmt(time) {
+  if (!Number.isFinite(time)) return "—";
+  return new Date(time).toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
 function metric(label, value, detail = "", cls = "") {
   return `<div class="metric">
-    <div class="label">${label}</div>
+    <div class="name">${label}</div>
     <div class="value ${cls}">${value}</div>
     <div class="small">${detail}</div>
   </div>`;
 }
-
 function renderAsset(asset, result) {
   const s = summarize(result);
   const cls = s.netR > 0 ? "green" : s.netR < 0 ? "red" : "";
-  const trades = result.trades;
-
-  let rows = "";
-
-  for (const t of trades.slice().reverse().slice(0, 100)) {
-    const clsR = t.resultR > 0 ? "green" : t.resultR < 0 ? "red" : "";
-    rows += `<tr>
+  const rows = result.trades.slice().reverse().map(t => {
+    const resultClass = t.resultR > 0 ? "green" : "red";
+    return `<tr>
       <td>${t.side}</td>
       <td>${dateFmt(t.entryTime)}</td>
-      <td>${fmt(t.entry)}</td>
-      <td>${fmt(t.sl)}</td>
-      <td>${fmt(t.tp)}</td>
-      <td class="${clsR}">${t.resultR > 0 ? "+" : ""}${fmt(t.resultR)}R</td>
-      <td>${t.reason}</td>
+      <td>${fmtPrice(t.entry)}</td>
+      <td>${fmtPrice(t.sl)}</td>
+      <td>${fmtPrice(t.tp)}</td>
+      <td>${dateFmt(t.exitTime)}</td>
+      <td class="${resultClass}">${t.resultR > 0 ? "+" : ""}${fmt(t.resultR)} R</td>
+      <td>${t.note}</td>
     </tr>`;
-  }
-
-  if (!rows) {
-    rows = `<tr><td colspan="7" class="muted">Закрытых сделок нет. Это может быть связано с фильтрами или короткой историей.</td></tr>`;
-  }
-
+  }).join("");
   const openInfo = result.openPosition
-    ? `<p class="sub">На конце истории осталась незакрытая позиция ${result.openPosition.side}. Она не включена в статистику.</p>`
+    ? `<p class="sub">Осталась открытая позиция ${result.openPosition.side}.
+       Она не включена в статистику закрытых сделок.</p>`
     : "";
-
   return `<section class="panel">
     <h2>${assetName(asset)}</h2>
-    <div class="grid">
+    <div class="cards">
       ${metric("Закрытые сделки", s.count)}
-      ${metric("Прибыльные", fmt(s.winRate, 1) + "%", `${s.wins} прибыльных / ${s.losses} убыточных`)}
-      ${metric("Итог", (s.netR > 0 ? "+" : "") + fmt(s.netR) + "R", "Сумма результатов", cls)}
-      ${metric("Среднее на сделку", (s.avgR > 0 ? "+" : "") + fmt(s.avgR) + "R", "Ожидание в R", s.avgR >= 0 ? "green" : "red")}
-      ${metric("Profit Factor", s.profitFactor === Infinity ? "∞" : fmt(s.profitFactor), "Прибыль / убыток")}
-      ${metric("Макс. просадка", fmt(s.maxDrawdownR) + "R", "По закрытым сделкам")}
+      ${metric("Win rate", fmt(s.winRate, 1) + "%",
+        `${s.wins} прибыльных / ${s.losses} убыточных`)}
+      ${metric("Итог", (s.netR > 0 ? "+" : "") + fmt(s.netR) + " R",
+        "После указанных издержек", cls)}
+      ${metric("Среднее на сделку", (s.avgR > 0 ? "+" : "") + fmt(s.avgR) + " R",
+        "Ожидание на одну сделку", s.avgR >= 0 ? "green" : "red")}
+      ${metric("Profit Factor",
+        s.profitFactor === Infinity ? "∞" : fmt(s.profitFactor),
+        "Прибыль / абсолютный убыток")}
+      ${metric("Макс. просадка", fmt(s.maxDrawdown) + " R",
+        "По закрытым сделкам")}
     </div>
-    <p class="sub">Свечей входа: ${result.candleCount}. Период данных: ${dateFmt(result.firstTime)} — ${dateFmt(result.lastTime)}.</p>
+    <div class="legend">
+      <span>Bollinger Bands 20, 2</span>
+      <span>RSI 14</span>
+      <span>ADX 14</span>
+      <span>ATR 14</span>
+      <span>ADX ниже ${$("adxMax").value}</span>
+      <span>Стоп ${$("slAtr").value} ATR</span>
+    </div>
+    <p class="sub">
+      Свечей: ${result.candleCount}.
+      Период: ${dateFmt(result.firstTime)} — ${dateFmt(result.lastTime)}.
+      Пропущенных условий: ${result.skipped}.
+    </p>
     ${openInfo}
-    <h3 style="margin-top:16px">История сделок</h3>
+    <h3>История сделок</h3>
     <div class="table-wrap">
       <table>
-        <thead><tr>
-          <th>Сторона</th><th>Вход</th><th>Цена</th>
-          <th>SL</th><th>TP</th><th>Результат</th><th>Выход</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
+        <thead>
+          <tr>
+            <th>Сторона</th><th>Вход</th><th>Цена входа</th>
+            <th>SL</th><th>TP</th><th>Выход</th>
+            <th>Результат</th><th>Причина</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || `<tr><td colspan="8" class="empty">
+            Закрытых сделок нет. Проверь длину истории и настройки фильтров.
+          </td></tr>`}
+        </tbody>
       </table>
     </div>
-    <button style="margin-top:12px;width:100%" data-export="${asset}">Экспорт сделок в CSV</button>
   </section>`;
 }
-
-const completedResults = {};
-
-function exportCsv(asset) {
-  const result = completedResults[asset];
-  if (!result || !result.trades.length) {
-    setStatus("Для экспорта пока нет закрытых сделок.");
+function exportCSV() {
+  const rows = [[
+    "Инструмент", "Направление", "Время входа", "Цена входа",
+    "Стоп", "Цель", "Время выхода", "Цена выхода",
+    "Причина", "Результат R", "Валовый R", "Издержки R",
+    "RSI", "ADX"
+  ]];
+  for (const [asset, result] of Object.entries(resultsByAsset)) {
+    for (const t of result.trades) {
+      rows.push([
+        assetName(asset), t.side, dateFmt(t.entryTime), t.entry,
+        t.sl, t.tp, dateFmt(t.exitTime), t.exit, t.note,
+        t.resultR, t.grossR, t.costR, t.rsi, t.adx
+      ]);
+    }
+  }
+  if (rows.length === 1) {
+    setStatus("Нет закрытых сделок для экспорта.", "error");
     return;
   }
-
-  const header = [
-    "Инструмент","Направление","Время входа","Вход",
-    "Стоп","Цель","Время выхода","Цена выхода",
-    "Причина выхода","Результат R","Накопленный R"
-  ];
-
-  const rows = result.trades.map(t => [
-    assetName(asset), t.side, dateFmt(t.entryTime),
-    t.entry, t.sl, t.tp, dateFmt(t.exitTime),
-    t.exit, t.reason, t.resultR, t.equityR
-  ]);
-
-  const csv = [header, ...rows]
-    .map(row => row.map(value =>
+  const csv = rows.map(row =>
+    row.map(value =>
       '"' + String(value ?? "").replace(/"/g, '""') + '"'
-    ).join(";"))
-    .join("\r\n");
-
+    ).join(";")
+  ).join("\r\n");
   const blob = new Blob(["\uFEFF" + csv], {
-    type:"text/csv;charset=utf-8;"
+    type: "text/csv;charset=utf-8;"
   });
-
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "backtest-" + asset + ".csv";
+  link.download = "gold-bitcoin-backtest-bollinger-rsi-adx.csv";
   document.body.appendChild(link);
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
 }
-
-document.addEventListener("click", event => {
-  const button = event.target.closest("[data-export]");
-  if (button) exportCsv(button.dataset.export);
-});
-
+$("export").addEventListener("click", exportCSV);
 $("run").addEventListener("click", async () => {
   const button = $("run");
   button.disabled = true;
+  $("export").disabled = true;
   $("results").innerHTML = "";
-
-  for (const key of Object.keys(completedResults)) {
-    delete completedResults[key];
-  }
-
+  setProgress(0);
+  for (const key of Object.keys(resultsByAsset)) delete resultsByAsset[key];
   const selected = $("asset").value;
   const assets = selected === "both" ? ["gold", "bitcoin"] : [selected];
-
+  const limit = Number($("limit").value);
+  const resolution = $("tf").value;
   const settings = {
-    rangeLength: Number($("rangeLength").value),
-    rr: Number($("rr").value),
-    rangeAtrMax: 5
+    adxMax: Number($("adxMax").value),
+    slAtr: Number($("slAtr").value),
+    costPct: Number($("cost").value),
+    minRR: 0.8
   };
-
-  const resolution = $("entryTf").value;
-
+  if (!Number.isFinite(settings.costPct) ||
+      settings.costPct < 0 || settings.costPct > 2) {
+    setStatus("Издержки должны быть от 0 до 2 процентов.", "error");
+    button.disabled = false;
+    return;
+  }
   try {
-    setStatus("Загружаю исторические свечи и проверяю данные API…");
-
     const output = [];
-
-    for (const asset of assets) {
-      setStatus("Загружаю данные: " + assetName(asset) + "…");
-
-      const [entryCandles, hourly, fourHour] = await Promise.all([
-        loadCandles(resolution, asset),
-        loadCandles("HOUR", asset),
-        loadCandles("HOUR_4", asset)
-      ]);
-
-      if (entryCandles.length < 60) {
+    for (let i = 0; i < assets.length; i++) {
+      const asset = assets[i];
+      setStatus("Загружаю исторические свечи: " + assetName(asset) + "…");
+      setProgress(i / assets.length * 30);
+      const candles = await fetchCandles(asset, resolution, limit);
+      if (candles.length < 80) {
         throw new Error(
-          assetName(asset) + ": доступно только " +
-          entryCandles.length +
-          " свечей. Для теста нужно больше исторических данных."
+          assetName(asset) + ": получено только " + candles.length +
+          " свечей. Для этой стратегии желательно не менее 80."
         );
       }
-
-      if (fourHour.length < 25) {
-        throw new Error(
-          assetName(asset) +
-          ": недостаточно 4-часовых свечей для фильтра старшего тренда."
-        );
-      }
-
-      const result = calculateSignals(
-        entryCandles, hourly, fourHour, settings
-      );
-
-      completedResults[asset] = result;
+      setStatus("Рассчитываю индикаторы и сделки: " + assetName(asset) + "…");
+      const result = calculateBacktest(asset, candles, settings);
+      resultsByAsset[asset] = result;
       output.push(renderAsset(asset, result));
+      setProgress((i + 1) / assets.length * 95);
     }
-
     $("results").innerHTML = output.join("");
-
-    const summaryText = assets.map(asset => {
-      const s = summarize(completedResults[asset]);
+    $("export").disabled = !Object.values(resultsByAsset)
+      .some(r => r.trades.length > 0);
+    const summary = assets.map(asset => {
+      const s = summarize(resultsByAsset[asset]);
       return assetName(asset) + ": " + s.count +
         " сделок, win rate " + fmt(s.winRate, 1) +
-        "%, результат " + (s.netR > 0 ? "+" : "") +
-        fmt(s.netR) + "R.";
-    }).join(" ");
-
+        "%, итог " + (s.netR > 0 ? "+" : "") + fmt(s.netR) + " R";
+    }).join(". ");
     setStatus(
-      "Тест завершён. " + summaryText +
-      " Результаты рассчитаны по доступной истории."
+      "Тест завершён. " + summary +
+      ". Учтены заданные приблизительные издержки. " +
+      "Это результат только доступного исторического периода.",
+      "ok"
     );
+    setProgress(100);
   } catch (error) {
     console.error(error);
+    $("results").innerHTML =
+      `<div class="empty">Не удалось получить корректный результат. ` +
+      `Проверь доступность API и формат исторических свечей.</div>`;
     setStatus(
-      "Не удалось завершить тест: " +
-      (error?.message || String(error)) +
-      " Проверь, что API свечей работает и возвращает исторические данные."
+      "Ошибка тестирования: " + (error.message || String(error)),
+      "error"
     );
+    setProgress(0);
   } finally {
     button.disabled = false;
   }
