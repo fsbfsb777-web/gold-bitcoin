@@ -1356,6 +1356,289 @@ setInterval(refreshAll,30000);
   setInterval(refreshDemoAccount, 30000);
 })();
 </script>
-</body>
+<style>
+#tradeHistoryCard {
+  margin: 20px 0;
+  padding: 18px;
+  border: 1px solid #26364a;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #111c2b, #0b111b);
+  color: #e8eef8;
+  font-family: inherit;
+}
+#tradeHistoryCard * { box-sizing: border-box; }
+#tradeHistoryCard .th-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+#tradeHistoryCard .th-title {
+  font-size: 18px;
+  font-weight: 750;
+}
+#tradeHistoryCard .th-sub {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #8fa3bd;
+}
+#tradeHistoryCard .th-controls {
+  display: flex;
+  gap: 7px;
+  margin: 14px 0;
+}
+#tradeHistoryCard .th-period {
+  flex: 1;
+  border: 1px solid #31445d;
+  background: #152235;
+  color: #c9d7e9;
+  border-radius: 10px;
+  padding: 10px 5px;
+  font-size: 12px;
+  cursor: pointer;
+}
+#tradeHistoryCard .th-period.active {
+  background: #174b46;
+  border-color: #24b89b;
+  color: #72f0d2;
+}
+#tradeHistoryCard .th-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+#tradeHistoryCard .th-stat {
+  padding: 12px;
+  background: #131f30;
+  border: 1px solid #26364a;
+  border-radius: 12px;
+}
+#tradeHistoryCard .th-label {
+  font-size: 12px;
+  color: #91a5bd;
+}
+#tradeHistoryCard .th-value {
+  font-size: 21px;
+  font-weight: 750;
+  margin-top: 6px;
+}
+#tradeHistoryCard .th-message {
+  padding: 18px 12px;
+  text-align: center;
+  color: #9eb0c6;
+  background: #0e1826;
+  border-radius: 12px;
+  font-size: 13px;
+}
+#tradeHistoryCard .th-refresh {
+  border: 1px solid #36516c;
+  border-radius: 9px;
+  background: #192b40;
+  color: #d9e8fa;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+#tradeHistoryCard .th-list {
+  display: grid;
+  gap: 9px;
+}
+#tradeHistoryCard .th-item {
+  border: 1px solid #26364a;
+  border-radius: 11px;
+  background: #111d2c;
+  padding: 12px;
+}
+#tradeHistoryCard .th-item-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-weight: 650;
+}
+#tradeHistoryCard .th-item-meta {
+  margin-top: 7px;
+  font-size: 12px;
+  color: #91a5bd;
+  overflow-wrap: anywhere;
+}
+</style>
+<section id="tradeHistoryCard">
+  <div class="th-head">
+    <div>
+      <div class="th-title">📜 История операций</div>
+      <div class="th-sub">Capital.com · DEMO · Только просмотр</div>
+    </div>
+    <button class="th-refresh" id="thRefresh" type="button">↻ Обновить</button>
+  </div>
+  <div class="th-controls">
+    <button class="th-period active" data-days="1" type="button">24 часа</button>
+    <button class="th-period" data-days="7" type="button">7 дней</button>
+    <button class="th-period" data-days="30" type="button">30 дней</button>
+  </div>
+  <div class="th-stats">
+    <div class="th-stat">
+      <div class="th-label">Операций найдено</div>
+      <div class="th-value" id="thCount">—</div>
+    </div>
+    <div class="th-stat">
+      <div class="th-label">Выбранный период</div>
+      <div class="th-value" id="thPeriod">24 ч</div>
+    </div>
+  </div>
+  <div id="thMessage" class="th-message">Загружаем историю…</div>
+  <div id="thList" class="th-list"></div>
+  <div class="th-sub" id="thUpdated" style="margin-top:12px"></div>
+</section>
+<script>
+(function () {
+  const card = document.getElementById("tradeHistoryCard");
+  if (!card) return;
+  const countEl = document.getElementById("thCount");
+  const periodEl = document.getElementById("thPeriod");
+  const messageEl = document.getElementById("thMessage");
+  const listEl = document.getElementById("thList");
+  const updatedEl = document.getElementById("thUpdated");
+  const refreshBtn = document.getElementById("thRefresh");
+  const buttons = Array.from(card.querySelectorAll(".th-period"));
+  let days = 1;
+  let requestId = 0;
+  function safeText(value) {
+    if (value === null || value === undefined || value === "") return "—";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  }
+  function addText(parent, tag, className, value) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    el.textContent = safeText(value);
+    parent.appendChild(el);
+    return el;
+  }
+  function firstValue(obj, keys) {
+    for (const key of keys) {
+      if (obj && obj[key] !== undefined && obj[key] !== null) {
+        return obj[key];
+      }
+    }
+    return null;
+  }
+  function renderTransactions(transactions) {
+    listEl.replaceChildren();
+    if (!transactions.length) {
+      messageEl.hidden = false;
+      messageEl.textContent =
+        "За выбранный период операций не найдено. Это не означает, что у счёта нет истории за другое время.";
+      return;
+    }
+    messageEl.hidden = true;
+    transactions.forEach(function (tx) {
+      const item = document.createElement("div");
+      item.className = "th-item";
+      const instrument = firstValue(tx, [
+        "instrumentName", "instrument", "marketName", "epic", "symbol"
+      ]) || "Операция";
+      const type = firstValue(tx, [
+        "transactionType", "type", "action", "status"
+      ]) || "Детали операции";
+      const date = firstValue(tx, [
+        "dateUtc", "date", "timestamp", "createdDate"
+      ]);
+      const amount = firstValue(tx, [
+        "profitAndLoss", "profitLoss", "amount", "cashTransaction"
+      ]);
+      const top = document.createElement("div");
+      top.className = "th-item-top";
+      addText(top, "span", "", instrument);
+      addText(top, "span", "", type);
+      item.appendChild(top);
+      const meta = document.createElement("div");
+      meta.className = "th-item-meta";
+      addText(meta, "div", "", "Дата: " + safeText(date));
+      if (amount !== null) {
+        addText(meta, "div", "", "Сумма / результат: " + safeText(amount));
+      }
+      const excluded = [
+        "instrumentName", "instrument", "marketName", "epic", "symbol",
+        "transactionType", "type", "action", "status",
+        "dateUtc", "date", "timestamp", "createdDate",
+        "profitAndLoss", "profitLoss", "amount", "cashTransaction"
+      ];
+      const extras = Object.keys(tx || {}).filter(function (key) {
+        return !excluded.includes(key);
+      });
+      if (extras.length) {
+        const details = document.createElement("details");
+        details.style.marginTop = "8px";
+        const summary = document.createElement("summary");
+        summary.textContent = "Другие данные";
+        summary.style.cursor = "pointer";
+        details.appendChild(summary);
+        const pre = document.createElement("pre");
+        pre.style.whiteSpace = "pre-wrap";
+        pre.style.overflowWrap = "anywhere";
+        pre.style.fontSize = "11px";
+        pre.textContent = JSON.stringify(tx, null, 2);
+        details.appendChild(pre);
+        meta.appendChild(details);
+      }
+      item.appendChild(meta);
+      listEl.appendChild(item);
+    });
+  }
+  async function loadHistory() {
+    const currentRequest = ++requestId;
+    countEl.textContent = "…";
+    periodEl.textContent = days === 1 ? "24 ч" : days + " дн.";
+    messageEl.hidden = false;
+    messageEl.textContent = "Загружаем историю…";
+    listEl.replaceChildren();
+    updatedEl.textContent = "";
+    buttons.forEach(function (button) {
+      button.classList.toggle("active", Number(button.dataset.days) === days);
+    });
+    try {
+      const response = await fetch("/api/history?days=" + days, {
+        cache: "no-store"
+      });
+      const data = await response.json();
+      if (currentRequest !== requestId) return;
+      if (!response.ok || data.error) {
+        countEl.textContent = "—";
+        messageEl.textContent =
+          "Не удалось загрузить историю. Возможно, API не поддерживает этот период.";
+        updatedEl.textContent = data.upstreamStatus
+          ? "Код ответа API: " + data.upstreamStatus
+          : "";
+        return;
+      }
+      const transactions = Array.isArray(data.transactions)
+        ? data.transactions
+        : [];
+      countEl.textContent = String(transactions.length);
+      renderTransactions(transactions);
+      if (data.updatedAt) {
+        updatedEl.textContent =
+          "Обновлено: " + new Date(data.updatedAt).toLocaleString("ru-RU");
+      }
+    } catch (error) {
+      if (currentRequest !== requestId) return;
+      countEl.textContent = "—";
+      messageEl.hidden = false;
+      messageEl.textContent = "Ошибка соединения. Проверь интернет и попробуй обновить.";
+    }
+  }
+  buttons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      days = Number(button.dataset.days);
+      loadHistory();
+    });
+  });
+  refreshBtn.addEventListener("click", loadHistory);
+  loadHistory();
+})();
+</script></body>
 </html>
 
