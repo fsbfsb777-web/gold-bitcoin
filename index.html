@@ -1,5 +1,4 @@
 
-
 <!doctype html>
 <html lang="ru">
 <head>
@@ -13,9 +12,10 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-text-size-adjust:100%}
 button,input,select{font:inherit}
-button{cursor:pointer;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;white-space:nowrap;touch-action:manipulation}
+button{cursor:pointer;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;white-space:normal;touch-action:manipulation}
 button:active{transform:scale(.985)}
 button.active{border-color:var(--blue);background:#21344d}
+button:disabled{opacity:.5;cursor:default}
 header{padding:12px 14px;background:#111924;border-bottom:1px solid var(--line)}
 h1{font-size:20px;margin:0 0 4px}
 .sub,.muted{font-size:12px;color:var(--muted)}
@@ -27,8 +27,16 @@ main{max-width:900px;margin:auto;padding:10px 10px calc(24px + env(safe-area-ins
 .panel-title{font-weight:750;font-size:15px;margin-bottom:9px}
 .quotes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:9px}
 .quote{padding:10px;margin:0}
-.quote-name{font-size:11px;color:var(--muted)}
+.quote-name{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;min-width:0}
 .quote-price{font-size:clamp(15px,4.2vw,22px);font-weight:800;margin:7px 0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.lamp{display:inline-block;width:10px;height:10px;min-width:10px;border-radius:50%;background:#657184;box-shadow:0 0 0 2px #65718422}
+.lamp.buy{background:var(--green);box-shadow:0 0 8px #32d29670}
+.lamp.sell{background:var(--red);box-shadow:0 0 8px #ff647470}
+.lamp.wait{background:var(--gold);box-shadow:0 0 8px #f4c95d45}
+.quote-signal{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:850;padding:5px 7px;border-radius:7px;max-width:100%;overflow-wrap:anywhere}
+.quote-signal.buy{color:var(--green);background:#15382e}
+.quote-signal.sell{color:var(--red);background:#3b2029}
+.quote-signal.wait{color:var(--gold);background:#3b3220}
 .asset-switch button,.timeframes button{flex:1;min-width:0;padding:9px 4px;font-size:12px}
 .timeframes{margin:9px 0}
 #chart{height:270px;width:100%;overflow:hidden;touch-action:pan-y}
@@ -74,12 +82,30 @@ input,select{width:100%;min-width:0;background:#0d141e;color:var(--text);border:
 .stat-number{font-size:18px;font-weight:850;margin-top:4px}
 .trade-status{font-size:11px;font-weight:800}
 .note{font-size:10px;line-height:1.5;color:var(--muted);margin-top:9px}
+.settings-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.settings-row:last-child{border-bottom:0}
+.settings-row>div{flex:1;min-width:0}
+.settings-title{font-size:13px;font-weight:750}
+.settings-desc{font-size:11px;line-height:1.4;color:var(--muted);margin-top:4px}
+.toggle{position:relative;display:inline-flex;align-items:center;flex-shrink:0;width:48px;height:29px;margin:0}
+.toggle input{position:absolute;opacity:0;width:1px;height:1px}
+.toggle-track{width:48px;height:29px;background:#394454;border:1px solid #526176;border-radius:20px;position:relative;transition:background .2s}
+.toggle-track:after{content:"";position:absolute;left:3px;top:3px;width:21px;height:21px;border-radius:50%;background:#fff;transition:transform .2s}
+.toggle input:checked+.toggle-track{background:#16845e;border-color:#32d296}
+.toggle input:checked+.toggle-track:after{transform:translateX(19px)}
+.toggle input:focus-visible+.toggle-track{outline:2px solid var(--blue);outline-offset:2px}
+.lamp-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin-top:10px}
+.lamp-legend span{display:flex;align-items:center;gap:5px}
+.alert-box{background:var(--panel2);border-radius:9px;padding:10px;margin-top:9px;font-size:11px;line-height:1.5}
 @media(min-width:650px){.metrics,.stat-grid{grid-template-columns:repeat(4,minmax(0,1fr))}#chart{height:430px}.quote-price{font-size:25px}}
-@media(max-width:390px){main{padding-left:7px;padding-right:7px}.panel{padding:9px}#chart{height:235px}.trends{grid-template-columns:repeat(2,minmax(0,1fr))}.tabs button{font-size:11px}}
+@media(max-width:390px){main{padding-left:7px;padding-right:7px}.panel{padding:9px}#chart{height:235px}.trends{grid-template-columns:repeat(2,minmax(0,1fr))}.tabs button{font-size:11px}.quote-name{font-size:10px}.quote{padding:8px}.quote-signal{font-size:9px;padding:5px}}
 </style>
 </head>
 <body>
-<header><h1>Gold & Bitcoin</h1><div class="sub">Рынок · сигналы · статистика · журнал сделок</div></header>
+<header>
+<h1>Gold & Bitcoin</h1>
+<div class="sub">Рынок · сигналы · статистика · журнал сделок</div>
+</header>
 <main>
 <nav class="tabs">
 <button class="tab active" data-tab="market">Рынок</button>
@@ -89,8 +115,16 @@ input,select{width:100%;min-width:0;background:#0d141e;color:var(--text);border:
 
 <section id="marketPage">
 <div class="quotes">
-<div class="quote"><div class="quote-name">Золото · XAU/USD</div><div class="quote-price" id="gold-price">Загрузка…</div><div class="sub" id="gold-quote-signal">Ожидание анализа</div></div>
-<div class="quote"><div class="quote-name">Bitcoin · BTC/USD</div><div class="quote-price" id="btc-price">Загрузка…</div><div class="sub" id="btc-quote-signal">Ожидание анализа</div></div>
+<div class="quote">
+<div class="quote-name"><span class="lamp wait" id="gold-lamp"></span>Золото · XAU/USD</div>
+<div class="quote-price" id="gold-price">Загрузка…</div>
+<div id="gold-quote-signal" class="quote-signal wait">WAIT · ожидание анализа</div>
+</div>
+<div class="quote">
+<div class="quote-name"><span class="lamp wait" id="btc-lamp"></span>Bitcoin · BTC/USD</div>
+<div class="quote-price" id="btc-price">Загрузка…</div>
+<div id="btc-quote-signal" class="quote-signal wait">WAIT · ожидание анализа</div>
+</div>
 </div>
 
 <div class="panel">
@@ -152,7 +186,84 @@ input,select{width:100%;min-width:0;background:#0d141e;color:var(--text);border:
 
 <section id="signalsPage" class="hidden">
 <div class="panel">
-<div class="panel-title">Текущий сигнал</div>
+<div class="panel-title">Сигналы двух инструментов</div>
+<div class="sub">Следи за обоими рынками одновременно. Сигналы обновляются автоматически.</div>
+<div class="quotes" style="margin-top:10px">
+<div class="quote">
+<div class="quote-name"><span class="lamp wait" id="gold-lamp-signals"></span>Золото</div>
+<div class="quote-price" id="gold-signal-price">—</div>
+<div id="gold-signal-badge" class="quote-signal wait">WAIT</div>
+</div>
+<div class="quote">
+<div class="quote-name"><span class="lamp wait" id="btc-lamp-signals"></span>Bitcoin</div>
+<div class="quote-price" id="btc-signal-price">—</div>
+<div id="btc-signal-badge" class="quote-signal wait">WAIT</div>
+</div>
+</div>
+<div class="section-label">Последняя проверка</div>
+<div class="sub" id="signalsLastUpdate">Ожидание данных…</div>
+<div class="lamp-legend">
+<span><i class="lamp buy"></i>BUY — покупка</span>
+<span><i class="lamp sell"></i>SELL — продажа</span>
+<span><i class="lamp wait"></i>WAIT — ожидание</span>
+</div>
+</div>
+
+<div class="panel">
+<div class="panel-title">Настройки сигналов</div>
+<div class="settings-row">
+<div>
+<div class="settings-title">Автоматические оповещения</div>
+<div class="settings-desc">Разрешить оповещения о новых BUY и SELL. Цветные индикаторы остаются видимыми даже при выключении.</div>
+</div>
+<label class="toggle" aria-label="Включить автоматические оповещения">
+<input id="alertsEnabled" type="checkbox" checked>
+<span class="toggle-track"></span>
+</label>
+</div>
+<div class="settings-row">
+<div>
+<div class="settings-title">Золото XAU/USD</div>
+<div class="settings-desc">Оповещения о новых сигналах золота.</div>
+</div>
+<label class="toggle" aria-label="Оповещения по золоту">
+<input id="goldAlertsEnabled" type="checkbox" checked>
+<span class="toggle-track"></span>
+</label>
+</div>
+<div class="settings-row">
+<div>
+<div class="settings-title">Bitcoin BTC/USD</div>
+<div class="settings-desc">Оповещения о новых сигналах Bitcoin.</div>
+</div>
+<label class="toggle" aria-label="Оповещения по Bitcoin">
+<input id="btcAlertsEnabled" type="checkbox" checked>
+<span class="toggle-track"></span>
+</label>
+</div>
+<div class="settings-row">
+<div>
+<div class="settings-title">Звуковой сигнал</div>
+<div class="settings-desc">Короткий звук при появлении нового BUY или SELL. Для работы звука сначала включи его переключателем.</div>
+</div>
+<label class="toggle" aria-label="Звуковые оповещения">
+<input id="soundEnabled" type="checkbox" checked>
+<span class="toggle-track"></span>
+</label>
+</div>
+<div class="settings-row">
+<div>
+<div class="settings-title">Уведомления браузера</div>
+<div class="settings-desc" id="notificationPermissionText">Разрешение браузера ещё не проверено.</div>
+</div>
+<button type="button" id="enableBrowserNotifications" class="primary">Разрешить</button>
+</div>
+<div class="alert-box" id="alertStatus">Автоматическая проверка выполняется каждые 30 секунд, пока страница открыта. Первый расчёт только устанавливает исходное состояние и не создаёт ложное уведомление.</div>
+<div class="note">На iPhone звук зависит от разрешений браузера и взаимодействия со страницей. Уведомления браузера требуют разрешения; на iOS их поддержка может зависеть от способа открытия сайта и добавления на экран «Домой».</div>
+</div>
+
+<div class="panel">
+<div class="panel-title">Текущий анализ выбранного рынка</div>
 <div class="dashboard-head">
 <div><h2 id="signalTitle">Золото · XAU/USD</h2><div class="sub" id="signalUpdated">Ожидание данных</div></div>
 <div id="signalSide" class="big-signal wait">ОЖИДАНИЕ</div>
@@ -169,7 +280,7 @@ input,select{width:100%;min-width:0;background:#0d141e;color:var(--text);border:
 </div>
 <div class="panel">
 <div class="panel-title">Как работает фильтр</div>
-<div class="explanation">Сила сигнала рассчитывается по совпадению трендов, EMA, RSI, MACD и свечного импульса. При нехватке данных, противоречивых трендах или слабом перевесе показывается WAIT.</div>
+<div class="explanation">Сила сигнала рассчитывается по совпадению трендов, EMA, RSI, MACD и свечного импульса. При нехватке данных, противоречивых трендах или слабом перевесе показывается WAIT. Уведомление создаётся при смене состояния на BUY или SELL, а не на каждом цикле обновления.</div>
 </div>
 </section>
 
@@ -225,6 +336,12 @@ const TF_LABELS={MINUTE:"1м",MINUTE_5:"5м",MINUTE_15:"15м",HOUR:"1ч",HOUR_4:
 const ASSET_NAMES={gold:"Золото · XAU/USD",bitcoin:"Bitcoin · BTC/USD"};
 const $=id=>document.getElementById(id);
 
+function loadSettings(){
+const defaults={alertsEnabled:true,goldAlertsEnabled:true,btcAlertsEnabled:true,soundEnabled:true};
+try{return {...defaults,...JSON.parse(localStorage.getItem("gb-signal-settings")||"{}")};}
+catch(e){return defaults;}
+}
+
 const state={
 asset:"gold",
 resolution:"MINUTE_5",
@@ -238,7 +355,11 @@ refreshing:false,
 trades:loadTrades(),
 chartReady:false,
 chartLastCount:0,
-resizeObserver:null
+resizeObserver:null,
+settings:loadSettings(),
+signalInitialized:false,
+previousSides:{gold:null,bitcoin:null},
+audioContext:null
 };
 
 function fmt(v,d=2){
@@ -270,25 +391,23 @@ setText("footerStatus","Не удалось сохранить журнал в �
 }
 }
 
+function saveSettings(){
+try{localStorage.setItem("gb-signal-settings",JSON.stringify(state.settings));}
+catch(e){console.warn("Не удалось сохранить настройки сигналов",e);}
+}
+
 function normalizeCandles(list){
 if(!Array.isArray(list))return [];
 const a=list.map(c=>({
 time:typeof c.time==="number"?c.time:Math.floor(new Date(c.time).getTime()/1000),
-open:Number(c.open),
-high:Number(c.high),
-low:Number(c.low),
-close:Number(c.close)
+open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close)
 })).filter(c=>
 Number.isFinite(c.time)&&
 [c.open,c.high,c.low,c.close].every(Number.isFinite)&&
-c.high>=c.low&&
-c.low<=Math.min(c.open,c.close)&&
-c.high>=Math.max(c.open,c.close)
+c.high>=c.low&&c.low<=Math.min(c.open,c.close)&&c.high>=Math.max(c.open,c.close)
 ).sort((a,b)=>a.time-b.time);
 const out=[];
-for(const c of a){
-if(!out.length||c.time!==out[out.length-1].time)out.push(c);
-}
+for(const c of a){if(!out.length||c.time!==out[out.length-1].time)out.push(c);}
 return out;
 }
 
@@ -332,7 +451,9 @@ return null;
 
 function renderPrices(){
 for(const a of ["gold","bitcoin"]){
-setText(a==="gold"?"gold-price":"btc-price",getPrice(a)===null?"Нет котировки":fmt(getPrice(a),2));
+const p=getPrice(a);
+setText(a==="gold"?"gold-price":"btc-price",p===null?"Нет котировки":fmt(p,2));
+setText(a==="gold"?"gold-signal-price":"btc-signal-price",p===null?"—":fmt(p,2));
 }
 }
 
@@ -413,7 +534,7 @@ if(!ready){
 return {
 asset,side:"WAIT",ready:false,price,e9,e21,rsi:r,atr:a,macd:m,trends,buy,sell,
 quality:0,stop:null,target:null,candles:candles.length,
-explanation:"Недостаточно закрытых 5-минутных свечей для надёжного расчёта. Сигнал не подтверждён."
+explanation:"Недостаточно закрытых 5-минутных свечей для расчёта. Сигнал не подтверждён."
 };
 }
 
@@ -461,7 +582,37 @@ return {asset,side,ready:true,price,e9,e21,rsi:r,atr:a,macd:m,trends,buy,sell,qu
 }
 
 function signalClass(s){return s==="BUY"?"buy":s==="SELL"?"sell":"wait";}
-function signalText(s){return s==="WAIT"?"ОЖИДАНИЕ":s;}
+function signalText(s){return s==="WAIT"?"WAIT":s;}
+
+function updateLamp(id,side){
+const e=$(id);
+if(!e)return;
+e.className="lamp "+signalClass(side);
+}
+
+function renderMarketSignals(){
+for(const a of ["gold","bitcoin"]){
+const s=state.strategy[a],side=s?.side||"WAIT";
+const isGold=a==="gold";
+const signalId=isGold?"gold-quote-signal":"btc-quote-signal";
+const lampId=isGold?"gold-lamp":"btc-lamp";
+const badgeId=isGold?"gold-signal-badge":"btc-signal-badge";
+const secondLamp=isGold?"gold-lamp-signals":"btc-lamp-signals";
+const badge=$(signalId);
+if(badge){
+badge.className="quote-signal "+signalClass(side);
+badge.textContent=side+" · "+(s?.quality||0)+"/100";
+}
+updateLamp(lampId,side);
+updateLamp(secondLamp,side);
+const secondBadge=$(badgeId);
+if(secondBadge){
+secondBadge.className="quote-signal "+signalClass(side);
+secondBadge.textContent=side+" · "+(s?.quality||0)+"/100";
+}
+}
+renderPrices();
+}
 
 function renderDashboard(){
 const s=state.strategy[state.asset],side=s?.side||"WAIT";
@@ -487,7 +638,7 @@ e.className="trend-value "+(t==="UP"?"up":t==="DOWN"?"down":"neutral");
 
 setText("qualityLabel",side==="WAIT"?"Сигнал не прошёл фильтр":(s.quality>=75?"Сильный сигнал":s.quality>=55?"Средний сигнал":"Слабый сигнал"));
 $("qualityBar").style.width=(s?.quality||0)+"%";
-setText("qualityDetail",(s?.quality||0)+"/100 · оценки эвристические, не вероятность прибыли");
+setText("qualityDetail",(s?.quality||0)+"/100 · оценка индикаторов, не вероятность прибыли");
 }
 
 function renderSignalPage(){
@@ -501,14 +652,106 @@ setText("signalPrice",fmt(s?.price));
 setText("signalStop",s?.stop==null?"—":fmt(s.stop));
 setText("signalTarget",s?.target==null?"—":fmt(s.target));
 setText("signalQuality",s?.quality==null?"—":s.quality+"/100");
+setText("signalsLastUpdate",state.lastRefresh?"Обновлено: "+state.lastRefresh.toLocaleTimeString("ru-RU"):"Ожидание данных");
 }
 
-function renderMarketSignals(){
-for(const a of ["gold","bitcoin"]){
-const s=state.strategy[a],side=s?.side||"WAIT";
-setText(a==="gold"?"gold-quote-signal":"btc-quote-signal",side==="WAIT"?"Сигнал WAIT":"Сигнал "+side+" · "+(s.quality||0)+"/100");
+function unlockAudio(){
+try{
+const AC=window.AudioContext||window.webkitAudioContext;
+if(!AC)return false;
+if(!state.audioContext)state.audioContext=new AC();
+if(state.audioContext.state==="suspended")state.audioContext.resume();
+return true;
+}catch(e){return false;}
 }
-renderPrices();
+
+function playSignalSound(){
+if(!state.settings.soundEnabled)return;
+try{
+if(!state.audioContext&&!unlockAudio())return;
+const ctx=state.audioContext;
+if(!ctx)return;
+if(ctx.state==="suspended")ctx.resume();
+const osc=ctx.createOscillator();
+const gain=ctx.createGain();
+osc.type="sine";
+osc.frequency.value=880;
+gain.gain.setValueAtTime(0.0001,ctx.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.16,ctx.currentTime+0.025);
+gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.35);
+osc.connect(gain);
+gain.connect(ctx.destination);
+osc.start();
+osc.stop(ctx.currentTime+0.36);
+}catch(e){console.warn("Звук недоступен",e);}
+}
+
+function notificationPermissionText(){
+if(!("Notification" in window))return "Этот браузер не поддерживает уведомления. Цветовые индикаторы на странице продолжают работать.";
+const p=Notification.permission;
+if(p==="granted")return "Разрешено. Браузер может показывать уведомления о новых сигналах.";
+if(p==="denied")return "Уведомления запрещены в настройках браузера. Измени разрешение сайта в настройках iPhone.";
+return "Нажми «Разрешить», чтобы запросить разрешение браузера.";
+}
+
+function renderSettings(){
+for(const id of ["alertsEnabled","goldAlertsEnabled","btcAlertsEnabled","soundEnabled"]){
+const key=id;
+$(id).checked=!!state.settings[key];
+}
+setText("notificationPermissionText",notificationPermissionText());
+const b=$("enableBrowserNotifications");
+if(!("Notification" in window)){
+b.textContent="Недоступно";
+b.disabled=true;
+}else if(Notification.permission==="granted"){
+b.textContent="Разрешено";
+b.disabled=true;
+}else if(Notification.permission==="denied"){
+b.textContent="Запрещено";
+b.disabled=true;
+}else{
+b.textContent="Разрешить";
+b.disabled=false;
+}
+}
+
+function showSignalAlert(asset,side,s){
+const enabled=state.settings.alertsEnabled&&
+(asset==="gold"?state.settings.goldAlertsEnabled:state.settings.btcAlertsEnabled);
+if(!enabled)return;
+const name=asset==="gold"?"Золото XAU/USD":"Bitcoin BTC/USD";
+const msg=name+": "+side+" · качество "+(s.quality||0)+"/100";
+setText("alertStatus",msg+" · "+new Date().toLocaleTimeString("ru-RU"));
+playSignalSound();
+
+if("Notification" in window&&Notification.permission==="granted"){
+try{
+const n=new Notification("Gold & Bitcoin · "+side,{
+body:name+"\nЦена: "+fmt(s.price)+" · SL: "+fmt(s.stop)+" · TP: "+fmt(s.target),
+tag:"gb-"+asset+"-"+side,
+renotify:false
+});
+n.onclick=()=>{window.focus();switchTab("signals");selectAsset(asset);n.close();};
+}catch(e){console.warn("Уведомление браузера недоступно",e);}
+}
+if(navigator.vibrate)navigator.vibrate([120,60,120]);
+}
+
+function detectNewSignals(next){
+if(!state.signalInitialized){
+state.previousSides={gold:next.gold?.side||"WAIT",bitcoin:next.bitcoin?.side||"WAIT"};
+state.signalInitialized=true;
+return;
+}
+for(const a of ["gold","bitcoin"]){
+const old=state.previousSides[a]||"WAIT";
+const current=next[a]?.side||"WAIT";
+if(current!==old&&(current==="BUY"||current==="SELL")){
+showSignalAlert(a,current,next[a]);
+}
+state.previousSides[a]=current;
+}
 }
 
 function initChart(){
@@ -590,32 +833,19 @@ return t.direction==="BUY"?x-entry:entry-x;
 function autoCheckTrades(){
 let changed=false;
 for(const t of state.trades){
-if(t.status!=="OPEN"||!t.autoTrack||!t.stop&&!t.target)continue;
+if(t.status!=="OPEN"||!t.autoTrack||(!t.stop&&!t.target))continue;
 const list=closedCandles(t.asset,"MINUTE");
 const from=Number(t.entryTime||0);
 const relevant=list.filter(c=>c.time>=from);
-
 for(const c of relevant){
 const hitSL=t.stop!==""&&t.stop!=null&&(t.direction==="BUY"?c.low<=Number(t.stop):c.high>=Number(t.stop));
 const hitTP=t.target!==""&&t.target!=null&&(t.direction==="BUY"?c.high>=Number(t.target):c.low<=Number(t.target));
-
 if(hitSL&&hitTP){
-t.status="REVIEW";
-t.result="AMBIGUOUS";
-t.exit="";
-t.closedAt=c.time;
-changed=true;
-break;
+t.status="REVIEW";t.result="AMBIGUOUS";t.exit="";t.closedAt=c.time;changed=true;break;
 }
-
 if(hitSL||hitTP){
 t.exit=Number(hitSL?t.stop:t.target);
-t.status=hitTP?"WIN":"LOSS";
-t.result=t.status;
-t.closedAt=c.time;
-t.autoClosed=true;
-changed=true;
-break;
+t.status=hitTP?"WIN":"LOSS";t.result=t.status;t.closedAt=c.time;t.autoClosed=true;changed=true;break;
 }
 }
 }
@@ -628,32 +858,21 @@ if(!s||!s.ready||!["BUY","SELL"].includes(s.side)||s.stop==null||s.target==null)
 alert("Сейчас нет подтверждённого BUY/SELL с уровнями SL и TP. Журнал не изменён.");
 return;
 }
-
 const candles=closedCandles(state.asset,"MINUTE_5"),last=candles.at(-1);
 if(!last){alert("Нет закрытой свечи для фиксации сигнала.");return;}
-
 if(state.trades.some(t=>t.signalKey===state.asset+":"+s.side+":"+last.time)){
-alert("Этот сигнал уже добавлен в журнал.");
-return;
+alert("Этот сигнал уже добавлен в журнал.");return;
 }
-
 state.trades.push({
 id:Date.now()+"-"+Math.random().toString(36).slice(2,7),
-asset:state.asset,
-direction:s.side,
-entry:s.price,
-exit:"",
-stop:s.stop,
-target:s.target,
+asset:state.asset,direction:s.side,entry:s.price,exit:"",
+stop:s.stop,target:s.target,
 note:"Автосигнал · качество "+s.quality+"/100",
 date:new Date().toLocaleString("ru-RU"),
-entryTime:last.time+TF_SECONDS.MINUTE_5,
-status:"OPEN",
-autoTrack:true,
+entryTime:last.time+TF_SECONDS.MINUTE_5,status:"OPEN",autoTrack:true,
 signalKey:state.asset+":"+s.side+":"+last.time
 });
-saveTrades();
-renderTrades();
+saveTrades();renderTrades();
 setText("footerStatus","Виртуальный сигнал добавлен и будет проверяться по закрытым свечам.");
 }
 
@@ -666,7 +885,6 @@ const open=all.filter(t=>!t.status||t.status==="OPEN");
 const pending=all.filter(t=>t.status==="REVIEW");
 const pnl=closed.reduce((sum,t)=>sum+calcPnl(t,t.exit),0);
 const counted=wins.length+losses.length;
-
 setText("statTotal",all.length);
 setText("statClosed",closed.length);
 setText("statWins",wins.length);
@@ -682,72 +900,47 @@ const list=$("tradeList");
 setText("tradeCount","Сделок: "+state.trades.length);
 list.innerHTML="";
 renderStats();
-
 if(!state.trades.length){
 const e=document.createElement("div");
 e.className="sub";
 e.textContent="Пока нет записей. Добавьте ручную сделку или зафиксируйте сигнал.";
-list.appendChild(e);
-return;
+list.appendChild(e);return;
 }
-
 for(const t of [...state.trades].reverse()){
-const row=document.createElement("div");
-row.className="trade";
-const top=document.createElement("div");
-top.className="trade-top";
-const name=document.createElement("span");
-name.textContent=(t.asset==="gold"?"Золото":"Bitcoin")+" · "+t.direction;
+const row=document.createElement("div");row.className="trade";
+const top=document.createElement("div");top.className="trade-top";
+const name=document.createElement("span");name.textContent=(t.asset==="gold"?"Золото":"Bitcoin")+" · "+t.direction;
 const status=document.createElement("span");
 status.className="trade-status "+(t.status==="WIN"?"up":t.status==="LOSS"?"down":t.status==="REVIEW"?"neutral":"");
 status.textContent=t.status==="WIN"?"TP · ПРИБЫЛЬ":t.status==="LOSS"?"SL · УБЫТОК":t.status==="REVIEW"?"ПРОВЕРИТЬ":t.exit!==""&&t.exit!=null?"ЗАКРЫТА":"ОТКРЫТА";
-top.append(name,status);
-row.append(top);
-
-const detail=document.createElement("div");
-detail.className="trade-detail";
+top.append(name,status);row.append(top);
+const detail=document.createElement("div");detail.className="trade-detail";
 let result=t.exit!==""&&t.exit!=null?" · P/L: "+(calcPnl(t,t.exit)>0?"+":"")+fmt(calcPnl(t,t.exit),2):"";
 detail.textContent="Вход: "+fmt(t.entry)+" · Выход: "+(t.exit===""||t.exit==null?"—":fmt(t.exit))+" · SL: "+(t.stop===""||t.stop==null?"—":fmt(t.stop))+" · TP: "+(t.target===""||t.target==null?"—":fmt(t.target))+result+(t.note?" · "+t.note:"");
 row.append(detail);
-
 if(t.status==="REVIEW"){
-const msg=document.createElement("div");
-msg.className="trade-detail neutral";
+const msg=document.createElement("div");msg.className="trade-detail neutral";
 msg.textContent="Одна свеча могла задеть и SL, и TP. Проверьте график и внесите цену выхода вручную.";
 row.append(msg);
 }
-
-const actions=document.createElement("div");
-actions.className="form-actions";
-
+const actions=document.createElement("div");actions.className="form-actions";
 if((!t.status||t.status==="OPEN"||t.status==="REVIEW")&&(t.exit===""||t.exit==null)){
-const close=document.createElement("button");
-close.textContent="Закрыть вручную";
+const close=document.createElement("button");close.textContent="Закрыть вручную";
 close.addEventListener("click",()=>{
 const raw=prompt("Введите фактическую цену выхода:",String(getPrice(t.asset)||""));
 if(raw===null)return;
 const n=Number(raw);
 if(!Number.isFinite(n)||n<=0){alert("Цена выхода некорректна.");return;}
-t.exit=n;
-t.status="MANUAL_CLOSED";
-t.result="MANUAL_CLOSED";
-t.autoTrack=false;
-saveTrades();
-renderTrades();
+t.exit=n;t.status="MANUAL_CLOSED";t.result="MANUAL_CLOSED";t.autoTrack=false;
+saveTrades();renderTrades();
 });
 actions.append(close);
 }
-
-const remove=document.createElement("button");
-remove.textContent="Удалить";
+const remove=document.createElement("button");remove.textContent="Удалить";
 remove.addEventListener("click",()=>{
-state.trades=state.trades.filter(x=>x.id!==t.id);
-saveTrades();
-renderTrades();
+state.trades=state.trades.filter(x=>x.id!==t.id);saveTrades();renderTrades();
 });
-actions.append(remove);
-row.append(actions);
-list.append(row);
+actions.append(remove);row.append(actions);list.append(row);
 }
 }
 
@@ -757,13 +950,8 @@ $(id).classList.toggle("hidden",name!==n);
 }
 document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab===n));
 if(n==="trades")renderTrades();
-if(n==="signals")renderSignalPage();
-if(n==="market"){
-requestAnimationFrame(()=>{
-resizeChart();
-renderChart();
-});
-}
+if(n==="signals"){renderSignalPage();renderSettings();renderMarketSignals();}
+if(n==="market")requestAnimationFrame(()=>{resizeChart();renderChart();});
 }
 
 document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>switchTab(b.dataset.tab)));
@@ -780,39 +968,57 @@ if(c.length)state.chart.timeScale().setVisibleLogicalRange({from:Math.max(0,c.le
 
 $("recordSignal").addEventListener("click",addSignalTrade);
 
+for(const id of ["alertsEnabled","goldAlertsEnabled","btcAlertsEnabled","soundEnabled"]){
+$(id).addEventListener("change",()=>{
+state.settings[id]=$(id).checked;
+saveSettings();
+if(id==="soundEnabled"&&state.settings.soundEnabled)unlockAudio();
+renderSettings();
+setText("alertStatus",state.settings[id]?"Настройка включена.":"Настройка выключена.");
+});
+}
+
+$("enableBrowserNotifications").addEventListener("click",async()=>{
+if(!("Notification" in window)){
+setText("notificationPermissionText","Этот браузер не поддерживает уведомления.");
+return;
+}
+try{
+const permission=await Notification.requestPermission();
+renderSettings();
+setText("alertStatus",permission==="granted"?"Уведомления браузера разрешены.":"Разрешение не предоставлено.");
+if(permission==="granted"){
+unlockAudio();
+try{new Notification("Gold & Bitcoin",{body:"Уведомления подключены."});}catch(e){}
+}
+}catch(e){
+setText("notificationPermissionText","Не удалось запросить разрешение. Проверь настройки браузера.");
+}
+});
+
 $("tradeForm").addEventListener("submit",e=>{
 e.preventDefault();
 const entry=Number($("tradeEntry").value);
 if(!Number.isFinite(entry)||entry<=0){alert("Введите корректную цену входа.");return;}
-const optional=id=>$(id).value===""?"":Number($(id).value);
+const optional=id=>$ (id).value===""?"":Number($(id).value);
 const exit=optional("tradeExit");
 const trade={
 id:Date.now()+"-"+Math.random().toString(36).slice(2,7),
-asset:$("tradeAsset").value,
-direction:$("tradeDirection").value,
-entry,
-exit,
-stop:optional("tradeStop"),
-target:optional("tradeTarget"),
-note:$("tradeNote").value.trim(),
-date:new Date().toLocaleString("ru-RU"),
+asset:$("tradeAsset").value,direction:$("tradeDirection").value,entry,exit,
+stop:optional("tradeStop"),target:optional("tradeTarget"),
+note:$("tradeNote").value.trim(),date:new Date().toLocaleString("ru-RU"),
 status:exit!==""?"MANUAL_CLOSED":"OPEN",
 entryTime:Math.ceil(Date.now()/60000)*60,
 autoTrack:exit===""&&(optional("tradeStop")!==""||optional("tradeTarget")!=="")
 };
 if(exit!=="")trade.result="MANUAL_CLOSED";
-state.trades.push(trade);
-saveTrades();
-renderTrades();
-e.target.reset();
+state.trades.push(trade);saveTrades();renderTrades();e.target.reset();
 setText("footerStatus","Сделка сохранена в журнале.");
 });
 
 $("clearTrades").addEventListener("click",()=>{
 if(state.trades.length&&confirm("Удалить все записи журнала сделок? Это действие нельзя отменить.")){
-state.trades=[];
-saveTrades();
-renderTrades();
+state.trades=[];saveTrades();renderTrades();
 }
 });
 
@@ -821,16 +1027,15 @@ if(state.refreshing)return;
 state.refreshing=true;
 setText("footerStatus","Обновление котировок и свечей…");
 const errors=[];
-
 try{
 try{await fetchPrices();}catch(e){errors.push("котировки");console.error(e);}
-
 const results=await Promise.allSettled(RESOLUTIONS.map(fetchCandles));
 results.forEach((r,i)=>{
 if(r.status==="rejected"){errors.push(TF_LABELS[RESOLUTIONS[i]]);console.error(r.reason);}
 });
-
-for(const a of ["gold","bitcoin"])state.strategy[a]=analyze(a);
+const next={gold:analyze("gold"),bitcoin:analyze("bitcoin")};
+detectNewSignals(next);
+state.strategy=next;
 state.lastRefresh=new Date();
 renderPrices();
 renderMarketSignals();
@@ -838,7 +1043,6 @@ renderChart();
 renderDashboard();
 renderSignalPage();
 autoCheckTrades();
-
 setText("footerStatus",errors.length?"Временная ошибка: "+errors.join(", ")+". Сохранены последние данные.":"Данные обновлены: "+state.lastRefresh.toLocaleTimeString("ru-RU"));
 }catch(e){
 console.error(e);
@@ -848,6 +1052,7 @@ state.refreshing=false;
 }
 }
 
+renderSettings();
 initChart();
 renderTrades();
 refreshAll();
@@ -855,6 +1060,7 @@ setInterval(refreshAll,30000);
 </script>
 </body>
 </html>
+
 
 
 
