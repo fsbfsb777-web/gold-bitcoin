@@ -1,5 +1,4 @@
-
-export async function onRequest({ env }) {
+export async function onRequest({ request, env }) {
   const base = "https://demo-api-capital.backend-capital.com";
 
   try {
@@ -14,6 +13,13 @@ export async function onRequest({ env }) {
       );
     }
 
+    const url = new URL(request.url);
+    const requestedDays = Number(url.searchParams.get("days") || 1);
+    const allowedDays = [1, 7, 30];
+    const days = allowedDays.includes(requestedDays)
+      ? requestedDays
+      : 1;
+
     const session = await fetch(`${base}/api/v1/session`, {
       method: "POST",
       headers: {
@@ -27,8 +33,7 @@ export async function onRequest({ env }) {
     if (!session.ok) {
       return Response.json({
         error: "Session failed",
-        upstreamStatus: session.status,
-        details: (await session.text()).slice(0, 500)
+        upstreamStatus: session.status
       }, { status: 502 });
     }
 
@@ -42,7 +47,7 @@ export async function onRequest({ env }) {
     }
 
     const response = await fetch(
-      `${base}/api/v1/history/transactions?lastPeriod=86400`,
+      `${base}/api/v1/history/transactions?lastPeriod=${days * 86400}`,
       {
         headers: {
           "X-CAP-API-KEY": apiKey,
@@ -57,7 +62,8 @@ export async function onRequest({ env }) {
       return Response.json({
         error: "Transaction history request failed",
         upstreamStatus: response.status,
-        details: (await response.text()).slice(0, 500)
+        periodDays: days,
+        details: (await response.text()).slice(0, 300)
       }, { status: 502 });
     }
 
@@ -68,12 +74,14 @@ export async function onRequest({ env }) {
 
     return Response.json({
       mode: "DEMO",
-      periodDays: 1,
+      periodDays: days,
       transactions,
       count: transactions.length,
       updatedAt: new Date().toISOString()
     }, {
-      headers: { "Cache-Control": "no-store" }
+      headers: {
+        "Cache-Control": "no-store"
+      }
     });
 
   } catch {
@@ -82,4 +90,3 @@ export async function onRequest({ env }) {
     }, { status: 502 });
   }
 }
-
