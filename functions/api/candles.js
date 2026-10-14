@@ -228,7 +228,7 @@ export async function onRequest(context) {
       );
 
       endpoint.searchParams.set("resolution", resolution);
-      endpoint.searchParams.set("max", "100");
+      endpoint.searchParams.set("max", "1000");
 
       const result = await capitalFetch(
         endpoint.toString(),
