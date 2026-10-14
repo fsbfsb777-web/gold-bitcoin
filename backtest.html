@@ -1,552 +1,944 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0c1118">
-<title>Gold & Bitcoin — Бэктест</title>
+<meta name="theme-color" content="#10151d">
+<title>Gold & Bitcoin — Backtest</title>
 <style>
-:root{
-  color-scheme:dark;
-  --bg:#0c1118;--panel:#151d28;--panel2:#1b2634;
-  --line:#2b3748;--text:#edf3fb;--muted:#92a2b7;
-  --gold:#f4c95d;--green:#32d296;--red:#ff6474;--blue:#73a7ff;
+:root {
+  color-scheme: dark;
+  --bg:#10151d;
+  --panel:#19212c;
+  --panel2:#202b39;
+  --text:#edf2f8;
+  --muted:#9baabd;
+  --line:#344254;
+  --green:#36d399;
+  --red:#ff6878;
+  --gold:#f3c969;
+  --blue:#78aaff;
 }
-*{box-sizing:border-box}
-body{
-  margin:0;background:var(--bg);color:var(--text);
+* { box-sizing:border-box; }
+body {
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
   font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 }
-header{
-  padding:14px 12px;background:#111924;border-bottom:1px solid var(--line);
-  display:flex;align-items:center;justify-content:space-between;gap:8px;
+main {
+  width:min(100%,850px);
+  margin:auto;
+  padding:16px 13px 32px;
 }
-h1{font-size:18px;margin:0}
-main{max-width:900px;margin:auto;padding:10px 9px 35px}
-.panel{
-  background:var(--panel);border:1px solid var(--line);
-  border-radius:12px;padding:12px;margin-bottom:10px;
+header { margin-bottom:16px; }
+h1 { font-size:23px; margin:0 0 5px; }
+h2 { font-size:16px; margin:0 0 12px; }
+h3 { font-size:14px; margin:0 0 8px; }
+p { line-height:1.5; }
+.sub { color:var(--muted); font-size:12px; }
+.panel {
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:14px;
+  margin-bottom:12px;
 }
-.title{font-size:14px;font-weight:800;margin-bottom:10px}
-.small{font-size:11px;color:var(--muted);line-height:1.5}
-.controls{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-label{display:block;color:var(--muted);font-size:11px;margin-bottom:5px}
-select,input,button{
-  width:100%;font:inherit;color:var(--text);
-  background:var(--panel2);border:1px solid var(--line);
-  border-radius:9px;padding:11px;
+.row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
 }
-button{cursor:pointer;font-weight:750}
-button.primary{background:#25466d;border-color:#3c6ea7}
-button:disabled{opacity:.5;cursor:wait}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
-.status{
-  padding:10px;border-radius:9px;background:var(--panel2);
-  font-size:12px;line-height:1.5;overflow-wrap:anywhere;margin-top:10px;
+.grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
 }
-.status.error{color:#ffb6bf;border:1px solid #713440}
-.status.ok{color:#a5f0cf;border:1px solid #236449}
-.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
-.stat{background:var(--panel2);border-radius:9px;padding:10px;min-width:0}
-.stat-label{font-size:10px;color:var(--muted);margin-bottom:6px}
-.stat-value{font-size:19px;font-weight:850;overflow-wrap:anywhere}
-.green{color:var(--green)}.red{color:var(--red)}.gold{color:var(--gold)}
-.table-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:11px;min-width:650px}
-th,td{text-align:left;padding:9px 7px;border-bottom:1px solid var(--line);white-space:nowrap}
-th{color:var(--muted);font-weight:700}
-.tag{font-weight:850}
-.tag.buy,.tag.win{color:var(--green)}
-.tag.sell,.tag.loss{color:var(--red)}
-.tag.review{color:var(--gold)}
-.hidden{display:none}
-@media(min-width:650px){.stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media(max-width:390px){
-  main{padding:7px 6px 25px}
-  .panel{padding:9px}
-  .stat-value{font-size:17px}
-  h1{font-size:16px}
+.metric {
+  padding:12px;
+  background:var(--panel2);
+  border-radius:10px;
+  min-width:0;
+}
+.metric .label {
+  font-size:11px;
+  color:var(--muted);
+  margin-bottom:7px;
+}
+.metric .value {
+  font-size:20px;
+  font-weight:750;
+  overflow-wrap:anywhere;
+}
+.metric .small {
+  color:var(--muted);
+  font-size:11px;
+  margin-top:5px;
+}
+button,select {
+  border:1px solid var(--line);
+  background:var(--panel2);
+  color:var(--text);
+  border-radius:9px;
+  min-height:42px;
+  padding:10px 12px;
+  font:inherit;
+}
+button { cursor:pointer; }
+button.primary {
+  width:100%;
+  background:#245c4c;
+  border-color:#327d66;
+  font-weight:700;
+}
+button:disabled { opacity:.55; cursor:wait; }
+.controls {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+  margin:12px 0;
+}
+label {
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+}
+label select {
+  display:block;
+  width:100%;
+  margin-top:6px;
+}
+.pill {
+  display:inline-block;
+  padding:5px 8px;
+  border-radius:7px;
+  background:var(--panel2);
+  font-size:11px;
+}
+.green { color:var(--green); }
+.red { color:var(--red); }
+.gold { color:var(--gold); }
+.muted { color:var(--muted); }
+.status {
+  padding:11px;
+  background:var(--panel2);
+  border-radius:9px;
+  line-height:1.5;
+  overflow-wrap:anywhere;
+}
+table {
+  border-collapse:collapse;
+  width:100%;
+  font-size:12px;
+}
+th,td {
+  padding:9px 6px;
+  border-bottom:1px solid var(--line);
+  text-align:right;
+  white-space:nowrap;
+}
+th:first-child,td:first-child { text-align:left; }
+.table-wrap { overflow-x:auto; }
+.rule {
+  padding:10px 0;
+  border-bottom:1px solid var(--line);
+  line-height:1.5;
+}
+.rule:last-child { border-bottom:0; }
+footer {
+  text-align:center;
+  color:var(--muted);
+  font-size:11px;
+  padding:12px 0;
+}
+@media(min-width:600px) {
+  .grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
 }
 </style>
 </head>
 <body>
-<header>
-  <h1>Gold & Bitcoin</h1>
-  <span class="small">Бэктест стратегии</span>
-</header>
 <main>
-  <section class="panel">
-    <div class="title">Настройки проверки</div>
-    <div class="controls">
-      <div>
-        <label for="asset">Инструмент</label>
-        <select id="asset">
-          <option value="gold">Золото · XAU/USD</option>
-          <option value="bitcoin">Bitcoin · BTC/USD</option>
-        </select>
-      </div>
-      <div>
-        <label for="limit">Количество 5-минутных свечей</label>
-        <select id="limit">
-          <option value="200">200 свечей</option>
-          <option value="500">500 свечей</option>
-          <option value="1000" selected>1000 свечей (максимум API)</option>
-        </select>
-      </div>
+<header>
+  <div class="row">
+    <div>
+      <h1>Gold & Bitcoin</h1>
+      <div class="sub">Исторический тест торговой стратегии</div>
     </div>
-    <div class="actions">
-      <button id="run" class="primary">Запустить бэктест</button>
-      <button id="csv" disabled>Скачать CSV</button>
-    </div>
-    <div id="status" class="status">Готов к запуску. Исторические данные будут загружены с нашего /api/candles.</div>
-    <p class="small">
-      Проверяются закрытые 5-минутные свечи. Старший тренд берётся только из свечей,
-      которые уже закрылись к моменту сигнала. Вход — на открытии следующей 5-минутной
-      свечи. Stop Loss = 1,5 ATR, Take Profit = 3 ATR. Комиссии и проскальзывание
-      не включены. Это историческая симуляция, а не гарантия будущей прибыли.
-    </p>
-  </section>
-  <section class="panel">
-    <div class="title">Результаты</div>
-    <div class="stats">
-      <div class="stat"><div class="stat-label">Проверено свечей</div><div id="sCandles" class="stat-value">—</div></div>
-      <div class="stat"><div class="stat-label">Сделок</div><div id="sTrades" class="stat-value">—</div></div>
-      <div class="stat"><div class="stat-label">Прибыльных</div><div id="sWins" class="stat-value green">—</div></div>
-      <div class="stat"><div class="stat-label">Убыточных</div><div id="sLosses" class="stat-value red">—</div></div>
-      <div class="stat"><div class="stat-label">Win rate</div><div id="sRate" class="stat-value">—</div></div>
-      <div class="stat"><div class="stat-label">Итог, R</div><div id="sNet" class="stat-value">—</div></div>
-      <div class="stat"><div class="stat-label">Макс. просадка, R</div><div id="sDD" class="stat-value">—</div></div>
-      <div class="stat"><div class="stat-label">Неоднозначные</div><div id="sReview" class="stat-value gold">—</div></div>
-    </div>
-    <p id="period" class="small"></p>
-  </section>
-  <section class="panel">
-    <div class="title">История сделок</div>
-    <div id="empty" class="small">Запусти бэктест, чтобы увидеть сделки.</div>
-    <div class="table-wrap">
-      <table id="tradeTable" class="hidden">
-        <thead>
-          <tr>
-            <th>№</th><th>Время входа</th><th>Направление</th>
-            <th>Вход</th><th>Stop Loss</th><th>Take Profit</th>
-            <th>Результат</th><th>R</th>
-          </tr>
-        </thead>
-        <tbody id="tradeRows"></tbody>
-      </table>
-    </div>
-  </section>
-  <section class="panel">
-    <div class="title">Что важно знать</div>
-    <div class="small">
-      • Бэктест использует текущие правила сигналов основного приложения: EMA 9/21,
-      RSI 14, MACD, ATR 14 и подтверждение тренда 15 минут, 1 час и 4 часа.<br>
-      • API предоставляет не более 1000 свечей на таймфрейм за один запрос. Поэтому
-      результат охватывает только доступную историю, а не несколько лет.<br>
-      • Если одна свеча задела и Stop Loss, и Take Profit, сделка отмечается как
-      неоднозначная и не включается в прибыль или убыток.<br>
-      • Сделки не перекрываются: пока одна сделка открыта, новые сигналы пропускаются.<br>
-      • Перед использованием результатов нужно убедиться, что API вернул достаточно
-      исторических свечей и что данные действительно обновляются.
-    </div>
-  </section>
+    <span class="pill gold">BACKTEST 2.0</span>
+  </div>
+</header>
+
+<section class="panel">
+  <h2>Настройки теста</h2>
+  <div class="controls">
+    <label>Инструмент
+      <select id="asset">
+        <option value="gold">Золото XAU/USD</option>
+        <option value="bitcoin">Bitcoin BTC/USD</option>
+        <option value="both">Оба инструмента</option>
+      </select>
+    </label>
+    <label>Таймфрейм входа
+      <select id="entryTf">
+        <option value="MINUTE_5">5 минут</option>
+        <option value="MINUTE_15" selected>15 минут</option>
+      </select>
+    </label>
+    <label>Длина диапазона
+      <select id="rangeLength">
+        <option value="8">8 свечей</option>
+        <option value="12" selected>12 свечей</option>
+        <option value="20">20 свечей</option>
+        <option value="30">30 свечей</option>
+      </select>
+    </label>
+    <label>Минимальное соотношение
+      <select id="rr">
+        <option value="1.5">1 : 1.5</option>
+        <option value="2" selected>1 : 2</option>
+        <option value="2.5">1 : 2.5</option>
+      </select>
+    </label>
+  </div>
+  <button class="primary" id="run">Запустить бэктест</button>
+  <div class="sub" style="margin-top:9px">
+    Используются исторические свечи, которые доступны через API проекта.
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Состояние теста</h2>
+  <div id="status" class="status">Нажми «Запустить бэктест».</div>
+</section>
+
+<div id="results"></div>
+
+<section class="panel">
+  <h2>Правила стратегии</h2>
+  <div class="rule"><b>1. Боковик.</b> Анализируем диапазон предыдущих завершённых свечей. Вход возможен возле верхней или нижней границы.</div>
+  <div class="rule"><b>2. Дневные уровни.</b> Учитываем максимум и минимум предыдущего завершённого дня, если эти данные доступны в загруженной истории.</div>
+  <div class="rule"><b>3. Трендовая линия.</b> Ищем последние подтверждённые локальные минимумы для поддержки и локальные максимумы для сопротивления.</div>
+  <div class="rule"><b>4. Подтверждение.</b> Свеча должна проколоть уровень и закрыться обратно в сторону предполагаемого отскока.</div>
+  <div class="rule"><b>5. Фильтр 4H.</b> Покупки проверяются по направлению старшего тренда вверх, продажи — по направлению вниз.</div>
+  <div class="rule"><b>6. Риск.</b> Стоп размещается за экстремумом сигнальной свечи с запасом ATR. Цель — не ближе выбранного соотношения риска к прибыли; при наличии подходящей границы диапазона она может быть целью раньше.</div>
+  <div class="rule"><b>7. Одна позиция.</b> Пока сделка открыта, новые сделки по этому инструменту не открываются.</div>
+</section>
+
+<section class="panel">
+  <h2>Как читать результат</h2>
+  <p class="sub">R — единица риска. Например, если расстояние от входа до стопа равно 10 долларов, то +2R соответствует прибыли 20 долларов на единицу цены до учёта размера позиции, комиссий и проскальзывания.</p>
+  <p class="sub">Процент прибыльных сделок сам по себе не показывает качество стратегии. Важны средний результат в R, максимальная просадка и достаточная выборка сделок.</p>
+</section>
+
+<footer>Gold & Bitcoin · Backtest · Результаты теста не являются гарантией будущей прибыли.</footer>
 </main>
+
 <script>
 "use strict";
-const TF = {
-  MINUTE: 60,
-  MINUTE_5: 300,
-  MINUTE_15: 900,
-  HOUR: 3600,
-  HOUR_4: 14400
-};
+
 const $ = id => document.getElementById(id);
-let lastTrades = [];
-let busy = false;
-function setStatus(message, type = "") {
-  const el = $("status");
-  el.textContent = message;
-  el.className = "status" + (type ? " " + type : "");
+
+function setStatus(message) {
+  $("status").textContent = message;
 }
+
+function number(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function normalizeTime(value) {
+  if (typeof value === "string" && !/^\d+(\.\d+)?$/.test(value)) {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : NaN;
+  }
+
+  let t = Number(value);
+  if (!Number.isFinite(t)) return NaN;
+  if (t > 1e12) t = Math.floor(t / 1000);
+  return Math.floor(t);
+}
+
+function normalizeCandle(raw) {
+  if (!raw || typeof raw !== "object") return null;
+
+  const time = normalizeTime(
+    raw.time ?? raw.timestamp ?? raw.date ??
+    raw.datetime ?? raw.t
+  );
+
+  const open = number(raw.open ?? raw.o);
+  const high = number(raw.high ?? raw.h);
+  const low = number(raw.low ?? raw.l);
+  const close = number(raw.close ?? raw.c);
+
+  if (![time, open, high, low, close].every(Number.isFinite)) return null;
+  if (high < low || high < open || high < close ||
+      low > open || low > close) return null;
+
+  return {
+    time, open, high, low, close,
+    volume: number(raw.volume ?? raw.v) || 0
+  };
+}
+
+function extractCandles(payload, asset) {
+  let value = payload?.data?.[asset] ?? payload?.[asset];
+
+  if (value && !Array.isArray(value)) {
+    value = value.candles ?? value.prices ?? value.history ?? value.data;
+  }
+
+  if (!Array.isArray(value) && Array.isArray(payload?.data)) {
+    value = payload.data;
+  }
+
+  if (!Array.isArray(value) && Array.isArray(payload?.candles)) {
+    value = payload.candles;
+  }
+
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map(normalizeCandle)
+    .filter(Boolean)
+    .sort((a, b) => a.time - b.time)
+    .filter((c, i, arr) => i === 0 || c.time !== arr[i - 1].time);
+}
+
+async function loadCandles(resolution, asset) {
+  const url = "/api/candles?resolution=" + encodeURIComponent(resolution);
+  const response = await fetch(url, { cache: "no-store" });
+
+  if (!response.ok) {
+    throw new Error("API " + resolution + ": HTTP " + response.status);
+  }
+
+  const payload = await response.json();
+  const candles = extractCandles(payload, asset);
+
+  if (!candles.length) {
+    throw new Error(
+      "API не вернул распознаваемые свечи для " +
+      assetName(asset) + " (" + resolution + ")."
+    );
+  }
+
+  return candles;
+}
+
+function assetName(asset) {
+  return asset === "gold" ? "Золото" : "Bitcoin";
+}
+
+function ema(values, period) {
+  const result = Array(values.length).fill(null);
+  if (values.length < period) return result;
+
+  let sum = 0;
+  for (let i = 0; i < period; i++) sum += values[i];
+
+  let previous = sum / period;
+  result[period - 1] = previous;
+
+  const k = 2 / (period + 1);
+
+  for (let i = period; i < values.length; i++) {
+    previous = values[i] * k + previous * (1 - k);
+    result[i] = previous;
+  }
+
+  return result;
+}
+
+function atr(candles, period = 14) {
+  const tr = candles.map((c, i) => {
+    if (i === 0) return c.high - c.low;
+
+    const prev = candles[i - 1].close;
+    return Math.max(
+      c.high - c.low,
+      Math.abs(c.high - prev),
+      Math.abs(c.low - prev)
+    );
+  });
+
+  const result = Array(candles.length).fill(null);
+  if (tr.length < period) return result;
+
+  let value = tr.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  result[period - 1] = value;
+
+  for (let i = period; i < tr.length; i++) {
+    value = ((value * (period - 1)) + tr[i]) / period;
+    result[i] = value;
+  }
+
+  return result;
+}
+
+function rsi(values, period = 14) {
+  const result = Array(values.length).fill(null);
+  if (values.length <= period) return result;
+
+  let gain = 0, loss = 0;
+
+  for (let i = 1; i <= period; i++) {
+    const change = values[i] - values[i - 1];
+    if (change > 0) gain += change;
+    else loss -= change;
+  }
+
+  let avgGain = gain / period;
+  let avgLoss = loss / period;
+
+  result[period] = avgLoss === 0 ? 100 :
+    100 - 100 / (1 + avgGain / avgLoss);
+
+  for (let i = period + 1; i < values.length; i++) {
+    const change = values[i] - values[i - 1];
+    avgGain = (avgGain * (period - 1) + Math.max(change, 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + Math.max(-change, 0)) / period;
+
+    result[i] = avgLoss === 0 ? 100 :
+      100 - 100 / (1 + avgGain / avgLoss);
+  }
+
+  return result;
+}
+
+function groupByUtcDay(candles) {
+  const map = new Map();
+
+  for (const c of candles) {
+    const day = new Date(c.time * 1000).toISOString().slice(0, 10);
+
+    if (!map.has(day)) {
+      map.set(day, {
+        day,
+        high: c.high,
+        low: c.low,
+        lastTime: c.time
+      });
+    } else {
+      const d = map.get(day);
+      d.high = Math.max(d.high, c.high);
+      d.low = Math.min(d.low, c.low);
+      d.lastTime = Math.max(d.lastTime, c.time);
+    }
+  }
+
+  return [...map.values()].sort((a, b) => a.day.localeCompare(b.day));
+}
+
+function previousDayLevels(hourly, time) {
+  const day = new Date(time * 1000).toISOString().slice(0, 10);
+  const days = groupByUtcDay(hourly);
+  const previous = days.filter(d => d.day < day).at(-1);
+  return previous || null;
+}
+
+function confirmedPivots(candles, endIndex, lookback = 2) {
+  const lows = [];
+  const highs = [];
+
+  // Для подтверждения pivot нужны свечи и слева, и справа.
+  for (let i = lookback; i < endIndex - lookback; i++) {
+    const c = candles[i];
+    let isLow = true;
+    let isHigh = true;
+
+    for (let j = i - lookback; j <= i + lookback; j++) {
+      if (j === i) continue;
+      if (candles[j].low <= c.low) isLow = false;
+      if (candles[j].high >= c.high) isHigh = false;
+    }
+
+    if (isLow) lows.push({ index: i, time: c.time, price: c.low });
+    if (isHigh) highs.push({ index: i, time: c.time, price: c.high });
+  }
+
+  return { lows, highs };
+}
+
+function projectedLine(pivots, time) {
+  if (pivots.length < 2) return null;
+
+  const a = pivots[pivots.length - 2];
+  const b = pivots[pivots.length - 1];
+
+  if (b.time <= a.time) return null;
+
+  const slope = (b.price - a.price) / (b.time - a.time);
+  return b.price + slope * (time - b.time);
+}
+
+function latestClosedHigher(candles, time) {
+  let lo = 0, hi = candles.length - 1, answer = -1;
+
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+
+    if (candles[mid].time < time) {
+      answer = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+
+  return answer;
+}
+
+function calculateSignals(entryCandles, hourly, fourHour, settings) {
+  const closes4h = fourHour.map(c => c.close);
+  const ema21_4h = ema(closes4h, 21);
+  const atrEntry = atr(entryCandles, 14);
+  const rsiEntry = rsi(entryCandles.map(c => c.close), 14);
+
+  const trades = [];
+  let position = null;
+  let equityR = 0;
+  let peakR = 0;
+  let maxDrawdownR = 0;
+
+  // Истории должно хватить и на индикаторы, и на поиск структуры.
+  const start = Math.max(35, settings.rangeLength + 15);
+
+  for (let i = start; i < entryCandles.length; i++) {
+    const candle = entryCandles[i];
+    const previous = entryCandles[i - 1];
+    const currentAtr = atrEntry[i];
+
+    if (!Number.isFinite(currentAtr) || currentAtr <= 0) continue;
+
+    // Выход проверяем до поиска следующего входа.
+    if (position) {
+      let exitPrice = null;
+      let reason = "";
+
+      if (position.side === "BUY") {
+        // Если стоп и цель попали в одну свечу, считаем стоп первым.
+        if (candle.low <= position.sl) {
+          exitPrice = position.sl;
+          reason = "SL";
+        } else if (candle.high >= position.tp) {
+          exitPrice = position.tp;
+          reason = "TP";
+        }
+      } else {
+        if (candle.high >= position.sl) {
+          exitPrice = position.sl;
+          reason = "SL";
+        } else if (candle.low <= position.tp) {
+          exitPrice = position.tp;
+          reason = "TP";
+        }
+      }
+
+      if (exitPrice !== null) {
+        const r = position.side === "BUY"
+          ? (exitPrice - position.entry) / position.risk
+          : (position.entry - exitPrice) / position.risk;
+
+        equityR += r;
+        peakR = Math.max(peakR, equityR);
+        maxDrawdownR = Math.max(maxDrawdownR, peakR - equityR);
+
+        trades.push({
+          ...position,
+          exitTime: candle.time,
+          exit: exitPrice,
+          reason,
+          resultR: r,
+          equityR
+        });
+
+        position = null;
+      }
+
+      continue;
+    }
+
+    const history = entryCandles.slice(
+      Math.max(0, i - settings.rangeLength),
+      i
+    );
+
+    if (history.length < settings.rangeLength) continue;
+
+    const rangeHigh = Math.max(...history.map(c => c.high));
+    const rangeLow = Math.min(...history.map(c => c.low));
+    const rangeWidth = rangeHigh - rangeLow;
+
+    // Не называем рынок боковиком, если диапазон чрезмерно широк.
+    if (rangeWidth <= 0 || rangeWidth > currentAtr * settings.rangeAtrMax) {
+      continue;
+    }
+
+    const higherIndex = latestClosedHigher(fourHour, candle.time);
+    if (higherIndex < 22) continue;
+
+    const htfClose = fourHour[higherIndex].close;
+    const htfEma = ema21_4h[higherIndex];
+    const olderEma = ema21_4h[Math.max(0, higherIndex - 3)];
+
+    if (!Number.isFinite(htfEma) || !Number.isFinite(olderEma)) continue;
+
+    const upTrend = htfClose > htfEma && htfEma > olderEma;
+    const downTrend = htfClose < htfEma && htfEma < olderEma;
+
+    const daily = previousDayLevels(hourly, candle.time);
+    const pivots = confirmedPivots(entryCandles, i, 2);
+
+    const supportLine = projectedLine(pivots.lows, candle.time);
+    const resistanceLine = projectedLine(pivots.highs, candle.time);
+
+    const tolerance = currentAtr * 0.30;
+    const nearRangeLow = candle.low <= rangeLow + tolerance;
+    const nearRangeHigh = candle.high >= rangeHigh - tolerance;
+
+    const nearDailyLow = daily && candle.low <= daily.low + tolerance;
+    const nearDailyHigh = daily && candle.high >= daily.high - tolerance;
+
+    const nearSupportLine = supportLine !== null &&
+      Math.abs(candle.low - supportLine) <= tolerance;
+
+    const nearResistanceLine = resistanceLine !== null &&
+      Math.abs(candle.high - resistanceLine) <= tolerance;
+
+    const sweptLow = candle.low < previous.low &&
+      candle.close > previous.low;
+    const sweptHigh = candle.high > previous.high &&
+      candle.close < previous.high;
+
+    const bullishCandle = candle.close > candle.open &&
+      candle.close > previous.close;
+
+    const bearishCandle = candle.close < candle.open &&
+      candle.close < previous.close;
+
+    const rsiValue = rsiEntry[i];
+
+    const buyLocation = nearRangeLow || nearDailyLow || nearSupportLine;
+    const sellLocation = nearRangeHigh || nearDailyHigh || nearResistanceLine;
+
+    const buySignal = upTrend && buyLocation && sweptLow && bullishCandle &&
+      Number.isFinite(rsiValue) && rsiValue < 70;
+
+    const sellSignal = downTrend && sellLocation && sweptHigh && bearishCandle &&
+      Number.isFinite(rsiValue) && rsiValue > 30;
+
+    if (!buySignal && !sellSignal) continue;
+
+    const side = buySignal ? "BUY" : "SELL";
+    const entry = candle.close;
+    const buffer = currentAtr * 0.25;
+
+    let sl, risk, tp, target;
+
+    if (side === "BUY") {
+      sl = Math.min(candle.low, rangeLow) - buffer;
+      risk = entry - sl;
+      if (risk <= 0) continue;
+
+      const candidates = [rangeHigh];
+
+      if (daily && daily.high > entry) candidates.push(daily.high);
+      if (resistanceLine !== null && resistanceLine > entry) {
+        candidates.push(resistanceLine);
+      }
+
+      target = Math.min(...candidates.filter(x => x > entry));
+      if (!Number.isFinite(target)) target = entry + risk * settings.rr;
+
+      // Не входим, если уровень мешает получить заданное соотношение.
+      if ((target - entry) / risk < settings.rr) continue;
+
+      tp = target;
+    } else {
+      sl = Math.max(candle.high, rangeHigh) + buffer;
+      risk = sl - entry;
+      if (risk <= 0) continue;
+
+      const candidates = [rangeLow];
+
+      if (daily && daily.low < entry) candidates.push(daily.low);
+      if (supportLine !== null && supportLine < entry) {
+        candidates.push(supportLine);
+      }
+
+      target = Math.max(...candidates.filter(x => x < entry));
+      if (!Number.isFinite(target)) target = entry - risk * settings.rr;
+
+      if ((entry - target) / risk < settings.rr) continue;
+
+      tp = target;
+    }
+
+    position = {
+      side,
+      entry,
+      sl,
+      tp,
+      risk,
+      entryTime: candle.time,
+      rangeHigh,
+      rangeLow,
+      rsi: rsiValue,
+      atr: currentAtr,
+      dailyHigh: daily?.high ?? null,
+      dailyLow: daily?.low ?? null
+    };
+  }
+
+  // Открытая в конце истории сделка не считается закрытой.
+  return {
+    trades,
+    openPosition: position,
+    equityR,
+    maxDrawdownR,
+    candleCount: entryCandles.length,
+    firstTime: entryCandles[0]?.time,
+    lastTime: entryCandles.at(-1)?.time
+  };
+}
+
+function summarize(result) {
+  const trades = result.trades;
+  const wins = trades.filter(t => t.resultR > 0).length;
+  const losses = trades.filter(t => t.resultR < 0).length;
+  const netR = trades.reduce((sum, t) => sum + t.resultR, 0);
+  const avgR = trades.length ? netR / trades.length : 0;
+  const grossWins = trades
+    .filter(t => t.resultR > 0)
+    .reduce((sum, t) => sum + t.resultR, 0);
+  const grossLosses = Math.abs(trades
+    .filter(t => t.resultR < 0)
+    .reduce((sum, t) => sum + t.resultR, 0));
+
+  return {
+    count: trades.length,
+    wins,
+    losses,
+    winRate: trades.length ? wins / trades.length * 100 : 0,
+    netR,
+    avgR,
+    profitFactor: grossLosses > 0
+      ? grossWins / grossLosses
+      : grossWins > 0 ? Infinity : 0,
+    maxDrawdownR: result.maxDrawdownR
+  };
+}
+
 function fmt(value, digits = 2) {
   if (!Number.isFinite(value)) return "—";
-  return value.toLocaleString("en-US", {
+  return value.toLocaleString("ru-RU", {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits
   });
 }
-function dateText(seconds) {
+
+function dateFmt(seconds) {
   if (!Number.isFinite(seconds)) return "—";
   return new Date(seconds * 1000).toLocaleString("ru-RU", {
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", timeZone: "UTC"
-  }) + " UTC";
+    day:"2-digit", month:"2-digit", year:"2-digit",
+    hour:"2-digit", minute:"2-digit"
+  });
 }
-function normalizeCandles(list) {
-  if (!Array.isArray(list)) return [];
-  const parsed = list.map(c => {
-    let time = typeof c.time === "number"
-      ? c.time
-      : Math.floor(new Date(c.time).getTime() / 1000);
-    if (time > 100000000000) time = Math.floor(time / 1000);
-    return {
-      time,
-      open: Number(c.open),
-      high: Number(c.high),
-      low: Number(c.low),
-      close: Number(c.close)
-    };
-  }).filter(c =>
-    Number.isFinite(c.time) &&
-    [c.open,c.high,c.low,c.close].every(Number.isFinite) &&
-    c.high >= c.low &&
-    c.low <= Math.min(c.open,c.close) &&
-    c.high >= Math.max(c.open,c.close)
-  ).sort((a,b) => a.time-b.time);
-  const result = [];
-  for (const c of parsed) {
-    if (!result.length || result[result.length-1].time !== c.time) {
-      result.push(c);
-    } else {
-      result[result.length-1] = c;
-    }
-  }
-  return result;
+
+function metric(label, value, detail = "", cls = "") {
+  return `<div class="metric">
+    <div class="label">${label}</div>
+    <div class="value ${cls}">${value}</div>
+    <div class="small">${detail}</div>
+  </div>`;
 }
-async function fetchResolution(resolution) {
-  const url = "/api/candles?resolution=" + encodeURIComponent(resolution);
-  const response = await fetch(url, { cache: "no-store" });
-  const raw = await response.text();
-  let data;
-  try { data = JSON.parse(raw); }
-  catch { throw new Error(resolution + ": сервер вернул не JSON"); }
-  if (!response.ok) {
-    throw new Error(resolution + ": HTTP " + response.status +
-      (data && data.error ? " — " + data.error : ""));
+
+function renderAsset(asset, result) {
+  const s = summarize(result);
+  const cls = s.netR > 0 ? "green" : s.netR < 0 ? "red" : "";
+  const trades = result.trades;
+
+  let rows = "";
+
+  for (const t of trades.slice().reverse().slice(0, 100)) {
+    const clsR = t.resultR > 0 ? "green" : t.resultR < 0 ? "red" : "";
+    rows += `<tr>
+      <td>${t.side}</td>
+      <td>${dateFmt(t.entryTime)}</td>
+      <td>${fmt(t.entry)}</td>
+      <td>${fmt(t.sl)}</td>
+      <td>${fmt(t.tp)}</td>
+      <td class="${clsR}">${t.resultR > 0 ? "+" : ""}${fmt(t.resultR)}R</td>
+      <td>${t.reason}</td>
+    </tr>`;
   }
-  if (data && data.error) {
-    throw new Error(resolution + ": " + data.error);
+
+  if (!rows) {
+    rows = `<tr><td colspan="7" class="muted">Закрытых сделок нет. Это может быть связано с фильтрами или короткой историей.</td></tr>`;
   }
-  if (!data || (!Array.isArray(data.gold) && !Array.isArray(data.bitcoin))) {
-    throw new Error(resolution + ": в ответе нет массивов gold/bitcoin");
-  }
-  return {
-    gold: normalizeCandles(data.gold),
-    bitcoin: normalizeCandles(data.bitcoin)
-  };
+
+  const openInfo = result.openPosition
+    ? `<p class="sub">На конце истории осталась незакрытая позиция ${result.openPosition.side}. Она не включена в статистику.</p>`
+    : "";
+
+  return `<section class="panel">
+    <h2>${assetName(asset)}</h2>
+    <div class="grid">
+      ${metric("Закрытые сделки", s.count)}
+      ${metric("Прибыльные", fmt(s.winRate, 1) + "%", `${s.wins} прибыльных / ${s.losses} убыточных`)}
+      ${metric("Итог", (s.netR > 0 ? "+" : "") + fmt(s.netR) + "R", "Сумма результатов", cls)}
+      ${metric("Среднее на сделку", (s.avgR > 0 ? "+" : "") + fmt(s.avgR) + "R", "Ожидание в R", s.avgR >= 0 ? "green" : "red")}
+      ${metric("Profit Factor", s.profitFactor === Infinity ? "∞" : fmt(s.profitFactor), "Прибыль / убыток")}
+      ${metric("Макс. просадка", fmt(s.maxDrawdownR) + "R", "По закрытым сделкам")}
+    </div>
+    <p class="sub">Свечей входа: ${result.candleCount}. Период данных: ${dateFmt(result.firstTime)} — ${dateFmt(result.lastTime)}.</p>
+    ${openInfo}
+    <h3 style="margin-top:16px">История сделок</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Сторона</th><th>Вход</th><th>Цена</th>
+          <th>SL</th><th>TP</th><th>Результат</th><th>Выход</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <button style="margin-top:12px;width:100%" data-export="${asset}">Экспорт сделок в CSV</button>
+  </section>`;
 }
-/* Индикаторы повторяют формулы основного index.html. */
-function ema(values, period) {
-  if (values.length < period) return null;
-  const k = 2 / (period + 1);
-  let value = values.slice(0, period).reduce((a,b) => a+b, 0) / period;
-  for (let i = period; i < values.length; i++) {
-    value = values[i] * k + value * (1-k);
+
+const completedResults = {};
+
+function exportCsv(asset) {
+  const result = completedResults[asset];
+  if (!result || !result.trades.length) {
+    setStatus("Для экспорта пока нет закрытых сделок.");
+    return;
   }
-  return value;
-}
-function rsi(values, period = 14) {
-  if (values.length < period + 1) return null;
-  let gains = 0, losses = 0;
-  for (let i=1; i<=period; i++) {
-    const d = values[i] - values[i-1];
-    if (d >= 0) gains += d;
-    else losses -= d;
-  }
-  let avgGain = gains / period, avgLoss = losses / period;
-  for (let i=period+1; i<values.length; i++) {
-    const d = values[i] - values[i-1];
-    avgGain = (avgGain*(period-1) + Math.max(d,0)) / period;
-    avgLoss = (avgLoss*(period-1) + Math.max(-d,0)) / period;
-  }
-  if (avgLoss === 0) return avgGain === 0 ? 50 : 100;
-  return 100 - 100 / (1 + avgGain/avgLoss);
-}
-function atr(candles, period = 14) {
-  if (candles.length < period+1) return null;
-  const tr = [];
-  for (let i=1; i<candles.length; i++) {
-    const c = candles[i], prev = candles[i-1];
-    tr.push(Math.max(c.high-c.low,
-      Math.abs(c.high-prev.close), Math.abs(c.low-prev.close)));
-  }
-  let value = tr.slice(0,period).reduce((a,b)=>a+b,0) / period;
-  for (let i=period; i<tr.length; i++) {
-    value = (value*(period-1) + tr[i]) / period;
-  }
-  return value;
-}
-function macd(values) {
-  if (values.length < 35) return null;
-  let fast = values[0], slow = values[0];
-  const line = [];
-  for (let i=0; i<values.length; i++) {
-    fast = i ? values[i]*(2/13) + fast*(11/13) : values[i];
-    slow = i ? values[i]*(2/27) + slow*(25/27) : values[i];
-    line.push(fast-slow);
-  }
-  const signal = ema(line.slice(25), 9);
-  const current = line[line.length-1];
-  return { line: current, signal, hist: signal === null ? null : current-signal };
-}
-function trendAt(candles, time, resolution) {
-  const seconds = TF[resolution];
-  const closed = candles.filter(c => c.time + seconds <= time);
-  if (closed.length < 25) return "UNKNOWN";
-  const closes = closed.map(c => c.close);
-  const e9 = ema(closes,9), e21 = ema(closes,21);
-  const last = closes[closes.length-1];
-  if (e9 === null || e21 === null) return "UNKNOWN";
-  if (last > e21 && e9 > e21) return "UP";
-  if (last < e21 && e9 < e21) return "DOWN";
-  return "SIDE";
-}
-function signalAt(candles5, i, higher) {
-  const candles = candles5.slice(0, i+1);
-  const closes = candles.map(c => c.close);
-  const e9 = ema(closes,9), e21 = ema(closes,21);
-  const r = rsi(closes), a = atr(candles), m = macd(closes);
-  if (candles.length < 40 || e9 === null || e21 === null ||
-      r === null || a === null || !m) return null;
-  const last = candles[candles.length-1];
-  const prev = candles[candles.length-2];
-  const signalTime = last.time + TF.MINUTE_5;
-  const t4 = trendAt(higher.HOUR_4, signalTime, "HOUR_4");
-  const t1 = trendAt(higher.HOUR, signalTime, "HOUR");
-  const t15 = trendAt(higher.MINUTE_15, signalTime, "MINUTE_15");
-  let buy = 0, sell = 0;
-  if (e9 > e21) buy++; else sell++;
-  if (last.close > e9) buy++; else sell++;
-  if (r >= 52 && r < 68) buy++;
-  else if (r <= 48 && r > 32) sell++;
-  if (m.hist > 0 && m.line > m.signal) buy++;
-  else if (m.hist < 0 && m.line < m.signal) sell++;
-  if (last.close > last.open && last.close > prev.high) buy++;
-  if (last.close < last.open && last.close < prev.low) sell++;
-  const up = t4 === "UP" && t1 !== "DOWN" && t15 === "UP";
-  const down = t4 === "DOWN" && t1 !== "UP" && t15 === "DOWN";
-  if (up) buy += 2;
-  if (down) sell += 2;
-  let side = "WAIT";
-  if (buy >= 6 && buy >= sell+2 && up && r < 68) side = "BUY";
-  else if (sell >= 6 && sell >= buy+2 && down && r > 32) side = "SELL";
-  const extension = Math.abs(last.close-e9) / (a || 1);
-  if (extension > 1.4) side = "WAIT";
-  if (side === "WAIT") return null;
-  return {
-    side,
-    signalTime,
-    atr: a,
-    stopDistance: a * 1.5,
-    targetDistance: a * 3
-  };
-}
-function simulate(candles5, higher, requestedLimit) {
-  const now = Math.floor(Date.now()/1000);
-  const closed = candles5.filter(c => c.time + TF.MINUTE_5 <= now);
-  const trades = [];
-  let i = 0;
-  while (i < closed.length-1) {
-    const signal = signalAt(closed, i, higher);
-    if (!signal) { i++; continue; }
-    const entryIndex = i+1;
-    const entryCandle = closed[entryIndex];
-    const entry = entryCandle.open;
-    const stop = signal.side === "BUY"
-      ? entry-signal.stopDistance : entry+signal.stopDistance;
-    const target = signal.side === "BUY"
-      ? entry+signal.targetDistance : entry-signal.targetDistance;
-    let outcome = "OPEN", exit = null, exitTime = null, resultR = 0;
-    let j = entryIndex;
-    for (; j < closed.length; j++) {
-      const c = closed[j];
-      const hitStop = signal.side === "BUY" ? c.low <= stop : c.high >= stop;
-      const hitTarget = signal.side === "BUY" ? c.high >= target : c.low <= target;
-      if (hitStop && hitTarget) {
-        outcome = "REVIEW";
-        exit = c.close;
-        exitTime = c.time + TF.MINUTE_5;
-        break;
-      }
-      if (hitStop) {
-        outcome = "LOSS";
-        exit = stop;
-        exitTime = c.time + TF.MINUTE_5;
-        resultR = -1;
-        break;
-      }
-      if (hitTarget) {
-        outcome = "WIN";
-        exit = target;
-        exitTime = c.time + TF.MINUTE_5;
-        resultR = 2;
-        break;
-      }
-    }
-    if (outcome === "OPEN") {
-      exit = closed[closed.length-1].close;
-      exitTime = closed[closed.length-1].time + TF.MINUTE_5;
-    }
-    trades.push({
-      side: signal.side,
-      signalTime: signal.signalTime,
-      entryTime: entryCandle.time,
-      entry, stop, target, exit, exitTime, outcome, resultR
-    });
-    // Не открываем следующую сделку, пока предыдущая не завершилась.
-    i = outcome === "OPEN" ? closed.length : j+1;
-  }
-  return { closed, trades, requestedLimit };
-}
-function renderResults(result) {
-  const {closed,trades} = result;
-  const wins = trades.filter(t => t.outcome === "WIN").length;
-  const losses = trades.filter(t => t.outcome === "LOSS").length;
-  const reviews = trades.filter(t => t.outcome === "REVIEW").length;
-  const resolved = wins + losses;
-  const net = trades.reduce((sum,t)=>sum+t.resultR,0);
-  let equity = 0, peak = 0, maxDD = 0;
-  for (const t of trades) {
-    if (t.outcome === "WIN" || t.outcome === "LOSS") {
-      equity += t.resultR;
-      peak = Math.max(peak,equity);
-      maxDD = Math.max(maxDD,peak-equity);
-    }
-  }
-  $("sCandles").textContent = String(closed.length);
-  $("sTrades").textContent = String(trades.length);
-  $("sWins").textContent = String(wins);
-  $("sLosses").textContent = String(losses);
-  $("sRate").textContent = resolved ? fmt(wins/resolved*100,1)+"%" : "—";
-  $("sNet").textContent = (net > 0 ? "+" : "")+fmt(net,2)+" R";
-  $("sNet").className = "stat-value " + (net > 0 ? "green" : net < 0 ? "red" : "");
-  $("sDD").textContent = fmt(maxDD,2)+" R";
-  $("sReview").textContent = String(reviews);
-  $("period").textContent = closed.length
-    ? "История: " + dateText(closed[0].time) + " — " +
-      dateText(closed[closed.length-1].time) +
-      ". Загрузилось " + closed.length + " закрытых свечей из " +
-      result.requestedLimit + " запрошенных."
-    : "Нет закрытых свечей для тестирования.";
-  const tbody = $("tradeRows");
-  tbody.replaceChildren();
-  for (let index=0; index<trades.length; index++) {
-    const t = trades[index];
-    const tr = document.createElement("tr");
-    const values = [
-      index+1,
-      dateText(t.entryTime),
-      t.side,
-      fmt(t.entry,2),
-      fmt(t.stop,2),
-      fmt(t.target,2),
-      t.outcome === "WIN" ? "ПРИБЫЛЬ" :
-        t.outcome === "LOSS" ? "УБЫТОК" :
-        t.outcome === "REVIEW" ? "ПРОВЕРИТЬ" : "ОТКРЫТА",
-      (t.resultR > 0 ? "+" : "") + fmt(t.resultR,2)
-    ];
-    values.forEach((value,col) => {
-      const td = document.createElement("td");
-      td.textContent = String(value);
-      if (col===2) td.className = "tag " + (t.side==="BUY"?"buy":"sell");
-      if (col===6) td.className = "tag " +
-        (t.outcome==="WIN"?"win":t.outcome==="LOSS"?"loss":"review");
-      tr.appendChild(td);
-    });
-    tbody.appendChild(tr);
-  }
-  $("empty").classList.toggle("hidden",trades.length>0);
-  $("tradeTable").classList.toggle("hidden",trades.length===0);
-  lastTrades = trades;
-  $("csv").disabled = trades.length===0;
-}
-async function runBacktest() {
-  if (busy) return;
-  busy = true;
-  $("run").disabled = true;
-  $("csv").disabled = true;
-  setStatus("Загружаю свечи с сервера…");
-  lastTrades = [];
-  try {
-    const requestedLimit = Number($("limit").value);
-    const asset = $("asset").value;
-    const resolutions = ["MINUTE_5","MINUTE_15","HOUR","HOUR_4"];
-    const data = {};
-    for (const resolution of resolutions) {
-      setStatus("Загружаю таймфрейм " + resolution + "…");
-      data[resolution] = await fetchResolution(resolution);
-    }
-    const candles5 = data.MINUTE_5[asset];
-    const higher = {
-      MINUTE_15: data.MINUTE_15[asset],
-      HOUR: data.HOUR[asset],
-      HOUR_4: data.HOUR_4[asset]
-    };
-    if (!candles5.length) {
-      throw new Error("API вернул 0 свечей для " + asset +
-        ". Открой /api/candles?resolution=MINUTE_5 и проверь поле " +
-        asset + " в ответе сервера.");
-    }
-    const sliced5 = candles5.slice(-Math.min(requestedLimit,1000));
-    if (sliced5.length < 60) {
-      throw new Error("Слишком мало 5-минутных свечей: " + sliced5.length +
-        ". Нужно хотя бы 60, лучше несколько сотен.");
-    }
-    for (const resolution of resolutions.slice(1)) {
-      if (!data[resolution][asset].length) {
-        throw new Error("API вернул 0 свечей для " + asset +
-          " на таймфрейме " + resolution + ".");
-      }
-    }
-    setStatus("Свечи загружены. Рассчитываю сигналы и сделки…");
-    const result = simulate(sliced5,higher,requestedLimit);
-    renderResults(result);
-    if (!result.closed.length) {
-      setStatus("Данные получены, но нет закрытых 5-минутных свечей для расчёта.", "error");
-    } else {
-      setStatus("Бэктест завершён. Использовано " + result.closed.length +
-        " закрытых 5-минутных свечей для " +
-        (asset==="gold"?"золота":"Bitcoin") + ".", "ok");
-    }
-  } catch (error) {
-    console.error(error);
-    setStatus("Бэктест не завершён: " +
-      (error && error.message ? error.message : String(error)), "error");
-  } finally {
-    busy = false;
-    $("run").disabled = false;
-  }
-}
-function downloadCSV() {
-  if (!lastTrades.length) return;
+
   const header = [
-    "number","entry_time_utc","side","entry","stop_loss","take_profit",
-    "exit","exit_time_utc","outcome","result_R"
+    "Инструмент","Направление","Время входа","Вход",
+    "Стоп","Цель","Время выхода","Цена выхода",
+    "Причина выхода","Результат R","Накопленный R"
   ];
-  const rows = lastTrades.map((t,i) => [
-    i+1,
-    new Date(t.entryTime*1000).toISOString(),
-    t.side,t.entry,t.stop,t.target,t.exit,
-    new Date(t.exitTime*1000).toISOString(),
-    t.outcome,t.resultR
+
+  const rows = result.trades.map(t => [
+    assetName(asset), t.side, dateFmt(t.entryTime),
+    t.entry, t.sl, t.tp, dateFmt(t.exitTime),
+    t.exit, t.reason, t.resultR, t.equityR
   ]);
-  const escape = value => {
-    const s = String(value ?? "");
-    return '"' + s.replace(/"/g,'""') + '"';
-  };
-  const csv = [header,...rows].map(row=>row.map(escape).join(",")).join("\r\n");
-  const blob = new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
+
+  const csv = [header, ...rows]
+    .map(row => row.map(value =>
+      '"' + String(value ?? "").replace(/"/g, '""') + '"'
+    ).join(";"))
+    .join("\r\n");
+
+  const blob = new Blob(["\uFEFF" + csv], {
+    type:"text/csv;charset=utf-8;"
+  });
+
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "gold-bitcoin-backtest.csv";
+  link.download = "backtest-" + asset + ".csv";
   document.body.appendChild(link);
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
 }
-$("run").addEventListener("click",runBacktest);
-$("csv").addEventListener("click",downloadCSV);
+
+document.addEventListener("click", event => {
+  const button = event.target.closest("[data-export]");
+  if (button) exportCsv(button.dataset.export);
+});
+
+$("run").addEventListener("click", async () => {
+  const button = $("run");
+  button.disabled = true;
+  $("results").innerHTML = "";
+
+  for (const key of Object.keys(completedResults)) {
+    delete completedResults[key];
+  }
+
+  const selected = $("asset").value;
+  const assets = selected === "both" ? ["gold", "bitcoin"] : [selected];
+
+  const settings = {
+    rangeLength: Number($("rangeLength").value),
+    rr: Number($("rr").value),
+    rangeAtrMax: 5
+  };
+
+  const resolution = $("entryTf").value;
+
+  try {
+    setStatus("Загружаю исторические свечи и проверяю данные API…");
+
+    const output = [];
+
+    for (const asset of assets) {
+      setStatus("Загружаю данные: " + assetName(asset) + "…");
+
+      const [entryCandles, hourly, fourHour] = await Promise.all([
+        loadCandles(resolution, asset),
+        loadCandles("HOUR", asset),
+        loadCandles("HOUR_4", asset)
+      ]);
+
+      if (entryCandles.length < 60) {
+        throw new Error(
+          assetName(asset) + ": доступно только " +
+          entryCandles.length +
+          " свечей. Для теста нужно больше исторических данных."
+        );
+      }
+
+      if (fourHour.length < 25) {
+        throw new Error(
+          assetName(asset) +
+          ": недостаточно 4-часовых свечей для фильтра старшего тренда."
+        );
+      }
+
+      const result = calculateSignals(
+        entryCandles, hourly, fourHour, settings
+      );
+
+      completedResults[asset] = result;
+      output.push(renderAsset(asset, result));
+    }
+
+    $("results").innerHTML = output.join("");
+
+    const summaryText = assets.map(asset => {
+      const s = summarize(completedResults[asset]);
+      return assetName(asset) + ": " + s.count +
+        " сделок, win rate " + fmt(s.winRate, 1) +
+        "%, результат " + (s.netR > 0 ? "+" : "") +
+        fmt(s.netR) + "R.";
+    }).join(" ");
+
+    setStatus(
+      "Тест завершён. " + summaryText +
+      " Результаты рассчитаны по доступной истории."
+    );
+  } catch (error) {
+    console.error(error);
+    setStatus(
+      "Не удалось завершить тест: " +
+      (error?.message || String(error)) +
+      " Проверь, что API свечей работает и возвращает исторические данные."
+    );
+  } finally {
+    button.disabled = false;
+  }
+});
 </script>
 </body>
 </html>
