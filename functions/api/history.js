@@ -9,46 +9,43 @@ export async function onRequest({ env }) {
 
     if (!apiKey || !identifier || !password) {
       return Response.json(
-        { error: "Demo API credentials are not configured" },
+        { error: "Demo credentials are missing" },
         { status: 500 }
       );
     }
 
-    const sessionResponse = await fetch(
-      `${base}/api/v1/session`,
-      {
-        method: "POST",
-        headers: {
-          "X-CAP-API-KEY": apiKey,
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: JSON.stringify({ identifier, password })
-      }
-    );
+    const session = await fetch(`${base}/api/v1/session`, {
+      method: "POST",
+      headers: {
+        "X-CAP-API-KEY": apiKey,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({ identifier, password })
+    });
 
-    if (!sessionResponse.ok) {
-      return Response.json(
-        { error: "Could not authenticate with Demo account" },
-        { status: 502 }
-      );
+    if (!session.ok) {
+      return Response.json({
+        error: "Session failed",
+        upstreamStatus: session.status,
+        details: (await session.text()).slice(0, 500)
+      }, { status: 502 });
     }
 
-    const cst = sessionResponse.headers.get("CST");
-    const securityToken =
-      sessionResponse.headers.get("X-SECURITY-TOKEN");
+    const cst = session.headers.get("CST");
+    const securityToken = session.headers.get("X-SECURITY-TOKEN");
 
     if (!cst || !securityToken) {
-      return Response.json(
-        { error: "Demo session tokens are missing" },
-        { status: 502 }
-      );
+      return Response.json({
+        error: "Session tokens are missing"
+      }, { status: 502 });
     }
 
-    const historyResponse = await fetch(
-      `${base}/api/v1/history/transactions?lastPeriod=604800`,
+    const response = await fetch(
+      `${base}/api/v1/history/transactions?lastPeriod=86400`,
       {
         headers: {
+          "X-CAP-API-KEY": apiKey,
           "CST": cst,
           "X-SECURITY-TOKEN": securityToken,
           "Accept": "application/json"
@@ -56,37 +53,33 @@ export async function onRequest({ env }) {
       }
     );
 
-    if (!historyResponse.ok) {
-      return Response.json(
-        { error: "Could not load transaction history" },
-        { status: 502 }
-      );
+    if (!response.ok) {
+      return Response.json({
+        error: "Transaction history request failed",
+        upstreamStatus: response.status,
+        details: (await response.text()).slice(0, 500)
+      }, { status: 502 });
     }
 
-    const data = await historyResponse.json();
+    const data = await response.json();
+    const transactions = Array.isArray(data.transactions)
+      ? data.transactions
+      : [];
 
-    return Response.json(
-      {
-        mode: "DEMO",
-        periodDays: 7,
-        transactions: Array.isArray(data.transactions)
-          ? data.transactions
-          : [],
-        count: Array.isArray(data.transactions)
-          ? data.transactions.length
-          : 0,
-        updatedAt: new Date().toISOString()
-      },
-      {
-        headers: {
-          "Cache-Control": "no-store"
-        }
-      }
-    );
+    return Response.json({
+      mode: "DEMO",
+      periodDays: 1,
+      transactions,
+      count: transactions.length,
+      updatedAt: new Date().toISOString()
+    }, {
+      headers: { "Cache-Control": "no-store" }
+    });
+
   } catch {
-    return Response.json(
-      { error: "History service temporarily unavailable" },
-      { status: 502 }
-    );
+    return Response.json({
+      error: "History service unavailable"
+    }, { status: 502 });
   }
 }
+
