@@ -1,4 +1,5 @@
 
+
 const BASE_URL = "https://api-capital.backend-capital.com";
 const DEMO_URL = "https://demo-api-capital.backend-capital.com";
 
@@ -42,11 +43,44 @@ export async function onRequest({ request, env }) {
     return json({ error: "Method not allowed" }, 405);
   }
 
-  // Проверяем кэш перед обращением к Capital.com.
+  // Безопасный режим по умолчанию — Demo.
+  // Для реального счёта потребуется явно установить CAPITAL_DEMO=false.
+  const useDemo =
+    String(env.CAPITAL_DEMO || "true").toLowerCase() === "true";
+
+  const base = useDemo ? DEMO_URL : BASE_URL;
+  const mode = useDemo ? "DEMO" : "LIVE";
+
+  // Для Demo и Live используются отдельные секреты.
+  const apiKey = useDemo
+    ? env.DEMO_CAPITAL_API_KEY
+    : env.CAPITAL_API_KEY;
+
+  const password = useDemo
+    ? env.DEMO_CAPITAL_API_PASSWORD
+    : env.CAPITAL_API_PASSWORD;
+
+  const identifier = useDemo
+    ? env.DEMO_CAPITAL_IDENTIFIER
+    : env.CAPITAL_IDENTIFIER;
+
+  if (!apiKey || !password || !identifier) {
+    return json({
+      error: useDemo
+        ? "Не настроены секреты Capital.com Demo в Cloudflare"
+        : "Не настроены секреты Capital.com Live в Cloudflare",
+      mode
+    }, 500);
+  }
+
+  // Раздельный кэш, чтобы режимы не смешивались.
   const cache = caches.default;
   const cacheUrl = new URL(request.url);
 
-  cacheUrl.pathname = "/__cached_prices";
+  cacheUrl.pathname = useDemo
+    ? "/__cached_prices_demo"
+    : "/__cached_prices_live";
+
   cacheUrl.search = "";
 
   const cacheKey = new Request(cacheUrl.toString(), {
@@ -59,21 +93,6 @@ export async function onRequest({ request, env }) {
   } catch {
     // Продолжаем, если кэш недоступен.
   }
-
-  const apiKey = env.CAPITAL_API_KEY;
-  const password = env.CAPITAL_API_PASSWORD;
-  const identifier = env.CAPITAL_IDENTIFIER;
-
-  if (!apiKey || !password || !identifier) {
-    return json({
-      error: "Не настроены секреты Capital.com в Cloudflare"
-    }, 500);
-  }
-
-  const useDemo =
-    String(env.CAPITAL_DEMO || "").toLowerCase() === "true";
-
-  const base = useDemo ? DEMO_URL : BASE_URL;
 
   try {
     const session = await apiFetch(base + "/api/v1/session", {
@@ -96,7 +115,9 @@ export async function onRequest({ request, env }) {
       session.response.headers.get("X-SECURITY-TOKEN");
 
     if (!cst || !security) {
-      throw new Error("Capital.com не вернул токены сессии");
+      throw new Error(
+        "Capital.com не вернул токены сессии"
+      );
     }
 
     const headers = {
@@ -157,20 +178,22 @@ export async function onRequest({ request, env }) {
     const result = json({
       gold,
       bitcoin,
+      mode,
       updatedAt: new Date().toISOString()
     }, 200, true);
 
     try {
       await cache.put(cacheKey, result.clone());
     } catch {
-      // Ответ вернётся и без сохранения кэша.
+      // Ответ вернётся и без кэширования.
     }
 
     return result;
   } catch (error) {
     return json({
       error: "Ошибка Capital.com: " +
-        (error.message || "не удалось получить цены")
+        (error.message || "не удалось получить цены"),
+      mode
     }, 502);
   }
 }
