@@ -1,532 +1,150 @@
-<!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#10151d">
-<title>Gold & Bitcoin — Backtest Lab</title>
-<style>
-:root{color-scheme:dark;--bg:#10151d;--panel:#18212c;--line:#2b3949;--text:#edf3fa;--muted:#91a2b7;--green:#36d399;--red:#fb7185;--gold:#f5c451;--blue:#71b7ff}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-main{max-width:1100px;margin:auto;padding:18px}
-h1{font-size:25px;margin:0 0 5px}
-h2{font-size:18px;margin:0 0 14px}
-h3{font-size:15px;margin:0 0 10px}
-p{color:var(--muted);margin:5px 0 12px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin:14px 0}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
-.metric{background:#111923;border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
-.metric small{display:block;color:var(--muted);font-size:12px}
-.metric strong{display:block;font-size:21px;margin-top:5px;overflow-wrap:anywhere}
-label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
-input,select,button{font:inherit}
-input,select{width:100%;min-width:0;background:#101720;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px}
-.fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.field{min-width:0}
-button{border:0;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;background:var(--gold);color:#171717}
-button.secondary{background:#29394c;color:var(--text);border:1px solid var(--line)}
-button:disabled{opacity:.55;cursor:wait}
-.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
-.status{color:var(--muted);font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
-.good{color:var(--green)}.bad{color:var(--red)}.gold{color:var(--gold)}.blue{color:var(--blue)}
-.tablewrap{overflow:auto;max-height:470px;border:1px solid var(--line);border-radius:10px}
-table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
-th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line)}
-th{position:sticky;top:0;background:#202b38;color:var(--muted);z-index:1}
-tr:last-child td{border-bottom:0}
-.note{font-size:12px;color:var(--muted)}
-.pill{display:inline-block;padding:3px 8px;border:1px solid var(--line);border-radius:20px;color:var(--muted);font-size:12px}
-@media(max-width:700px){main{padding:12px}.grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.fields{grid-template-columns:repeat(2,minmax(0,1fr))}h1{font-size:22px}.panel{padding:12px}}
-</style>
-</head>
-<body>
-<main>
-  <header>
-    <h1>Gold & Bitcoin <span class="gold">Backtest Lab</span></h1>
-    <p>Историческая проверка стратегии Bollinger Bands + RSI + ADX + ATR.</p>
-    <span class="pill">Только backtest.html</span>
-    <span class="pill">Учитываются расходы</span>
-  </header>
-  <section class="panel">
-    <h2>1. Параметры тестирования</h2>
-    <div class="fields">
-      <div class="field">
-        <label for="asset">Инструмент</label>
-        <select id="asset">
-          <option value="both">Золото + Bitcoin</option>
-          <option value="gold">Только золото</option>
-          <option value="bitcoin">Только Bitcoin</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="tf">Таймфрейм</label>
-        <select id="tf">
-          <option value="5">5 минут</option>
-          <option value="15">15 минут</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="limit">Количество свечей</label>
-        <select id="limit">
-          <option value="250">250</option>
-          <option value="500">500</option>
-          <option value="1000" selected>1000</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="cost">Расходы на полный круг, % цены</label>
-        <input id="cost" type="number" min="0" max="5" step="0.01" value="0.10">
-      </div>
-      <div class="field">
-        <label for="capitalRisk">Риск на сделку, % капитала</label>
-        <input id="capitalRisk" type="number" min="0.1" max="10" step="0.1" value="1">
-      </div>
-      <div class="field">
-        <label for="maxBars">Максимум свечей в сделке</label>
-        <input id="maxBars" type="number" min="5" max="500" step="5" value="60">
-      </div>
-    </div>
-    <p class="note">Издержки — приблизительная модель комиссии и проскальзывания, а не фактические условия брокера. R рассчитывается относительно первоначального стоп-риска.</p>
-  </section>
-  <section class="panel">
-    <h2>2. Отдельные настройки стратегий</h2>
-    <p>Базовые значения сохраняются для сравнения. Для BTC можно использовать более гибкие условия независимо от золота.</p>
-    <div class="grid">
-      <div class="panel" style="margin:0">
-        <h3 class="gold">Золото XAU/USD</h3>
-        <div class="fields">
-          <div class="field"><label for="gBb">Bollinger period</label><input id="gBb" type="number" min="5" max="100" value="20"></div>
-          <div class="field"><label for="gDev">Отклонение BB</label><input id="gDev" type="number" min="0.5" max="4" step="0.1" value="2"></div>
-          <div class="field"><label for="gRsi">RSI period</label><input id="gRsi" type="number" min="3" max="50" value="14"></div>
-          <div class="field"><label for="gLow">RSI для покупки</label><input id="gLow" type="number" min="5" max="50" value="35"></div>
-          <div class="field"><label for="gHigh">RSI для продажи</label><input id="gHigh" type="number" min="50" max="95" value="65"></div>
-          <div class="field"><label for="gAdx">Максимум ADX</label><input id="gAdx" type="number" min="5" max="60" value="25"></div>
-          <div class="field"><label for="gAtr">Стоп, ATR ×</label><input id="gAtr" type="number" min="0.5" max="5" step="0.1" value="1.2"></div>
-          <div class="field"><label for="gRR">Минимум RR</label><input id="gRR" type="number" min="0.2" max="5" step="0.1" value="0.8"></div>
-        </div>
-      </div>
-      <div class="panel" style="margin:0">
-        <h3 class="blue">Bitcoin BTC/USD</h3>
-        <div class="fields">
-          <div class="field"><label for="bBb">Bollinger period</label><input id="bBb" type="number" min="5" max="100" value="20"></div>
-          <div class="field"><label for="bDev">Отклонение BB</label><input id="bDev" type="number" min="0.5" max="4" step="0.1" value="2"></div>
-          <div class="field"><label for="bRsi">RSI period</label><input id="bRsi" type="number" min="3" max="50" value="14"></div>
-          <div class="field"><label for="bLow">RSI для покупки</label><input id="bLow" type="number" min="5" max="50" value="30"></div>
-          <div class="field"><label for="bHigh">RSI для продажи</label><input id="bHigh" type="number" min="50" max="95" value="70"></div>
-          <div class="field"><label for="bAdx">Максимум ADX</label><input id="bAdx" type="number" min="5" max="60" value="30"></div>
-          <div class="field"><label for="bAtr">Стоп, ATR ×</label><input id="bAtr" type="number" min="0.5" max="5" step="0.1" value="1.5"></div>
-          <div class="field"><label for="bRR">Минимум RR</label><input id="bRR" type="number" min="0.2" max="5" step="0.1" value="0.8"></div>
-        </div>
-      </div>
-    </div>
-    <div class="actions">
-      <button id="run">Запустить бэктест</button>
-      <button id="compare" class="secondary">Сравнить варианты BTC</button>
-      <button id="csv" class="secondary" disabled>Экспорт сделок CSV</button>
-    </div>
-    <div id="status" class="status" style="margin-top:12px">Готов к тестированию.</div>
-  </section>
-  <section class="panel">
-    <h2>3. Результаты</h2>
-    <div id="results" class="grid">
-      <div class="metric"><small>Инструмент</small><strong>—</strong></div>
-      <div class="metric"><small>Сделок</small><strong>—</strong></div>
-    </div>
-  </section>
-  <section class="panel">
-    <h2>4. Сравнение параметров Bitcoin</h2>
-    <p>Варианты проверяются на одном доступном наборе свечей. Лучший вариант по этому периоду не обязательно будет лучшим в будущем.</p>
-    <div id="comparison" class="tablewrap">
-      <table><thead><tr><th>Вариант</th><th>Сделки</th><th>Win rate</th><th>Итог R</th><th>PF</th><th>Просадка R</th></tr></thead><tbody><tr><td colspan="6">Нажми «Сравнить варианты BTC».</td></tr></tbody></table>
-    </div>
-  </section>
-  <section class="panel">
-    <h2>5. Журнал сделок</h2>
-    <div id="trades" class="tablewrap">
-      <table><thead><tr><th>Актив</th><th>Вход</th><th>Направление</th><th>Цена входа</th><th>Цена выхода</th><th>Результат R</th><th>Причина</th></tr></thead><tbody><tr><td colspan="7">Сделки появятся после теста.</td></tr></tbody></table>
-    </div>
-  </section>
-  <section class="panel">
-    <h2>Как читать результаты</h2>
-    <p><b>Win rate</b> — процент прибыльных сделок. <b>Profit factor</b> — сумма валовой прибыли, делённая на абсолютную сумму валового убытка. <b>Просадка</b> — максимальное падение накопленного результата в R от предыдущего максимума.</p>
-    <p>Не выбирай параметры только по винрейту. Важны положительный итог после расходов, достаточное количество сделок и устойчивость на другом периоде. Данные теста не гарантируют будущую доходность.</p>
-  </section>
-</main>
-<script>
-"use strict";
-const $ = id => document.getElementById(id);
-let lastTrades = [];
-function number(id, fallback, min, max) {
-  const v = Number($(id).value);
-  if (!Number.isFinite(v)) return fallback;
-  return Math.min(max, Math.max(min, v));
-}
-function esc(v) {
-  return String(v ?? "").replace(/[&<>"']/g, c => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-  })[c]);
-}
-function fmt(v, digits=2) {
-  return Number.isFinite(v) ? v.toFixed(digits) : "—";
-}
-function signClass(v) {
-  return v > 0 ? "good" : v < 0 ? "bad" : "";
-}
-function normalizeCandles(raw) {
-  if (!Array.isArray(raw)) return [];
-  const out = [];
-  for (const x of raw) {
-    let c = null;
-    if (Array.isArray(x)) {
-      // Common OHLC arrays: [time, open, high, low, close, volume]
-      if (x.length >= 5) {
-        c = {time:x[0], open:Number(x[1]), high:Number(x[2]), low:Number(x[3]), close:Number(x[4])};
-      }
-    } else if (x && typeof x === "object") {
-      c = {
-        time:x.time ?? x.timestamp ?? x.t ?? x.date ?? x.datetime,
-        open:Number(x.open ?? x.o),
-        high:Number(x.high ?? x.h),
-        low:Number(x.low ?? x.l),
-        close:Number(x.close ?? x.c)
-      };
-    }
-    if (!c) continue;
-    c.open=Number(c.open); c.high=Number(c.high);
-    c.low=Number(c.low); c.close=Number(c.close);
-    if (![c.open,c.high,c.low,c.close].every(Number.isFinite)) continue;
-    if (c.high < c.low || c.close <= 0 || c.open <= 0) continue;
-    if (typeof c.time === "number" && c.time < 1e12) c.time *= 1000;
-    if (typeof c.time === "string" && /^\d+$/.test(c.time)) {
-      c.time=Number(c.time);
-      if (c.time < 1e12) c.time *= 1000;
-    }
-    out.push(c);
-  }
-  out.sort((a,b) => {
-    const ta=Number(a.time)||Date.parse(a.time)||0;
-    const tb=Number(b.time)||Date.parse(b.time)||0;
-    return ta-tb;
-  });
-  return out.filter((c,i,a) => i===0 || c.time!==a[i-1].time);
-}
-function findAssetArray(data, asset) {
-  if (!data) return [];
-  const keys = asset==="gold"
-    ? ["gold","xauusd","xau","XAUUSD"]
-    : ["bitcoin","btc","btcusd","BTCUSD"];
-  for (const k of keys) {
-    if (Array.isArray(data[k])) return data[k];
-    if (data[k] && Array.isArray(data[k].candles)) return data[k].candles;
-    if (data[k] && Array.isArray(data[k].data)) return data[k].data;
-  }
-  if (Array.isArray(data.candles)) return data.candles;
-  if (Array.isArray(data.data)) {
-    const match=data.data.filter(x => x && (
-      String(x.symbol||x.asset||"").toLowerCase().includes(asset==="gold"?"gold":"bitcoin") ||
-      String(x.symbol||x.asset||"").toLowerCase().includes(asset==="gold"?"xau":"btc")
-    ));
-    if (match.length) return match;
-  }
-  return [];
-}
-async function loadCandles(asset, tf, limit) {
-  // The project's endpoint returns gold and bitcoin candle arrays.
-  // Request the known endpoint format; use a minute source and aggregate locally
-  // when enough minute candles are available.
-  const url = "/api/candles?resolution=MINUTE";
-  const response = await fetch(url, {cache:"no-store"});
-  if (!response.ok) throw new Error("API /api/candles вернул HTTP " + response.status);
-  const data = await response.json();
-  let candles = normalizeCandles(findAssetArray(data, asset));
-  if (!candles.length) {
-    throw new Error("API ответил, но массив свечей для " + (asset==="gold"?"золота":"Bitcoin") + " не найден. Проверь формат ответа /api/candles.");
-  }
-  const step = tf * 60 * 1000;
-  const bucketed = new Map();
-  for (const c of candles) {
-    const time = Number(c.time) || Date.parse(c.time);
-    if (!Number.isFinite(time)) continue;
-    const bucket = Math.floor(time/step)*step;
-    const old = bucketed.get(bucket);
-    if (!old) bucketed.set(bucket, {
-      time:bucket, open:c.open, high:c.high, low:c.low, close:c.close
-    });
-    else {
-      old.high=Math.max(old.high,c.high);
-      old.low=Math.min(old.low,c.low);
-      old.close=c.close;
-    }
-  }
-  candles = Array.from(bucketed.values()).sort((a,b)=>a.time-b.time);
-  return candles.slice(-limit);
-}
-function sma(values, period) {
-  const out=Array(values.length).fill(null);
-  let sum=0;
-  for(let i=0;i<values.length;i++){
-    sum+=values[i];
-    if(i>=period) sum-=values[i-period];
-    if(i>=period-1) out[i]=sum/period;
-  }
-  return out;
-}
-function bollinger(closes, period, mult) {
-  const mid=sma(closes,period), upper=[], lower=[];
-  for(let i=0;i<closes.length;i++){
-    if(i<period-1){upper.push(null);lower.push(null);continue;}
-    let sum=0;
-    for(let j=i-period+1;j<=i;j++) sum+=(closes[j]-mid[i])**2;
-    const sd=Math.sqrt(sum/period);
-    upper.push(mid[i]+mult*sd);
-    lower.push(mid[i]-mult*sd);
-  }
-  return {mid,upper,lower};
-}
-function rsi(values, period) {
-  const out=Array(values.length).fill(null);
-  let gain=0,loss=0;
-  for(let i=1;i<values.length;i++){
-    const d=values[i]-values[i-1];
-    const g=Math.max(0,d), l=Math.max(0,-d);
-    if(i<=period){gain+=g;loss+=l;if(i===period){
-      gain/=period;loss/=period;
-      out[i]=loss===0?100:100-100/(1+gain/loss);
-    }} else {
-      gain=(gain*(period-1)+g)/period;
-      loss=(loss*(period-1)+l)/period;
-      out[i]=loss===0?100:100-100/(1+gain/loss);
-    }
-  }
-  return out;
-}
-function atr(candles, period) {
-  const tr=Array(candles.length).fill(null);
-  for(let i=1;i<candles.length;i++){
-    const c=candles[i], p=candles[i-1];
-    tr[i]=Math.max(c.high-c.low,Math.abs(c.high-p.close),Math.abs(c.low-p.close));
-  }
-  const out=Array(candles.length).fill(null);
-  let sum=0;
-  for(let i=1;i<candles.length;i++){
-    if(i<=period){sum+=tr[i]||0;if(i===period)out[i]=sum/period;}
-    else out[i]=((out[i-1]||0)*(period-1)+(tr[i]||0))/period;
-  }
-  return out;
-}
-function adx(candles, period=14) {
-  const n=candles.length, tr=Array(n).fill(null);
-  const plus=Array(n).fill(0), minus=Array(n).fill(0);
-  for(let i=1;i<n;i++){
-    const c=candles[i], p=candles[i-1];
-    tr[i]=Math.max(c.high-c.low,Math.abs(c.high-p.close),Math.abs(c.low-p.close));
-    const up=c.high-p.high, down=p.low-c.low;
-    plus[i]=up>down&&up>0?up:0;
-    minus[i]=down>up&&down>0?down:0;
-  }
-  const pdi=Array(n).fill(null), mdi=Array(n).fill(null), dx=Array(n).fill(null), out=Array(n).fill(null);
-  let trSum=0,pSum=0,mSum=0;
-  for(let i=1;i<n;i++){
-    if(i<=period){trSum+=tr[i]||0;pSum+=plus[i];mSum+=minus[i];}
-    else {trSum=trSum-(trSum/period)+(tr[i]||0);pSum=pSum-(pSum/period)+plus[i];mSum=mSum-(mSum/period)+minus[i];}
-    if(i>=period&&trSum>0){
-      pdi[i]=100*pSum/trSum;mdi[i]=100*mSum/trSum;
-      const denom=pdi[i]+mdi[i];
-      dx[i]=denom?100*Math.abs(pdi[i]-mdi[i])/denom:0;
-    }
-  }
-  let sum=0,count=0;
-  for(let i=0;i<n;i++){
-    if(dx[i]!==null){sum+=dx[i];count++;if(count===period)out[i]=sum/period;else if(count>period)out[i]=((out[i-1]||dx[i])*(period-1)+dx[i])/period;}
-  }
-  return out;
-}
-function getParams(asset) {
-  const p=asset==="gold"?"g":"b";
-  return {
-    bb:Math.round(number(p+"Bb",20,5,100)),
-    dev:number(p+"Dev",2,.5,4),
-    rsi:Math.round(number(p+"Rsi",14,3,50)),
-    low:number(p+"Low",asset==="gold"?35:30,5,50),
-    high:number(p+"High",asset==="gold"?65:70,50,95),
-    adx:number(p+"Adx",asset==="gold"?25:30,5,60),
-    atr:number(p+"Atr",asset==="gold"?1.2:1.5,.5,5),
-    rr:number(p+"RR",.8,.2,5)
-  };
-}
-function backtest(candles, asset, params, costsPct, maxBars) {
+
+function backtest(candles, asset, params, costsPct, maxBars, strategy="reversal") {
   const closes=candles.map(c=>c.close);
   const bb=bollinger(closes,params.bb,params.dev);
   const rs=rsi(closes,params.rsi);
   const at=atr(candles,14);
   const ax=adx(candles,14);
+
+  function ema(values, period) {
+    const out=Array(values.length).fill(null);
+    const k=2/(period+1);
+    let value=null;
+    for(let i=0;i<values.length;i++){
+      value=value===null?values[i]:values[i]*k+value*(1-k);
+      if(i>=period-1)out[i]=value;
+    }
+    return out;
+  }
+
+  const e9=ema(closes,9);
+  const e21=ema(closes,21);
   const trades=[];
   let pos=null;
   const minBars=Math.max(params.bb,params.rsi,28)+2;
+
   for(let i=minBars;i<candles.length;i++){
-    const c=candles[i], prev=candles[i-1];
+    const c=candles[i],prev=candles[i-1];
+
     if(pos){
       const held=i-pos.index;
-      let exit=null, reason="";
-      // Conservative assumption: if stop and target touch within one candle,
-      // the stop is assumed to execute first.
-      if(pos.side==="LONG" && c.low<=pos.stop){exit=pos.stop;reason="Стоп";}
-      else if(pos.side==="SHORT" && c.high>=pos.stop){exit=pos.stop;reason="Стоп";}
-      else if(pos.side==="LONG" && c.high>=pos.target){exit=pos.target;reason="Цель";}
-      else if(pos.side==="SHORT" && c.low<=pos.target){exit=pos.target;reason="Цель";}
-      else if(held>=maxBars){exit=c.close;reason="Лимит времени";}
+      let exit=null,reason="";
+
+      if(pos.side==="LONG" && c.low<=pos.stop){
+        exit=pos.stop;reason="Стоп";
+      } else if(pos.side==="SHORT" && c.high>=pos.stop){
+        exit=pos.stop;reason="Стоп";
+      } else if(pos.side==="LONG" && c.high>=pos.target){
+        exit=pos.target;reason="Цель";
+      } else if(pos.side==="SHORT" && c.low<=pos.target){
+        exit=pos.target;reason="Цель";
+      } else if(held>=maxBars){
+        exit=c.close;reason="Лимит времени";
+      }
+
       if(exit!==null){
-        const raw=pos.side==="LONG"?(exit-pos.entry)/pos.risk:(pos.entry-exit)/pos.risk;
-        const costPrice=pos.entry*(costsPct/100);
-        const costR=costPrice/pos.risk;
-        const net=raw-costR;
-        trades.push({asset,time:c.time,side:pos.side,entry:pos.entry,exit,risk:pos.risk,rawR:raw,costR, R:net,reason,held});
+        const raw=pos.side==="LONG"
+          ?(exit-pos.entry)/pos.risk
+          :(pos.entry-exit)/pos.risk;
+        const costR=(pos.entry*(costsPct/100))/pos.risk;
+        trades.push({
+          asset,time:c.time,side:pos.side,
+          entry:pos.entry,exit,risk:pos.risk,
+          rawR:raw,costR,R:raw-costR,reason,held,
+          strategy
+        });
         pos=null;
       }
       continue;
     }
-    if(!bb.lower[i]||!bb.upper[i]||!bb.mid[i]||!at[i]||!ax[i]||rs[i]===null)continue;
-    if(ax[i]>params.adx)continue;
+
+    if(!at[i] || !ax[i] || !e9[i] || !e21[i])continue;
+
     let side=null;
-    // Mean reversion: price closes back inside a band after a prior close outside.
-    if(prev.close<bb.lower[i-1] && c.close>=bb.lower[i] && rs[i]<=params.low)side="LONG";
-    else if(prev.close>bb.upper[i-1] && c.close<=bb.upper[i] && rs[i]>=params.high)side="SHORT";
+    let target=null;
+
+    if(strategy==="trend"){
+      // По тренду: EMA 9/21, направление свечи и ADX от 18.
+      if(ax[i]>=18 && e9[i]>e21[i] &&
+         c.close>e9[i] && c.close>c.open){
+        side="LONG";
+      } else if(ax[i]>=18 && e9[i]<e21[i] &&
+         c.close<e9[i] && c.close<c.open){
+        side="SHORT";
+      }
+    } else {
+      // Разворот: возврат внутрь полос Bollinger при слабом тренде.
+      if(!bb.lower[i] || !bb.upper[i] ||
+         !bb.mid[i] || rs[i]===null)continue;
+      if(ax[i]>params.adx)continue;
+
+      if(prev.close<bb.lower[i-1] &&
+         c.close>=bb.lower[i] && rs[i]<=params.low){
+        side="LONG";
+      } else if(prev.close>bb.upper[i-1] &&
+         c.close<=bb.upper[i] && rs[i]>=params.high){
+        side="SHORT";
+      }
+    }
+
     if(!side)continue;
+
     const entry=c.close;
     const risk=at[i]*params.atr;
-    if(!Number.isFinite(risk)||risk<=0)continue;
-    const target=bb.mid[i];
-    const reward=side==="LONG"?target-entry:entry-target;
-    if(reward<=0||reward/risk<params.rr)continue;
-    pos={side,entry,risk,stop:side==="LONG"?entry-risk:entry+risk,target,index:i};
+    if(!Number.isFinite(risk) || risk<=0)continue;
+
+    if(strategy==="trend"){
+      // Цель трендовой сделки — 1.5 первоначального риска.
+      target=side==="LONG"
+        ?entry+risk*1.5
+        :entry-risk*1.5;
+    } else {
+      target=bb.mid[i];
+      const reward=side==="LONG"?target-entry:entry-target;
+      if(reward<=0 || reward/risk<params.rr)continue;
+    }
+
+    pos={
+      side,entry,risk,
+      stop:side==="LONG"?entry-risk:entry+risk,
+      target,index:i
+    };
   }
-  // Close any remaining position at the final available close.
+
   if(pos && candles.length){
-    const c=candles[candles.length-1], exit=c.close;
-    const raw=pos.side==="LONG"?(exit-pos.entry)/pos.risk:(pos.entry-exit)/pos.risk;
+    const c=candles[candles.length-1],exit=c.close;
+    const raw=pos.side==="LONG"
+      ?(exit-pos.entry)/pos.risk
+      :(pos.entry-exit)/pos.risk;
     const costR=(pos.entry*(costsPct/100))/pos.risk;
-    trades.push({asset,time:c.time,side:pos.side,entry:pos.entry,exit,risk:pos.risk,rawR:raw,costR,R:raw-costR,reason:"Конец периода",held:candles.length-1-pos.index});
+    trades.push({
+      asset,time:c.time,side:pos.side,
+      entry:pos.entry,exit,risk:pos.risk,
+      rawR:raw,costR,R:raw-costR,
+      reason:"Конец периода",
+      held:candles.length-1-pos.index,
+      strategy
+    });
   }
-  let wins=0,grossWin=0,grossLoss=0,total=0,peak=0,eq=0,maxDD=0;
+
+  let wins=0,grossWin=0,grossLoss=0,total=0;
+  let peak=0,eq=0,maxDD=0;
+
   for(const t of trades){
     total+=t.R;
-    if(t.R>0){wins++;grossWin+=t.R;}else if(t.R<0)grossLoss+=Math.abs(t.R);
-    eq+=t.R;peak=Math.max(peak,eq);maxDD=Math.max(maxDD,peak-eq);
+    if(t.R>0){wins++;grossWin+=t.R;}
+    else if(t.R<0){grossLoss+=Math.abs(t.R);}
+    eq+=t.R;
+    peak=Math.max(peak,eq);
+    maxDD=Math.max(maxDD,peak-eq);
   }
-  return {asset,trades,count:trades.length,winRate:trades.length?wins/trades.length*100:0,total,profitFactor:grossLoss?grossWin/grossLoss:(grossWin?Infinity:0),maxDD,wins,losses:trades.length-wins,params};
+
+  return {
+    asset,strategy,trades,count:trades.length,
+    winRate:trades.length?wins/trades.length*100:0,
+    total,
+    profitFactor:grossLoss?grossWin/grossLoss:
+      (grossWin?Infinity:0),
+    maxDD,wins,losses:trades.length-wins,params
+  };
 }
-function timeLabel(v) {
-  const d=new Date(v);
-  return Number.isNaN(d.getTime())?String(v):d.toLocaleString("ru-RU");
-}
-function renderResult(r) {
-  const name=r.asset==="gold"?"Золото XAU/USD":"Bitcoin BTC/USD";
-  const pf=Number.isFinite(r.profitFactor)?fmt(r.profitFactor,2):(r.profitFactor===Infinity?"∞":"—");
-  return `<div class="panel" style="margin:0">
-    <h3 class="${r.asset==="gold"?"gold":"blue"}">${name}</h3>
-    <div class="metrics">
-      <div class="metric"><small>Сделок</small><strong>${r.count}</strong></div>
-      <div class="metric"><small>Win rate</small><strong>${fmt(r.winRate,1)}%</strong></div>
-      <div class="metric"><small>Итог</small><strong class="${signClass(r.total)}">${r.total>0?"+":""}${fmt(r.total)} R</strong></div>
-      <div class="metric"><small>Profit factor</small><strong>${pf}</strong></div>
-      <div class="metric"><small>Прибыльных</small><strong class="good">${r.wins}</strong></div>
-      <div class="metric"><small>Убыточных</small><strong class="bad">${r.losses}</strong></div>
-      <div class="metric"><small>Макс. просадка</small><strong class="bad">${fmt(r.maxDD)} R</strong></div>
-      <div class="metric"><small>Параметры</small><strong style="font-size:13px">${r.params.bb}/${r.params.dev} · RSI ${r.params.low}/${r.params.high} · ADX ${r.params.adx}</strong></div>
-    </div>
-  </div>`;
-}
-function renderTrades(trades) {
-  const rows=trades.slice().reverse().map(t=>`<tr>
-    <td>${t.asset==="gold"?"XAU/USD":"BTC/USD"}</td>
-    <td>${esc(timeLabel(t.time))}</td>
-    <td>${t.side}</td>
-    <td>${fmt(t.entry,5)}</td>
-    <td>${fmt(t.exit,5)}</td>
-    <td class="${signClass(t.R)}">${t.R>0?"+":""}${fmt(t.R)} R</td>
-    <td>${esc(t.reason)}</td>
-  </tr>`).join("");
-  $("trades").innerHTML=`<table><thead><tr><th>Актив</th><th>Время выхода</th><th>Направление</th><th>Вход</th><th>Выход</th><th>Результат</th><th>Причина</th></tr></thead><tbody>${rows||'<tr><td colspan="7">Сделок по текущим правилам нет.</td></tr>'}</tbody></table>`;
-}
-function renderComparison(results) {
-  const rows=results.map(r=>`<tr>
-    <td>${esc(r.name)}</td><td>${r.count}</td><td>${fmt(r.winRate,1)}%</td>
-    <td class="${signClass(r.total)}">${r.total>0?"+":""}${fmt(r.total)}</td>
-    <td>${Number.isFinite(r.profitFactor)?fmt(r.profitFactor,2):(r.profitFactor===Infinity?"∞":"—")}</td>
-    <td>${fmt(r.maxDD)}</td>
-  </tr>`).join("");
-  $("comparison").innerHTML=`<table><thead><tr><th>Вариант</th><th>Сделки</th><th>Win rate</th><th>Итог R</th><th>PF</th><th>Просадка R</th></tr></thead><tbody>${rows||'<tr><td colspan="6">Нет результатов.</td></tr>'}</tbody></table>`;
-}
-async function runMain() {
-  const btn=$("run");btn.disabled=true;$("compare").disabled=true;
-  $("status").textContent="Загружаю исторические свечи…";
-  try{
-    const assets=$("asset").value==="both"?["gold","bitcoin"]:[$("asset").value];
-    const tf=Number($("tf").value),limit=Number($("limit").value);
-    const cost=number("cost",.1,0,5),maxBars=Math.round(number("maxBars",60,5,500));
-    const allResults=[];
-    for(const asset of assets){
-      $("status").textContent="Загружаю данные: "+(asset==="gold"?"золото":"Bitcoin")+"…";
-      const candles=await loadCandles(asset,tf,limit);
-      if(candles.length<60)throw new Error("Недостаточно свечей для "+asset+": получено "+candles.length+".");
-      const params=getParams(asset);
-      allResults.push(backtest(candles,asset,params,cost,maxBars));
-    }
-    $("results").innerHTML=allResults.map(renderResult).join("");
-    lastTrades=allResults.flatMap(r=>r.trades);
-    renderTrades(lastTrades);
-    $("csv").disabled=!lastTrades.length;
-    $("status").textContent="Тест завершён. Доступно свечей: "+limit+" (или меньше, если API вернул меньше). Таймфрейм: "+tf+" минут. Результат относится только к доступному историческому периоду.";
-  }catch(e){
-    $("status").textContent="Ошибка: "+e.message;
-  }finally{btn.disabled=false;$("compare").disabled=false;}
-}
-async function compareBitcoin() {
-  const btn=$("compare");btn.disabled=true;$("run").disabled=true;
-  $("status").textContent="Сравниваю варианты параметров Bitcoin…";
-  try{
-    const tf=Number($("tf").value),limit=Number($("limit").value);
-    const cost=number("cost",.1,0,5),maxBars=Math.round(number("maxBars",60,5,500));
-    const candles=await loadCandles("bitcoin",tf,limit);
-    if(candles.length<60)throw new Error("Недостаточно свечей Bitcoin: "+candles.length);
-    const base=getParams("bitcoin");
-    const variants=[
-      {name:"Базовая BTC",...base},
-      {name:"RSI 25/75 · ADX 35",...base,low:25,high:75,adx:35},
-      {name:"RSI 30/70 · ADX 40",...base,low:30,high:70,adx:40},
-      {name:"BB 18 · отклонение 1.8",...base,bb:18,dev:1.8},
-      {name:"BB 24 · отклонение 2.2",...base,bb:24,dev:2.2},
-      {name:"RSI 35/65 · ADX 30",...base,low:35,high:65,adx:30},
-      {name:"Стоп 1.2 ATR",...base,atr:1.2},
-      {name:"Стоп 1.8 ATR",...base,atr:1.8}
-    ];
-    const results=variants.map(v=>{
-      const params={bb:v.bb,dev:v.dev,rsi:v.rsi,low:v.low,high:v.high,adx:v.adx,atr:v.atr,rr:v.rr};
-      const r=backtest(candles,"bitcoin",params,cost,maxBars);
-      return {...r,name:v.name};
-    });
-    renderComparison(results);
-    $("status").textContent="Сравнение завершено. Все варианты использовали один и тот же набор свечей и заданные расходы. Это подбор на доступном периоде, а не подтверждение будущей прибыльности.";
-  }catch(e){$("status").textContent="Ошибка сравнения: "+e.message;}
-  finally{btn.disabled=false;$("run").disabled=false;}
-}
-function exportCSV() {
-  if(!lastTrades.length)return;
-  const head=["asset","time","side","entry","exit","raw_R","cost_R","net_R","reason","bars_held"];
-  const rows=lastTrades.map(t=>[
-    t.asset,timeLabel(t.time),t.side,t.entry,t.exit,t.rawR,t.costR,t.R,t.reason,t.held
-  ]);
-  const csv=[head,...rows].map(row=>row.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
-  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");a.href=url;a.download="gold-bitcoin-backtest.csv";a.click();
-  URL.revokeObjectURL(url);
-}
-$("run").addEventListener("click",runMain);
-$("compare").addEventListener("click",compareBitcoin);
-$("csv").addEventListener("click",exportCSV);
-</script>
-</body>
-</html>
