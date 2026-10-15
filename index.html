@@ -1639,6 +1639,55 @@ setInterval(refreshAll,30000);
   refreshBtn.addEventListener("click", loadHistory);
   loadHistory();
 })();
-</script></body>
+</script>
+<script>
+(function () {
+  const key = "gb-strategy-mode";
+  let mode = localStorage.getItem(key) || "current";
+
+  function addTrendSelector() {
+    const page = document.getElementById("signalsPage");
+    if (!page || document.getElementById("gbStrategyMode")) return;
+
+    const box = document.createElement("div");
+    box.style.cssText =
+      "padding:14px;margin:12px 0;border:1px solid #34445c;border-radius:12px;background:#111827;color:#fff";
+
+    box.innerHTML = `
+      <div style="font-weight:bold;margin-bottom:10px">
+        Стратегия сигналов
+      </div>
+      <select id="gbStrategyMode"
+        style="width:100%;padding:12px;border-radius:8px;background:#1f2937;color:white">
+        <option value="current">Текущая стратегия</option>
+        <option value="trend">По тренду — тестовый режим</option>
+      </select>
+      <div id="gbStrategyInfo" style="font-size:12px;margin-top:10px;color:#b8c7dc">
+        Выбрана текущая стратегия.
+      </div>`;
+
+    page.insertBefore(box, page.firstChild);
+
+    const select = document.getElementById("gbStrategyMode");
+    const info = document.getElementById("gbStrategyInfo");
+    select.value = mode;
+
+    select.addEventListener("change", function () {
+      mode = select.value;
+      localStorage.setItem(key, mode);
+      info.textContent = mode === "trend"
+        ? "Тестовый режим: стратегия по тренду ещё не подключена к расчёту сигналов."
+        : "Выбрана текущая стратегия.";
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", addTrendSelector);
+  } else {
+    addTrendSelector();
+  }
+})();
+</script>
+</body>
 </html>
 
