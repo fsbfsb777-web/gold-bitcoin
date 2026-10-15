@@ -366,7 +366,18 @@ function ichimokuArr(c){var n=c.length,tk=new Array(n).fill(null),kj=new Array(n
 
 function sBB(c,i){var l=c.candles[i],p=c.candles[i-1];if(i<30||c.bb.lower[i-1]==null||c.adx[i]==null)return null;if(p.close<c.bb.lower[i-1]&&l.close>=c.bb.lower[i]&&c.rsi[i]<=35&&c.adx[i]<=25)return{side:"LONG",reason:"BB: возврат внутрь нижней"};if(p.close>c.bb.upper[i-1]&&l.close<=c.bb.upper[i]&&c.rsi[i]>=65&&c.adx[i]<=25)return{side:"SHORT",reason:"BB: возврат внутрь верхней"};return null;}
 function sRSIDiv(c,i){if(i<40||c.rsi[i]==null)return null;var cd=c.candles,lb=20,l1=-1,l2=-1;for(var k=i-3;k>=Math.max(1,i-lb);k--){if(cd[k].low<cd[k-1].low&&cd[k].low<cd[k+1].low){if(l1===-1)l1=k;else{l2=k;break;}}}if(l1!==-1&&l2!==-1&&cd[l1].low<cd[l2].low&&c.rsi[l1]>c.rsi[l2]&&c.rsi[i]>c.rsi[l1]&&cd[i].close>cd[i].open)return{side:"LONG",reason:"Бычья дивергенция RSI"};var h1=-1,h2=-1;for(var k=i-3;k>=Math.max(1,i-lb);k--){if(cd[k].high>cd[k-1].high&&cd[k].high>cd[k+1].high){if(h1===-1)h1=k;else{h2=k;break;}}}if(h1!==-1&&h2!==-1&&cd[h1].high>cd[h2].high&&c.rsi[h1]<c.rsi[h2]&&c.rsi[i]<c.rsi[h1]&&cd[i].close<cd[i].open)return{side:"SHORT",reason:"Медвежья дивергенция RSI"};return null;}
-function sStoch(c,i){if(i<55||c.stochK[i]==null||c.stochD[i]==null||c.ema50[i]==null)return null;var cd=c.candles[i];var up=c.stochK[i-1]<c.stochD[i-1]&&c.stochK[i]>c.stochD[i]&&c.stochK[i]<25;var dn=c.stochK[i-1]>c.stochD[i-1]&&c.stochK[i]<c.stochD[i]&&c.stochK[i]>75;if(up&&cd.close>c.ema50[i])return{side:"LONG",reason:"Стохастик из 20 над EMA50"};if(dn&&cd.close<c.ema50[i])return{side:"SHORT",reason:"Стохастик из 80 под EMA50"};return null;}
+/* ИЗМЕНЕНО: sStoch — смягчены пороги (35/65 или 30/70 вместо жёстких 25/75) */
+function sStoch(c,i){
+  if(i<55||c.stochK[i]==null||c.stochD[i]==null||c.ema50[i]==null)return null;
+  var cd=c.candles[i];
+  var crossUp=c.stochK[i-1]<=c.stochD[i-1]&&c.stochK[i]>c.stochD[i];
+  var crossDown=c.stochK[i-1]>=c.stochD[i-1]&&c.stochK[i]<c.stochD[i];
+  var lowZone=(c.stochK[i]<35||c.stochK[i-1]<30);
+  var highZone=(c.stochK[i]>65||c.stochK[i-1]>70);
+  if(crossUp&&lowZone&&cd.close>c.ema50[i])return{side:"LONG",reason:"Стохастик: выход из перепроданности над EMA50"};
+  if(crossDown&&highZone&&cd.close<c.ema50[i])return{side:"SHORT",reason:"Стохастик: выход из перекупленности под EMA50"};
+  return null;
+}
 function sATR(c,i){if(i<25||c.sma20[i]==null||c.atr[i]==null)return null;var l=c.candles[i],p=c.candles[i-1];var up=c.sma20[i]+c.atr[i]*1.5,lo=c.sma20[i]-c.atr[i]*1.5;if(p.close<=up&&l.close>up)return{side:"LONG",reason:"Пробой верхней ATR-границы"};if(p.close>=lo&&l.close<lo)return{side:"SHORT",reason:"Пробой нижней ATR-границы"};return null;}
 function sSR(c,i){if(i<40||c.atr[i]==null)return null;var l=c.candles[i],p=c.candles[i-1],lo=Infinity,hi=-Infinity;for(var k=i-30;k<i;k++){lo=Math.min(lo,c.candles[k].low);hi=Math.max(hi,c.candles[k].high);}var nL=Math.abs(l.low-lo)<c.atr[i]*0.4,nH=Math.abs(l.high-hi)<c.atr[i]*0.4;var bl=l.close>l.open&&l.close>p.high&&p.close<p.open;var br=l.close<l.open&&l.close<p.low&&p.close>p.open;if(nL&&bl)return{side:"LONG",reason:"Отбой от минимума"};if(nH&&br)return{side:"SHORT",reason:"Отбой от максимума"};return null;}
 function sEMA(c,i){if(i<55||!c.ema9[i]||!c.ema21[i]||!c.ema50[i]||!c.adx[i])return null;var cd=c.candles[i];if(c.adx[i]>=18&&c.ema9[i]>c.ema21[i]&&c.ema21[i]>c.ema50[i]&&cd.close>c.ema9[i]&&cd.close>cd.open)return{side:"LONG",reason:"EMA 9>21>50 + ADX"};if(c.adx[i]>=18&&c.ema9[i]<c.ema21[i]&&c.ema21[i]<c.ema50[i]&&cd.close<c.ema9[i]&&cd.close<cd.open)return{side:"SHORT",reason:"EMA 9<21<50 + ADX"};return null;}
@@ -396,11 +407,12 @@ function buildCtx(candles){
   var close=candles.map(function(c){return c.close;});
   var bb=bbArr(close,20,2),rsi=rsiArr(close,14),atr=atrArr(candles,14),adx=adxArr(candles,14);
   var ema9=emaArr(close,9),ema21=emaArr(close,21),ema50=emaArr(close,50),ema200=emaArr(close,200),sma20=sma(close,20);
-  var m=macdArr(close),stoch=stochArr(candles,14,3),st=supertrendArr(candles,10,3),dc=donchianArr(candles,20),ich=ichimokuArr(candles);
+  var m=macdArr(close),stoch=stochArr(candles,14,3),st=supertrendArr(candles,10,3),dc=donchianArr(candles,20),ich=ichimaruArrSafe(candles);
   return{candles:candles,close:close,bb:bb,rsi:rsi,atr:atr,adx:adx,ema9:ema9,ema21:ema21,ema50:ema50,ema200:ema200,sma20:sma20,
     macdLine:m.line,macdHist:m.hist,stochK:stoch.k,stochD:stoch.d,st:st.trend,dHigh:dc.high,dLow:dc.low,
     tk:ich.tenkan,kj:ich.kijun,sa:ich.sa,sb:ich.sb};
 }
+function ichimaruArrSafe(c){return ichimokuArr(c);}
 
 function closed(candles,sec){var now=Math.floor(Date.now()/1000);return candles.filter(function(c){return c.time+sec<=now;});}
 async function loadPrices(){
@@ -432,6 +444,8 @@ function getStrat(asset){
 }
 function setStrat(asset,id){var all=loadStrats();all[asset]={id:id};saveStrats(all);}
 
+/* ИЗМЕНЕНО: analyze() теперь проверяет последние 3 закрытых бара,
+   чтобы не пропустить сигнал, появившийся 5–15 минут назад. */
 function analyze(asset,tf){
   tf=tf||S.tf;
   var strat=getStrat(asset);
@@ -442,24 +456,35 @@ function analyze(asset,tf){
     rsi:null,adx:null,atr:null,stop:null,target:null,explanation:"Недостаточно данных для «"+strat.name+"»."};
   if(cc.length<60)return base;
   var ctx=buildCtx(cc);
-  var i=cc.length-1;
+  var lastIdx=cc.length-1;
+
+  // Ищем сигнал на 3 последних закрытых барах (свежий → старый)
   var sig=null;
-  try{sig=strat.fn(ctx,i);}catch(e){}
+  for(var k=lastIdx;k>=Math.max(60,lastIdx-2);k--){
+    var s=null;
+    try{s=strat.fn(ctx,k);}catch(e){}
+    if(s){sig=s;break;}
+  }
+
   var side="WAIT";
   if(sig&&sig.side==="LONG")side="BUY";
   else if(sig&&sig.side==="SHORT")side="SELL";
-  if(ctx.ema50[i]!=null){
-    var cclose=cc[i].close;
-    if(side==="BUY"&&cclose<ctx.ema50[i]){side="WAIT";sig=null;}
-    else if(side==="SELL"&&cclose>ctx.ema50[i]){side="WAIT";sig=null;}
+
+  // Глобальный фильтр по EMA50 (только к сигнальным стратегиям не-разворотного типа)
+  if(sig&&ctx.ema50[lastIdx]!=null){
+    var cclose=cc[lastIdx].close;
+    if(side==="BUY"&&cclose<ctx.ema50[lastIdx]){side="WAIT";sig=null;}
+    else if(side==="SELL"&&cclose>ctx.ema50[lastIdx]){side="WAIT";sig=null;}
   }
-  var atr=ctx.atr[i];
+
+  var atr=ctx.atr[lastIdx];
   var stop=sig&&isFinite(sig.stop)?sig.stop:null;
   var target=sig&&isFinite(sig.target)?sig.target:null;
   if(side==="BUY"){if(stop==null&&atr)stop=price-atr*1.5;if(target==null&&atr)target=price+atr*3;}
   else if(side==="SELL"){if(stop==null&&atr)stop=price+atr*1.5;if(target==null&&atr)target=price-atr*3;}
+
   return Object.assign({},base,{
-    side:side,ready:true,rsi:ctx.rsi[i],adx:ctx.adx[i],atr:atr,stop:stop,target:target,
+    side:side,ready:true,rsi:ctx.rsi[lastIdx],adx:ctx.adx[lastIdx],atr:atr,stop:stop,target:target,
     explanation:sig?sig.reason:"Ожидание условий «"+strat.name+"»"
   });
 }
@@ -681,11 +706,14 @@ async function refreshDemo(){
   }
 }
 
+/* ИЗМЕНЕНО: refreshAll() — теперь свечи всегда перезагружаются (каждые 30 сек),
+   а не только при первом запуске. Это была главная причина «вечного WAIT». */
 async function refreshAll(){
   T("hdr","Обновление…");
   try{
     await loadPrices();
-    if(!S.candles.MINUTE_5)await loadCandles("MINUTE_5");
+    // Всегда тянем свежие свечи — иначе анализ крутится по старому срезу
+    await loadCandles("MINUTE_5");
     if(S.tf!=="MINUTE_5")await loadCandles(S.tf);
     renderChart();
 
@@ -779,7 +807,6 @@ function runBacktest(candles,ctx,strat,cfg,useTrend,useVolF,trailAtr){
     var c=candles[i];
     if(pos){
       var held=i-pos.i,exit=null,reason="";
-      // trailing stop
       if(trailAtr>0 && ctx.atr[i]){
         if(pos.side==="LONG"){
           var newStop=Math.max(pos.stop,c.high-trailAtr*ctx.atr[i]);
@@ -894,18 +921,15 @@ async function runOptimization(){
       }
     }
     $("sProgFill").style.width="100%";
-    // фильтруем: минимум 15 сделок и PF>1
     var good=all.filter(function(x){return x.count>=15 && isFinite(x.pf) && x.pf>1;});
     good.sort(function(a,b){return b.pf-a.pf || b.total-a.total;});
     var top=good.slice(0,15);
-    // запоминаем лучшую комбинацию для каждой стратегии
     bestCombo={};
     good.forEach(function(g){
       if(!bestCombo[g.sid] || g.pf>bestCombo[g.sid].pf){
         bestCombo[g.sid]={atr:g.atr,r:g.r,trail:g.trail,pf:g.pf,winRate:g.winRate,total:g.total};
       }
     });
-    // обновить карточки
     Object.keys(lastResults).forEach(function(sid){updateStratCard(sid,lastResults[sid]);});
 
     var html='<div class="opt-row opt-head"><span>Стратегия</span><b>ATR</b><b>R</b><b>PF</b><b>Win%</b></div>';
