@@ -317,7 +317,7 @@ th{background:#202b38;color:var(--muted);position:sticky;top:0}
 
 <div class="panel">
 <div class="ptitle">💼 Demo-счёт</div>
-<div class="sub" style="margin-bottom:10px">Capital.com · только чтение · обновление 30 сек</div>
+<div class="sub" style="margin-bottom:10px">Capital.com · только чтение · обновление 60 сек</div>
 <div class="metrics">
 <div class="metric"><small>Баланс</small><b id="dcBal">—</b></div>
 <div class="metric"><small>Доступно</small><b id="dcAvl">—</b></div>
@@ -533,7 +533,7 @@ var STRATS=[
   {id:"h1swing",    name:"🕐 H1 MACD+EMA200",   desc:"MACD cross с фильтром EMA200",          fn:sH1Swing,       tag:"Часовые"}
 ];
 
-/* ============ ДИАГНОСТИКА УСЛОВИЙ ДЛЯ ЖИВОГО РЫНКА ============ */
+/* ============ ДИАГНОСТИКА УСЛОВИЙ ============ */
 var STRAT_CHECKS = {
   scalpPB: function(c,i){
     if(i<60||!c.ema50[i]||!c.ema9[i]||!c.ema21[i]||!c.rsi[i])return[];
@@ -542,18 +542,18 @@ var STRAT_CHECKS = {
     var dn=c.ema9[i]<c.ema21[i]&&c.ema21[i]<c.ema50[i];
     if(up)return[
       {name:"Тренд EMA9>21>50",ok:true},
-      {name:"Касание EMA50",ok:cd.low<=c.ema50[i]},
+      {name:"Касание EMA50 (сигнал)",ok:cd.low<=c.ema50[i]},
       {name:"Отскок вверх",ok:cd.close>c.ema50[i]&&cd.close>cd.open},
       {name:"RSI 40–65",ok:c.rsi[i]>40&&c.rsi[i]<65}
     ];
     if(dn)return[
       {name:"Тренд EMA9<21<50",ok:true},
-      {name:"Касание EMA50",ok:cd.high>=c.ema50[i]},
+      {name:"Касание EMA50 (сигнал)",ok:cd.high>=c.ema50[i]},
       {name:"Отскок вниз",ok:cd.close<c.ema50[i]&&cd.close<cd.open},
       {name:"RSI 35–60",ok:c.rsi[i]<60&&c.rsi[i]>35}
     ];
     return[
-      {name:"EMA9>21>50 или EMA9<21<50",ok:false},
+      {name:"Тренд EMA9>21>50 или EMA9<21<50 (сигнал)",ok:false},
       {name:"Касание EMA50",ok:false},
       {name:"Отскок свечой",ok:false},
       {name:"RSI в рабочем диапазоне",ok:c.rsi[i]>35&&c.rsi[i]<65}
@@ -562,26 +562,28 @@ var STRAT_CHECKS = {
   scalpEMA: function(c,i){
     if(i<30||!c.ema9[i]||!c.ema21[i]||!c.rsi[i])return[];
     var cd=c.candles[i];
+    var upCross = c.ema9[i-1]<=c.ema21[i-1] && c.ema9[i]>c.ema21[i];
+    var dnCross = c.ema9[i-1]>=c.ema21[i-1] && c.ema9[i]<c.ema21[i];
     var gap=Math.abs(c.ema9[i]-c.ema21[i])/cd.close*100;
     return[
-      {name:"EMA9 близко к EMA21 (<0.05%)",ok:gap<0.05},
-      {name:"RSI 28–72",ok:c.rsi[i]>28&&c.rsi[i]<72},
-      {name:"Свеча направленная",ok:cd.close>cd.open||cd.close<cd.open},
-      {name:"Наличие ATR",ok:!!c.atr[i]}
+      {name:"Пересечение EMA9/EMA21 на этой свече (сигнал)", ok:upCross||dnCross},
+      {name:"EMA9 сблизились с EMA21 (<0.05%)", ok:gap<0.05},
+      {name:"RSI 28–72", ok:c.rsi[i]>28&&c.rsi[i]<72},
+      {name:"Свеча имеет тело", ok:Math.abs(cd.close-cd.open)>0}
     ];
   },
   momentum: function(c,i){
     if(i<25||!c.rsi[i])return[];
     var cd=c.candles;
-    var up2=cd[i].close>cd[i].open&&cd[i-1].close>cd[i-1].open;
-    var dn2=cd[i].close<cd[i].open&&cd[i-1].close<cd[i-1].open;
+    var up3 = cd[i].close>cd[i].open && cd[i-1].close>cd[i-1].open && cd[i-2].close>cd[i-2].open;
+    var dn3 = cd[i].close<cd[i].open && cd[i-1].close<cd[i-1].open && cd[i-2].close<cd[i-2].open;
     var body=Math.abs(cd[i].close-cd[i].open);
     var avg=(Math.abs(cd[i].close-cd[i].open)+Math.abs(cd[i-1].close-cd[i-1].open)+Math.abs(cd[i-2].close-cd[i-2].open))/3;
     return[
-      {name:"2+ свечи в одну сторону",ok:up2||dn2},
-      {name:"Тело ≥ 80% среднего",ok:body>=avg*0.8},
-      {name:"RSI 20–80",ok:c.rsi[i]>20&&c.rsi[i]<80},
-      {name:"Пробой high/low",ok:cd[i].close>cd[i-1].high||cd[i].close<cd[i-1].low}
+      {name:"3 свечи в одну сторону (сигнал)", ok:up3||dn3},
+      {name:"Тело ≥ 80% среднего", ok:body>=avg*0.8},
+      {name:"RSI подтверждает направление", ok:(up3&&c.rsi[i]>55&&c.rsi[i]<80)||(dn3&&c.rsi[i]<45&&c.rsi[i]>20)||(!up3&&!dn3&&c.rsi[i]>20&&c.rsi[i]<80)},
+      {name:"Пробой high/low прошлой свечи", ok:cd[i].close>cd[i-1].high||cd[i].close<cd[i-1].low}
     ];
   },
   vwap: function(c,i){
@@ -592,7 +594,7 @@ var STRAT_CHECKS = {
     var vwap=sumV>0?sumPV/sumV:cd.close;
     var dist=(cd.close-vwap)/vwap*100;
     return[
-      {name:"Отклонение от VWAP (>0.15%)",ok:Math.abs(dist)>0.15},
+      {name:"Отклонение от VWAP (>0.15%) (сигнал)",ok:Math.abs(dist)>0.15},
       {name:"Свеча в сторону возврата",ok:(dist<0&&cd.close>cd.open)||(dist>0&&cd.close<cd.open)},
       {name:"RSI 25–75",ok:c.rsi[i]>25&&c.rsi[i]<75},
       {name:"Наличие ATR",ok:!!c.atr[i]}
@@ -671,7 +673,7 @@ function analyze(asset,tf){
     else if(side==="SELL"&&cclose>ctx.ema50[lastIdx]){side="WAIT";sig=null;}
   }
 
-  // Диагностика пошаговых условий (что мешает сигналу)
+  // Диагностика пошаговых условий
   var readiness=0, checks=[];
   if(STRAT_CHECKS[strat.id]){
     try{
@@ -710,10 +712,9 @@ function autoAdd(s){
 function closeOpen(){
   var changed=false;
   var now=Date.now();
-  var MAX_AGE_MS = 6*3600*1000; // авто-закрытие по возрасту — 6 часов
+  var MAX_AGE_MS = 6*3600*1000;
   for(var t of S.trades){
     if(!t.auto||t.status!=="OPEN")continue;
-    // авто-закрытие "зависших" сделок
     var createdTs = parseInt(String(t.id).split("-")[0],10);
     if(createdTs && (now - createdTs) > MAX_AGE_MS){
       var pAge = S.price[t.asset];
@@ -768,13 +769,18 @@ function renderPrices(){
   T("cprice","Цена: "+(S.price[S.asset]?f(S.price[S.asset]):"—"));
 }
 
-/* ============ ОБНОВЛЁННЫЙ signalScore ============ */
+/* ============ signalScore — учитывает главное условие ============ */
 function signalScore(s){
   if(!s) return 0;
   if(s.side==="BUY"||s.side==="SELL") return 100;
-  // если есть пошаговые проверки — берём их как базу (30…95%)
   if(s.checks && s.checks.length){
-    return Math.max(20, Math.min(95, Math.round(30 + s.readiness*0.65)));
+    var okN = s.checks.filter(function(x){return x.ok;}).length;
+    var total = s.checks.length;
+    var readiness = total ? Math.round(okN/total*100) : 0;
+    // Главный пункт (пересечение/паттерн) не выполнен — не выше 60%
+    if(!s.checks[0].ok) return Math.max(20, Math.min(60, Math.round(20 + readiness*0.4)));
+    // Главный есть, но не все остальные — не выше 85%
+    return Math.max(40, Math.min(85, Math.round(40 + readiness*0.45)));
   }
   if(!s.ready) return 5;
   var score=0;
@@ -972,14 +978,8 @@ if($("moNotifyBtn"))$("moNotifyBtn").addEventListener("click",async function(){
     alert("⚠️ Уведомления работают только на HTTPS или localhost.\n\nСейчас страница открыта по небезопасному протоколу (file:// или http://).\n\nРешение: добавь страницу на главный экран телефона и открой как приложение.");
     return;
   }
-  if(Notification.permission === "granted"){
-    alert("✅ Уведомления уже разрешены.");
-    return;
-  }
-  if(Notification.permission === "denied"){
-    alert("❌ Уведомления запрещены в настройках браузера.\n\nЗайди в Настройки браузера → Уведомления и разреши их для этой страницы.");
-    return;
-  }
+  if(Notification.permission === "granted"){alert("✅ Уведомления уже разрешены.");return;}
+  if(Notification.permission === "denied"){alert("❌ Уведомления запрещены в настройках браузера.\n\nЗайди в Настройки браузера → Уведомления и разреши их для этой страницы.");return;}
   try{
     var p = await Notification.requestPermission();
     if(p === "granted"){alert("✅ Уведомления разрешены!");}
@@ -991,11 +991,46 @@ if($("moNotifyBtn"))$("moNotifyBtn").addEventListener("click",async function(){
   }
 });
 
+/* ============ Demo-счёт: soft-throttle + backoff при 429 ============ */
+var demoBackoffMs = 30000;
+var demoLastCall = 0;
+var demoLastErr = 0;
+var demoConsecutiveErr = 0;
+
+function demoRefreshSoft(){
+  var now = Date.now();
+  if(now - demoLastCall < 15000) return;
+  refreshDemo();
+}
+
 async function refreshDemo(){
+  var now = Date.now();
+  demoLastCall = now;
+
+  // пауза после ошибки (backoff): 30 → 60 → 120 → 240 → 300 сек
+  if(demoLastErr && now - demoLastErr < demoBackoffMs){
+    var left = Math.round((demoBackoffMs - (now - demoLastErr))/1000);
+    T("dcUpd","⏸ Пауза после ошибки API. Возобновление через "+left+" сек.");
+    return;
+  }
+
   try{
     var r=await fetch("/api/account",{cache:"no-store",headers:{"Accept":"application/json"}});
     var d=await r.json();
+
+    if(r.status===429 || (d && d.error && String(d.error).indexOf("too-many")>=0)){
+      demoConsecutiveErr++;
+      demoLastErr = Date.now();
+      demoBackoffMs = Math.min(300000, 30000 * Math.pow(2, demoConsecutiveErr-1));
+      throw new Error("Capital.com: превышен лимит запросов (429). Пауза "+Math.round(demoBackoffMs/1000)+" сек.");
+    }
     if(!r.ok||d.error)throw new Error(d.error||("HTTP "+r.status));
+
+    // успех — сбрасываем backoff
+    demoConsecutiveErr = 0;
+    demoLastErr = 0;
+    demoBackoffMs = 30000;
+
     T("dcBal",money(d.balance));
     T("dcAvl",money(d.available));
     T("dcDep",money(d.deposit));
@@ -1013,7 +1048,7 @@ async function refreshDemo(){
     }
     T("dcUpd","Обновлено: "+new Date().toLocaleTimeString("ru-RU"));
   }catch(e){
-    T("dcUpd","Demo API недоступен: "+(e.message||e));
+    T("dcUpd","Demo API: "+(e.message||e));
     T("dcBal","$—");T("dcAvl","—");T("dcDep","—");
     var pEl2=$("dcPnl");if(pEl2){pEl2.textContent="—";pEl2.style.color="#edf3fb";}
     var box=$("dcPos");if(box)box.innerHTML='<div class="sub">Нет данных. Backend не отвечает.</div>';
@@ -1120,7 +1155,6 @@ function updateStratCard(sid,r){
   }
 }
 
-/* ============ ПАГИНАЦИЯ: до 5000 свечей ============ */
 async function loadTestCandles(asset,tf,limit){
   var key=Object.keys(TF_MAP).find(function(k){return TF_SEC[k]===tf*60;})||"MINUTE_5";
   var interval=TF_MAP[key];
@@ -1140,21 +1174,17 @@ async function loadTestCandles(asset,tf,limit){
   return out.slice(-want);
 }
 
-/* ============ БЭКТЕСТ: без look-ahead + двусторонние издержки ============ */
 function runBacktest(candles,ctx,strat,cfg,useTrend,useVolF,trailAtr){
   var trades=[],pos=null;
   for(var i=60;i<candles.length;i++){
     var c=candles[i];
     if(pos){
       var held=i-pos.i,exit=null,reason="";
-
-      // 1) СНАЧАЛА проверяем выход по СТАРОМУ стопу/цели
       if(pos.side==="LONG"&&c.low<=pos.stop){exit=pos.stop;reason="Стоп";}
       else if(pos.side==="SHORT"&&c.high>=pos.stop){exit=pos.stop;reason="Стоп";}
       else if(pos.side==="LONG"&&c.high>=pos.target){exit=pos.target;reason="Цель";}
       else if(pos.side==="SHORT"&&c.low<=pos.target){exit=pos.target;reason="Цель";}
       else if(held>=cfg.bars){exit=c.close;reason="Тайм-аут";}
-      // 2) trailing двигаем ТОЛЬКО если сделка ещё жива
       else if(trailAtr>0 && ctx.atr[i]){
         if(pos.side==="LONG"){
           var ns=Math.max(pos.stop, c.high - trailAtr*ctx.atr[i]);
@@ -1164,10 +1194,8 @@ function runBacktest(candles,ctx,strat,cfg,useTrend,useVolF,trailAtr){
           if(ns2<pos.stop)pos.stop=ns2;
         }
       }
-
       if(exit!==null){
         var raw=pos.side==="LONG"?(exit-pos.entry)/pos.risk:(pos.entry-exit)/pos.risk;
-        // двусторонние издержки: половина на вход, половина на выход
         var costR=((pos.entry+exit)*(cfg.cost/100)/2)/pos.risk;
         trades.push({time:c.time,side:pos.side,entry:pos.entry,exit:exit,R:raw-costR,reason:reason+(pos.reason?" · "+pos.reason:"")});
         pos=null;
@@ -1176,7 +1204,6 @@ function runBacktest(candles,ctx,strat,cfg,useTrend,useVolF,trailAtr){
     }
     var sig=strat.fn(ctx,i);if(!sig)continue;
 
-    // EMA50-фильтр только для трендовых стратегий (не counter-trend)
     if(useTrend && !strat.counterTrend && ctx.ema50 && ctx.ema50[i]!=null){
       if(sig.side==="LONG" && c.close < ctx.ema50[i])continue;
       if(sig.side==="SHORT" && c.close > ctx.ema50[i])continue;
@@ -1333,7 +1360,7 @@ function switchTab(n){
   document.querySelectorAll("[data-tab]").forEach(function(b){b.classList.toggle("on",b.dataset.tab===n);});
   if(n==="trades")renderTrades();
   if(n==="strategy")renderStrategies();
-  if(n==="account"){renderMonUI();refreshDemo();}
+  if(n==="account"){renderMonUI();demoRefreshSoft();}
   if(n==="market"&&S.chart)setTimeout(function(){S.chart.applyOptions({width:$("chart").clientWidth,height:$("chart").clientHeight});renderChart();},50);
 }
 
@@ -1379,7 +1406,7 @@ renderMonUI();
 refreshAll();
 refreshDemo();
 setInterval(refreshAll,30000);
-setInterval(refreshDemo,30000);
+setInterval(refreshDemo,60000);
 </script>
 </body>
 </html>
