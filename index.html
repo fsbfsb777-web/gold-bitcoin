@@ -366,7 +366,6 @@ function ichimokuArr(c){var n=c.length,tk=new Array(n).fill(null),kj=new Array(n
 
 function sBB(c,i){var l=c.candles[i],p=c.candles[i-1];if(i<30||c.bb.lower[i-1]==null||c.adx[i]==null)return null;if(p.close<c.bb.lower[i-1]&&l.close>=c.bb.lower[i]&&c.rsi[i]<=35&&c.adx[i]<=25)return{side:"LONG",reason:"BB: возврат внутрь нижней"};if(p.close>c.bb.upper[i-1]&&l.close<=c.bb.upper[i]&&c.rsi[i]>=65&&c.adx[i]<=25)return{side:"SHORT",reason:"BB: возврат внутрь верхней"};return null;}
 function sRSIDiv(c,i){if(i<40||c.rsi[i]==null)return null;var cd=c.candles,lb=20,l1=-1,l2=-1;for(var k=i-3;k>=Math.max(1,i-lb);k--){if(cd[k].low<cd[k-1].low&&cd[k].low<cd[k+1].low){if(l1===-1)l1=k;else{l2=k;break;}}}if(l1!==-1&&l2!==-1&&cd[l1].low<cd[l2].low&&c.rsi[l1]>c.rsi[l2]&&c.rsi[i]>c.rsi[l1]&&cd[i].close>cd[i].open)return{side:"LONG",reason:"Бычья дивергенция RSI"};var h1=-1,h2=-1;for(var k=i-3;k>=Math.max(1,i-lb);k--){if(cd[k].high>cd[k-1].high&&cd[k].high>cd[k+1].high){if(h1===-1)h1=k;else{h2=k;break;}}}if(h1!==-1&&h2!==-1&&cd[h1].high>cd[h2].high&&c.rsi[h1]<c.rsi[h2]&&c.rsi[i]<c.rsi[h1]&&cd[i].close<cd[i].open)return{side:"SHORT",reason:"Медвежья дивергенция RSI"};return null;}
-/* ИЗМЕНЕНО: sStoch — смягчены пороги (35/65 или 30/70 вместо жёстких 25/75) */
 function sStoch(c,i){
   if(i<55||c.stochK[i]==null||c.stochD[i]==null||c.ema50[i]==null)return null;
   var cd=c.candles[i];
@@ -407,12 +406,11 @@ function buildCtx(candles){
   var close=candles.map(function(c){return c.close;});
   var bb=bbArr(close,20,2),rsi=rsiArr(close,14),atr=atrArr(candles,14),adx=adxArr(candles,14);
   var ema9=emaArr(close,9),ema21=emaArr(close,21),ema50=emaArr(close,50),ema200=emaArr(close,200),sma20=sma(close,20);
-  var m=macdArr(close),stoch=stochArr(candles,14,3),st=supertrendArr(candles,10,3),dc=donchianArr(candles,20),ich=ichimaruArrSafe(candles);
+  var m=macdArr(close),stoch=stochArr(candles,14,3),st=supertrendArr(candles,10,3),dc=donchianArr(candles,20),ich=ichimokuArr(candles);
   return{candles:candles,close:close,bb:bb,rsi:rsi,atr:atr,adx:adx,ema9:ema9,ema21:ema21,ema50:ema50,ema200:ema200,sma20:sma20,
     macdLine:m.line,macdHist:m.hist,stochK:stoch.k,stochD:stoch.d,st:st.trend,dHigh:dc.high,dLow:dc.low,
     tk:ich.tenkan,kj:ich.kijun,sa:ich.sa,sb:ich.sb};
 }
-function ichimaruArrSafe(c){return ichimokuArr(c);}
 
 function closed(candles,sec){var now=Math.floor(Date.now()/1000);return candles.filter(function(c){return c.time+sec<=now;});}
 async function loadPrices(){
@@ -444,8 +442,6 @@ function getStrat(asset){
 }
 function setStrat(asset,id){var all=loadStrats();all[asset]={id:id};saveStrats(all);}
 
-/* ИЗМЕНЕНО: analyze() теперь проверяет последние 3 закрытых бара,
-   чтобы не пропустить сигнал, появившийся 5–15 минут назад. */
 function analyze(asset,tf){
   tf=tf||S.tf;
   var strat=getStrat(asset);
@@ -470,7 +466,7 @@ function analyze(asset,tf){
   if(sig&&sig.side==="LONG")side="BUY";
   else if(sig&&sig.side==="SHORT")side="SELL";
 
-  // Глобальный фильтр по EMA50 (только к сигнальным стратегиям не-разворотного типа)
+  // Глобальный фильтр по EMA50
   if(sig&&ctx.ema50[lastIdx]!=null){
     var cclose=cc[lastIdx].close;
     if(side==="BUY"&&cclose<ctx.ema50[lastIdx]){side="WAIT";sig=null;}
@@ -545,15 +541,54 @@ function renderPrices(){
   T("pb2",S.price.bitcoin?f(S.price.bitcoin):"—");
   T("cprice","Цена: "+(S.price[S.asset]?f(S.price[S.asset]):"—"));
 }
+
+/* ============ ИЗМЕНЕНО: динамическая оценка силы сигнала ============ */
+function signalScore(s){
+  if(!s) return 0;
+  // Есть реальный сигнал — 100%
+  if(s.side === "BUY" || s.side === "SELL") return 100;
+  var sc = 40; // базовый минимум для WAIT
+  // RSI близко к крайним зонам — рынок "нагрет" и сигнал ближе
+  if(s.rsi != null){
+    if(s.rsi <= 25 || s.rsi >= 75) sc += 25;
+    else if(s.rsi <= 35 || s.rsi >= 65) sc += 15;
+    else if(s.rsi <= 45 || s.rsi >= 55) sc += 5;
+  }
+  // ADX — сила тренда
+  if(s.adx != null){
+    if(s.adx >= 30) sc += 20;
+    else if(s.adx >= 22) sc += 12;
+    else if(s.adx >= 15) sc += 6;
+  }
+  return Math.min(95, Math.round(sc));
+}
+
 function renderSignals(){
   for(var a of ["gold","bitcoin"]){
-    var s=S.sig[a],side=s?s.side:"WAIT",g=a==="gold";
-    var e1=$(g?"sg":"sb");if(e1){e1.className="qsig "+cls(side);e1.textContent=side+(s&&s.ready?" · "+Math.round(70):"");}
-    var l1=$(g?"lamp-g":"lamp-b");if(l1)l1.className="lamp "+cls(side);
-    var l2=$(g?"lamp-g2":"lamp-b2");if(l2)l2.className="lamp "+cls(side);
-    var e2=$(g?"sg2":"sb2");if(e2){e2.className="qsig "+cls(side);e2.textContent=side;}
+    var s = S.sig[a], side = s ? s.side : "WAIT", g = a === "gold";
+    var score = signalScore(s);
+
+    // Большая карточка вверху (Рынок)
+    var e1 = $(g ? "sg" : "sb");
+    if(e1){
+      e1.className = "qsig " + cls(side);
+      e1.textContent = side + " · " + score + "%";
+    }
+
+    // Лампочки
+    var l1 = $(g ? "lamp-g" : "lamp-b"); if(l1) l1.className = "lamp " + cls(side);
+    var l2 = $(g ? "lamp-g2" : "lamp-b2"); if(l2) l2.className = "lamp " + cls(side);
+
+    // Карточки во вкладке «Сигналы»
+    var e2 = $(g ? "sg2" : "sb2");
+    if(e2){
+      e2.className = "qsig " + cls(side);
+      e2.textContent = side + " · " + score + "%";
+    }
   }
 }
+/* ============ конец изменённого блока ============ */
+
 function renderMarket(){
   var s=S.sig[S.asset],side=s?s.side:"WAIT";
   T("ctitle",NAME[S.asset]);
@@ -706,8 +741,6 @@ async function refreshDemo(){
   }
 }
 
-/* ИЗМЕНЕНО: refreshAll() — теперь свечи всегда перезагружаются (каждые 30 сек),
-   а не только при первом запуске. Это была главная причина «вечного WAIT». */
 async function refreshAll(){
   T("hdr","Обновление…");
   try{
