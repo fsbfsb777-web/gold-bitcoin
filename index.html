@@ -43,7 +43,7 @@ main{max-width:900px;margin:auto;padding:7px 8px calc(75px + env(safe-area-inset
 .buy{color:var(--green)!important}
 .sell{color:var(--red)!important}
 .wait{color:var(--gold)!important}
-.timeframes{display:flex;gap:5px}
+.timeframes{display:flex;gap:5px;margin-bottom:6px}
 .timeframes button{flex:1;min-width:0;padding:7px 3px;font-size:11px}
 .panel{padding:9px;margin-bottom:8px}
 .panel-title{font-size:13px;font-weight:800;margin-bottom:8px}
@@ -51,7 +51,6 @@ main{max-width:900px;margin:auto;padding:7px 8px calc(75px + env(safe-area-inset
 .chart-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 2px 7px;flex-wrap:wrap}
 .chart-heading strong{font-size:12px}
 .chart-heading span{font-size:10px;color:var(--muted)}
-.timeframes{margin-bottom:6px}
 #chart{width:100%;height:clamp(245px,37vh,355px);overflow:hidden;touch-action:pan-y}
 .chart-tools{display:flex;justify-content:space-between;align-items:center;gap:5px;margin-top:5px}
 .chart-tools button{font-size:10px;padding:6px 7px;white-space:nowrap}
@@ -542,7 +541,7 @@ main{padding-left:5px;padding-right:5px;padding-top:5px}
 <script>
 "use strict";
 
-/* ===== КОНСТАНТЫ ===== */
+/* ========== КОНСТАНТЫ ========== */
 const RESOLUTIONS=["MINUTE","MINUTE_5","MINUTE_15","HOUR","HOUR_4"];
 const TF_SECONDS={MINUTE:60,MINUTE_5:300,MINUTE_15:900,HOUR:3600,HOUR_4:14400};
 const TF_LABELS={MINUTE:"1м",MINUTE_5:"5м",MINUTE_15:"15м",HOUR:"1ч",HOUR_4:"4ч"};
@@ -563,7 +562,26 @@ const state={
   audioContext:null,lastCandleSignature:"",lastErrors:[]
 };
 
-/* ===== УТИЛЫ ===== */
+/* ========== BINANCE FALLBACK ========== */
+const BINANCE_BASE="https://data-api.binance.vision";
+const BINANCE_INTERVALS={MINUTE:"1m",MINUTE_5:"5m",MINUTE_15:"15m",HOUR:"1h",HOUR_4:"4h"};
+const BINANCE_SYMBOLS={gold:"PAXGUSDT",bitcoin:"BTCUSDT"};
+
+async function binanceKlinesRaw(symbol,interval,limit){
+  const url=BINANCE_BASE+"/api/v3/klines?symbol="+symbol+"&interval="+interval+"&limit="+(limit||500);
+  const r=await fetch(url,{cache:"no-store"});
+  if(!r.ok)throw new Error("Binance HTTP "+r.status);
+  return await r.json();
+}
+async function binancePrice(symbol){
+  const url=BINANCE_BASE+"/api/v3/ticker/price?symbol="+symbol;
+  const r=await fetch(url,{cache:"no-store"});
+  if(!r.ok)throw new Error("Binance HTTP "+r.status);
+  const d=await r.json();
+  return Number(d.price);
+}
+
+/* ========== УТИЛЫ ========== */
 function fmt(v,d){if(d===undefined)d=2;if(v===null||v===undefined||!Number.isFinite(Number(v)))return "—";return Number(v).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});}
 function setText(id,v){const e=$(id);if(e)e.textContent=v;}
 function saveTrades(){try{const s=JSON.stringify(state.trades);localStorage.setItem("goldBitcoinTrades",s);localStorage.setItem("gb-trades",s);}catch(e){setText("footerStatus","Не удалось сохранить журнал.");}}
@@ -588,11 +606,38 @@ function closedCandles(asset,res){
   return a.filter(function(c){return c.time+sec<=now;});
 }
 async function getJSON(url){const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status+" · "+url);return r.json();}
-async function fetchPrices(){const d=await getJSON("/api/prices");if(d.gold)state.prices.gold=d.gold;if(d.bitcoin)state.prices.bitcoin=d.bitcoin;renderPrices();}
+
+async function fetchPrices(){
+  let ok=false;
+  try{
+    const d=await getJSON("/api/prices");
+    if(d.gold)state.prices.gold=d.gold;
+    if(d.bitcoin)state.prices.bitcoin=d.bitcoin;
+    ok=true;
+  }catch(e){}
+  if(!ok){
+    try{
+      const arr=await Promise.all([binancePrice(BINANCE_SYMBOLS.gold),binancePrice(BINANCE_SYMBOLS.bitcoin)]);
+      state.prices.gold={price:arr[0]};
+      state.prices.bitcoin={price:arr[1]};
+    }catch(e){}
+  }
+  renderPrices();
+}
 async function fetchCandles(res){
-  const d=await getJSON("/api/candles?resolution="+encodeURIComponent(res));
-  if(!d||(!Array.isArray(d.gold)&&!Array.isArray(d.bitcoin)))throw Error("Некорректный ответ свечей "+res);
-  state.candlesByResolution[res]={gold:normalizeCandles(d.gold),bitcoin:normalizeCandles(d.bitcoin)};
+  try{
+    const d=await getJSON("/api/candles?resolution="+encodeURIComponent(res));
+    if(!d||(!Array.isArray(d.gold)&&!Array.isArray(d.bitcoin)))throw new Error("bad");
+    state.candlesByResolution[res]={gold:normalizeCandles(d.gold),bitcoin:normalizeCandles(d.bitcoin)};
+    return;
+  }catch(e){}
+  const interval=BINANCE_INTERVALS[res]||"5m";
+  const raw=await Promise.all([
+    binanceKlinesRaw(BINANCE_SYMBOLS.gold,interval,500),
+    binanceKlinesRaw(BINANCE_SYMBOLS.bitcoin,interval,500)
+  ]);
+  const toObj=function(k){return{time:Math.floor(k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4]};};
+  state.candlesByResolution[res]={gold:normalizeCandles(raw[0].map(toObj)),bitcoin:normalizeCandles(raw[1].map(toObj))};
 }
 function getPrice(asset){
   const q=state.prices[asset];if(!q)return null;
@@ -610,14 +655,14 @@ function renderPrices(){
   setText("chartPrice","Цена: "+(p===null?"—":fmt(p,2)));
 }
 
-/* ===== ИНДИКАТОРЫ: одиночные значения ===== */
+/* ========== ИНДИКАТОРЫ: одиночные ========== */
 function ema(v,p){if(v.length<p)return null;const k=2/(p+1);let x=v.slice(0,p).reduce(function(a,b){return a+b;},0)/p;for(let i=p;i<v.length;i++)x=v[i]*k+x*(1-k);return x;}
 function rsi(v,p){p=p||14;if(v.length<p+1)return null;let g=0,l=0;for(let i=1;i<=p;i++){const d=v[i]-v[i-1];if(d>=0)g+=d;else l-=d;}let ag=g/p,al=l/p;for(let i=p+1;i<v.length;i++){const d=v[i]-v[i-1];ag=(ag*(p-1)+Math.max(d,0))/p;al=(al*(p-1)+Math.max(-d,0))/p;}if(al===0)return ag===0?50:100;return 100-100/(1+ag/al);}
 function atr(c,p){p=p||14;if(c.length<p+1)return null;const tr=[];for(let i=1;i<c.length;i++){const x=c[i],pr=c[i-1];tr.push(Math.max(x.high-x.low,Math.abs(x.high-pr.close),Math.abs(x.low-pr.close)));}let v=tr.slice(0,p).reduce(function(a,b){return a+b;},0)/p;for(let i=p;i<tr.length;i++)v=(v*(p-1)+tr[i])/p;return v;}
-function adx(c,period){period=period||14;if(c.length<period*2+1)return null;const tr=[],plusDM=[],minusDM=[];for(let i=1;i<c.length;i++){const cur=c[i],prev=c[i-1];const up=cur.high-prev.high;const down=prev.low-cur.low;tr.push(Math.max(cur.high-cur.low,Math.abs(cur.high-prev.close),Math.abs(cur.low-prev.close)));plusDM.push(up>down&&up>0?up:0);minusDM.push(down>up&&down>0?down:0);}let trSum=tr.slice(0,period).reduce(function(a,b){return a+b;},0);let plusSum=plusDM.slice(0,period).reduce(function(a,b){return a+b;},0);let minusSum=minusDM.slice(0,period).reduce(function(a,b){return a+b;},0);const dx=[];for(let i=period;i<tr.length;i++){trSum=trSum-trSum/period+tr[i];plusSum=plusSum-plusSum/period+plusDM[i];minusSum=minusSum-minusSum/period+minusDM[i];const plusDI=trSum?100*plusSum/trSum:0;const minusDI=trSum?100*minusSum/trSum:0;const denom=plusDI+minusDI;dx.push(denom?100*Math.abs(plusDI-minusDI)/denom:0);}if(dx.length<period)return null;let result=dx.slice(0,period).reduce(function(a,b){return a+b;},0)/period;for(let i=period;i<dx.length;i++)result=(result*(period-1)+dx[i])/period;return result;}
+function adxSingle(c,period){period=period||14;if(c.length<period*2+1)return null;const tr=[],plusDM=[],minusDM=[];for(let i=1;i<c.length;i++){const cur=c[i],prev=c[i-1];const up=cur.high-prev.high;const down=prev.low-cur.low;tr.push(Math.max(cur.high-cur.low,Math.abs(cur.high-prev.close),Math.abs(cur.low-prev.close)));plusDM.push(up>down&&up>0?up:0);minusDM.push(down>up&&down>0?down:0);}let trSum=tr.slice(0,period).reduce(function(a,b){return a+b;},0);let plusSum=plusDM.slice(0,period).reduce(function(a,b){return a+b;},0);let minusSum=minusDM.slice(0,period).reduce(function(a,b){return a+b;},0);const dx=[];for(let i=period;i<tr.length;i++){trSum=trSum-trSum/period+tr[i];plusSum=plusSum-plusSum/period+plusDM[i];minusSum=minusSum-minusSum/period+minusDM[i];const pd=trSum?100*plusSum/trSum:0;const md=trSum?100*minusSum/trSum:0;const den=pd+md;dx.push(den?100*Math.abs(pd-md)/den:0);}if(dx.length<period)return null;let result=dx.slice(0,period).reduce(function(a,b){return a+b;},0)/period;for(let i=period;i<dx.length;i++)result=(result*(period-1)+dx[i])/period;return result;}
 function getTrend(asset,res){const c=closedCandles(asset,res);if(c.length<25)return"UNKNOWN";const v=c.map(function(x){return x.close;}),a=ema(v,9),b=ema(v,21),last=v[v.length-1];if(a===null||b===null)return"UNKNOWN";if(last>b&&a>b)return"UP";if(last<b&&a<b)return"DOWN";return"SIDE";}
 
-/* ===== ИНДИКАТОРЫ: полные массивы ===== */
+/* ========== ИНДИКАТОРЫ: массивы ========== */
 function sma(v,p){const o=Array(v.length).fill(null);let s=0;for(let i=0;i<v.length;i++){s+=v[i];if(i>=p)s-=v[i-p];if(i>=p-1)o[i]=s/p;}return o;}
 function emaArr(v,p){const o=Array(v.length).fill(null),k=2/(p+1);let val=null;for(let i=0;i<v.length;i++){val=val===null?v[i]:v[i]*k+val*(1-k);if(i>=p-1)o[i]=val;}return o;}
 function rsiArr(v,p){p=p||14;const o=Array(v.length).fill(null);if(v.length<=p)return o;let g=0,l=0;for(let i=1;i<=p;i++){const d=v[i]-v[i-1];g+=Math.max(d,0);l+=Math.max(-d,0);}g/=p;l/=p;o[p]=l===0?100:100-100/(1+g/l);for(let i=p+1;i<v.length;i++){const d=v[i]-v[i-1];g=(g*(p-1)+Math.max(d,0))/p;l=(l*(p-1)+Math.max(-d,0))/p;o[i]=l===0?100:100-100/(1+g/l);}return o;}
@@ -630,18 +675,18 @@ function supertrendArr(c,p,m){p=p||10;m=m||3;const atrV=atrArr(c,p);const n=c.le
 function donchianArr(c,p){p=p||20;const n=c.length,high=Array(n).fill(null),low=Array(n).fill(null);for(let i=p-1;i<n;i++){let hh=-Infinity,ll=Infinity;for(let j=i-p+1;j<=i;j++){hh=Math.max(hh,c[j].high);ll=Math.min(ll,c[j].low);}high[i]=hh;low[i]=ll;}return{high,low};}
 function ichimokuArr(c){const n=c.length,tenkan=Array(n).fill(null),kijun=Array(n).fill(null),senkouA=Array(n).fill(null),senkouB=Array(n).fill(null);const hl=function(arr,i,p){let hh=-Infinity,ll=Infinity;for(let j=Math.max(0,i-p+1);j<=i;j++){hh=Math.max(hh,arr[j].high);ll=Math.min(ll,arr[j].low);}return(hh+ll)/2;};for(let i=0;i<n;i++){if(i>=8)tenkan[i]=hl(c,i,9);if(i>=25)kijun[i]=hl(c,i,26);}for(let i=0;i<n;i++){const j=i-26;if(j>=0&&tenkan[j]!=null&&kijun[j]!=null)senkouA[i]=(tenkan[j]+kijun[j])/2;if(j>=51)senkouB[i]=hl(c,j,52);}return{tenkan,kijun,senkouA,senkouB};}
 
-/* ===== СТРАТЕГИИ ===== */
-function g1_BollReversal(ctx,i){const{bb,rsiV,adxV,candles}=ctx;if(i<30||bb.lower[i-1]==null||adxV[i]==null)return null;const l=candles[i],p=candles[i-1];if(p.close<bb.lower[i-1]&&l.close>=bb.lower[i]&&rsiV[i]<=35&&adxV[i]<=25)return{side:"LONG",reason:"BB: возврат внутрь нижней полосы"};if(p.close>bb.upper[i-1]&&l.close<=bb.upper[i]&&rsiV[i]>=65&&adxV[i]<=25)return{side:"SHORT",reason:"BB: возврат внутрь верхней полосы"};return null;}
-function g2_RSIDivergence(ctx,i){const{candles,rsiV}=ctx;if(i<40||rsiV[i]==null)return null;const lb=20;let l1=-1,l2=-1;for(let k=i-3;k>=Math.max(1,i-lb);k--){if(candles[k].low<candles[k-1].low&&candles[k].low<candles[k+1].low){if(l1===-1)l1=k;else{l2=k;break;}}}if(l1!==-1&&l2!==-1&&candles[l1].low<candles[l2].low&&rsiV[l1]>rsiV[l2]&&rsiV[i]>rsiV[l1]&&candles[i].close>candles[i].open)return{side:"LONG",reason:"Бычья дивергенция RSI"};let h1=-1,h2=-1;for(let k=i-3;k>=Math.max(1,i-lb);k--){if(candles[k].high>candles[k-1].high&&candles[k].high>candles[k+1].high){if(h1===-1)h1=k;else{h2=k;break;}}}if(h1!==-1&&h2!==-1&&candles[h1].high>candles[h2].high&&rsiV[h1]<rsiV[h2]&&rsiV[i]<rsiV[h1]&&candles[i].close<candles[i].open)return{side:"SHORT",reason:"Медвежья дивергенция RSI"};return null;}
-function g3_StochEma(ctx,i){const{candles,ema50,stochK,stochD}=ctx;if(i<55||stochK[i]==null||stochD[i]==null||ema50[i]==null)return null;const c=candles[i];const up=stochK[i-1]<stochD[i-1]&&stochK[i]>stochD[i]&&stochK[i]<25;const dn=stochK[i-1]>stochD[i-1]&&stochK[i]<stochD[i]&&stochK[i]>75;if(up&&c.close>ema50[i])return{side:"LONG",reason:"Стохастик вышел из 20 над EMA50"};if(dn&&c.close<ema50[i])return{side:"SHORT",reason:"Стохастик вышел из 80 под EMA50"};return null;}
-function g4_AtrBreakout(ctx,i){const{candles,sma20,atrV}=ctx;if(i<25||sma20[i]==null||atrV[i]==null)return null;const l=candles[i],p=candles[i-1];const up=sma20[i]+atrV[i]*1.5,lo=sma20[i]-atrV[i]*1.5;if(p.close<=up&&l.close>up)return{side:"LONG",reason:"Пробой верхней ATR-границы"};if(p.close>=lo&&l.close<lo)return{side:"SHORT",reason:"Пробой нижней ATR-границы"};return null;}
-function g5_SRBounce(ctx,i){const{candles,atrV}=ctx;if(i<40||atrV[i]==null)return null;const l=candles[i],p=candles[i-1];let lo=Infinity,hi=-Infinity;for(let k=i-30;k<i;k++){lo=Math.min(lo,candles[k].low);hi=Math.max(hi,candles[k].high);}const nearLo=Math.abs(l.low-lo)<atrV[i]*0.4;const nearHi=Math.abs(l.high-hi)<atrV[i]*0.4;const bull=l.close>l.open&&l.close>p.high&&p.close<p.open;const bear=l.close<l.open&&l.close<p.low&&p.close>p.open;if(nearLo&&bull)return{side:"LONG",reason:"Отбой от локального минимума"};if(nearHi&&bear)return{side:"SHORT",reason:"Отбой от локального максимума"};return null;}
-function b1_EmaTrend(ctx,i){const{candles,ema9,ema21,ema50,adxV}=ctx;if(i<55||!ema9[i]||!ema21[i]||!ema50[i]||!adxV[i])return null;const c=candles[i];if(adxV[i]>=18&&ema9[i]>ema21[i]&&ema21[i]>ema50[i]&&c.close>ema9[i]&&c.close>c.open)return{side:"LONG",reason:"EMA 9>21>50 + ADX"};if(adxV[i]>=18&&ema9[i]<ema21[i]&&ema21[i]<ema50[i]&&c.close<ema9[i]&&c.close<c.open)return{side:"SHORT",reason:"EMA 9<21<50 + ADX"};return null;}
-function b2_MacdMomentum(ctx,i){const{candles,macdHist,macdLine}=ctx;if(i<40||macdHist[i]==null||macdHist[i-1]==null)return null;const c=candles[i];const up=macdHist[i-1]<=0&&macdHist[i]>0&&macdLine[i]<0;const dn=macdHist[i-1]>=0&&macdHist[i]<0&&macdLine[i]>0;if(up&&c.close>c.open)return{side:"LONG",reason:"MACD cross up из минуса"};if(dn&&c.close<c.open)return{side:"SHORT",reason:"MACD cross down из плюса"};return null;}
-function b3_Donchian(ctx,i){const{candles,dHigh,dLow}=ctx;if(i<25||dHigh[i-1]==null||dLow[i-1]==null)return null;const c=candles[i];if(c.close>dHigh[i-1])return{side:"LONG",reason:"Пробой канала Дончиана вверх"};if(c.close<dLow[i-1])return{side:"SHORT",reason:"Пробой канала Дончиана вниз"};return null;}
-function b4_SuperTrend(ctx,i){const{stTrend,candles,ema200}=ctx;if(i<15||stTrend[i]==null||stTrend[i-1]==null)return null;const c=candles[i];if(stTrend[i-1]==="down"&&stTrend[i]==="up"&&(!ema200[i]||c.close>ema200[i]))return{side:"LONG",reason:"SuperTrend разворот вверх"};if(stTrend[i-1]==="up"&&stTrend[i]==="down"&&(!ema200[i]||c.close<ema200[i]))return{side:"SHORT",reason:"SuperTrend разворот вниз"};return null;}
-function b5_Ichimoku(ctx,i){const{tenkan,kijun,senkouA,senkouB,candles}=ctx;if(i<60||tenkan[i]==null||kijun[i]==null||senkouA[i]==null||senkouB[i]==null)return null;const c=candles[i];const top=Math.max(senkouA[i],senkouB[i]),bot=Math.min(senkouA[i],senkouB[i]);const up=tenkan[i-1]<=kijun[i-1]&&tenkan[i]>kijun[i];const dn=tenkan[i-1]>=kijun[i-1]&&tenkan[i]<kijun[i];if(up&&c.close>top)return{side:"LONG",reason:"Ichimoku: cross над облаком"};if(dn&&c.close<bot)return{side:"SHORT",reason:"Ichimoku: cross под облаком"};return null;}
-function rangeReversal(ctx,i){
+/* ========== 11 СТРАТЕГИЙ ========== */
+function s_bb(ctx,i){const{bb,rsiV,adxV,candles}=ctx;if(i<30||bb.lower[i-1]==null||adxV[i]==null)return null;const l=candles[i],p=candles[i-1];if(p.close<bb.lower[i-1]&&l.close>=bb.lower[i]&&rsiV[i]<=35&&adxV[i]<=25)return{side:"LONG",reason:"BB: возврат внутрь нижней полосы"};if(p.close>bb.upper[i-1]&&l.close<=bb.upper[i]&&rsiV[i]>=65&&adxV[i]<=25)return{side:"SHORT",reason:"BB: возврат внутрь верхней полосы"};return null;}
+function s_rsiDiv(ctx,i){const{candles,rsiV}=ctx;if(i<40||rsiV[i]==null)return null;const lb=20;let l1=-1,l2=-1;for(let k=i-3;k>=Math.max(1,i-lb);k--){if(candles[k].low<candles[k-1].low&&candles[k].low<candles[k+1].low){if(l1===-1)l1=k;else{l2=k;break;}}}if(l1!==-1&&l2!==-1&&candles[l1].low<candles[l2].low&&rsiV[l1]>rsiV[l2]&&rsiV[i]>rsiV[l1]&&candles[i].close>candles[i].open)return{side:"LONG",reason:"Бычья дивергенция RSI"};let h1=-1,h2=-1;for(let k=i-3;k>=Math.max(1,i-lb);k--){if(candles[k].high>candles[k-1].high&&candles[k].high>candles[k+1].high){if(h1===-1)h1=k;else{h2=k;break;}}}if(h1!==-1&&h2!==-1&&candles[h1].high>candles[h2].high&&rsiV[h1]<rsiV[h2]&&rsiV[i]<rsiV[h1]&&candles[i].close<candles[i].open)return{side:"SHORT",reason:"Медвежья дивергенция RSI"};return null;}
+function s_stoch(ctx,i){const{candles,ema50,stochK,stochD}=ctx;if(i<55||stochK[i]==null||stochD[i]==null||ema50[i]==null)return null;const c=candles[i];const up=stochK[i-1]<stochD[i-1]&&stochK[i]>stochD[i]&&stochK[i]<25;const dn=stochK[i-1]>stochD[i-1]&&stochK[i]<stochD[i]&&stochK[i]>75;if(up&&c.close>ema50[i])return{side:"LONG",reason:"Стохастик выходит из 20 над EMA50"};if(dn&&c.close<ema50[i])return{side:"SHORT",reason:"Стохастик выходит из 80 под EMA50"};return null;}
+function s_atr(ctx,i){const{candles,sma20,atrV}=ctx;if(i<25||sma20[i]==null||atrV[i]==null)return null;const l=candles[i],p=candles[i-1];const up=sma20[i]+atrV[i]*1.5,lo=sma20[i]-atrV[i]*1.5;if(p.close<=up&&l.close>up)return{side:"LONG",reason:"Пробой верхней ATR-границы"};if(p.close>=lo&&l.close<lo)return{side:"SHORT",reason:"Пробой нижней ATR-границы"};return null;}
+function s_sr(ctx,i){const{candles,atrV}=ctx;if(i<40||atrV[i]==null)return null;const l=candles[i],p=candles[i-1];let lo=Infinity,hi=-Infinity;for(let k=i-30;k<i;k++){lo=Math.min(lo,candles[k].low);hi=Math.max(hi,candles[k].high);}const nearLo=Math.abs(l.low-lo)<atrV[i]*0.4;const nearHi=Math.abs(l.high-hi)<atrV[i]*0.4;const bull=l.close>l.open&&l.close>p.high&&p.close<p.open;const bear=l.close<l.open&&l.close<p.low&&p.close>p.open;if(nearLo&&bull)return{side:"LONG",reason:"Отбой от локального минимума"};if(nearHi&&bear)return{side:"SHORT",reason:"Отбой от локального максимума"};return null;}
+function s_ema(ctx,i){const{candles,ema9,ema21,ema50,adxV}=ctx;if(i<55||!ema9[i]||!ema21[i]||!ema50[i]||!adxV[i])return null;const c=candles[i];if(adxV[i]>=18&&ema9[i]>ema21[i]&&ema21[i]>ema50[i]&&c.close>ema9[i]&&c.close>c.open)return{side:"LONG",reason:"EMA 9>21>50 + ADX"};if(adxV[i]>=18&&ema9[i]<ema21[i]&&ema21[i]<ema50[i]&&c.close<ema9[i]&&c.close<c.open)return{side:"SHORT",reason:"EMA 9<21<50 + ADX"};return null;}
+function s_macd(ctx,i){const{candles,macdHist,macdLine}=ctx;if(i<40||macdHist[i]==null||macdHist[i-1]==null)return null;const c=candles[i];const up=macdHist[i-1]<=0&&macdHist[i]>0&&macdLine[i]<0;const dn=macdHist[i-1]>=0&&macdHist[i]<0&&macdLine[i]>0;if(up&&c.close>c.open)return{side:"LONG",reason:"MACD cross up из минуса"};if(dn&&c.close<c.open)return{side:"SHORT",reason:"MACD cross down из плюса"};return null;}
+function s_don(ctx,i){const{candles,dHigh,dLow}=ctx;if(i<25||dHigh[i-1]==null||dLow[i-1]==null)return null;const c=candles[i];if(c.close>dHigh[i-1])return{side:"LONG",reason:"Пробой канала Дончиана вверх"};if(c.close<dLow[i-1])return{side:"SHORT",reason:"Пробой канала Дончиана вниз"};return null;}
+function s_st(ctx,i){const{stTrend,candles,ema200}=ctx;if(i<15||stTrend[i]==null||stTrend[i-1]==null)return null;const c=candles[i];if(stTrend[i-1]==="down"&&stTrend[i]==="up"&&(!ema200[i]||c.close>ema200[i]))return{side:"LONG",reason:"SuperTrend разворот вверх"};if(stTrend[i-1]==="up"&&stTrend[i]==="down"&&(!ema200[i]||c.close<ema200[i]))return{side:"SHORT",reason:"SuperTrend разворот вниз"};return null;}
+function s_ichi(ctx,i){const{tenkan,kijun,senkouA,senkouB,candles}=ctx;if(i<60||tenkan[i]==null||kijun[i]==null||senkouA[i]==null||senkouB[i]==null)return null;const c=candles[i];const top=Math.max(senkouA[i],senkouB[i]),bot=Math.min(senkouA[i],senkouB[i]);const up=tenkan[i-1]<=kijun[i-1]&&tenkan[i]>kijun[i];const dn=tenkan[i-1]>=kijun[i-1]&&tenkan[i]<kijun[i];if(up&&c.close>top)return{side:"LONG",reason:"Ichimoku: cross над облаком"};if(dn&&c.close<bot)return{side:"SHORT",reason:"Ichimoku: cross под облаком"};return null;}
+function s_range(ctx,i){
   const{candles,atrV,adxV}=ctx;
   if(i<60||atrV[i]==null||adxV[i]==null)return null;
   if(adxV[i]>25)return null;
@@ -654,39 +699,31 @@ function rangeReversal(ctx,i){
   if(rangeSize>atrV[i]*20)return null;
   const mid=(high+low)/2;
   const buffer=atrV[i]*0.5;
-  const c=candles[i];
-  const p=candles[i-1];
-  if(c.low<=low+buffer&&c.close>c.open&&c.close>p.close){
-    return{side:"LONG",reason:"Диапазон: отскок от нижней границы",stop:low-atrV[i]*0.8,target:mid};
-  }
-  if(c.high>=high-buffer&&c.close<c.open&&c.close<p.close){
-    return{side:"SHORT",reason:"Диапазон: отскок от верхней границы",stop:high+atrV[i]*0.8,target:mid};
-  }
+  const c=candles[i],p=candles[i-1];
+  if(c.low<=low+buffer&&c.close>c.open&&c.close>p.close)return{side:"LONG",reason:"Диапазон: отскок от нижней границы",stop:low-atrV[i]*0.8,target:mid};
+  if(c.high>=high-buffer&&c.close<c.open&&c.close<p.close)return{side:"SHORT",reason:"Диапазон: отскок от верхней границы",stop:high+atrV[i]*0.8,target:mid};
   return null;
 }
 
-/* ===== ОБЩИЙ РЕЕСТР (11 стратегий × 2 актива) ===== */
+/* ========== РЕЕСТР (11 стратегий × 2 актива) ========== */
 const COMMON_STRATEGIES=[
-  {id:"bb_rev",name:"Разворот Bollinger",desc:"Возврат внутрь полос BB(20,2) + RSI + ADX≤25",fn:g1_BollReversal},
-  {id:"rsi_div",name:"Дивергенция RSI",desc:"Свинговая дивергенция RSI + подтверждающая свеча",fn:g2_RSIDivergence},
-  {id:"stoch_ema",name:"Стохастик + EMA 50",desc:"Стохастик выходит из зон 20/80 с фильтром EMA 50",fn:g3_StochEma},
-  {id:"atr_break",name:"Пробой канала ATR",desc:"Пробой ±1.5 ATR от SMA 20",fn:g4_AtrBreakout},
-  {id:"sr_bounce",name:"Отбой от уровней",desc:"Поглощение у 30-барного экстремума",fn:g5_SRBounce},
-  {id:"ema_trend",name:"EMA-тренд",desc:"EMA 9/21/50 + ADX≥18 + импульсная свеча",fn:b1_EmaTrend},
-  {id:"macd_mom",name:"MACD Momentum",desc:"Пересечение MACD сигнальной из противоположной зоны",fn:b2_MacdMomentum},
-  {id:"donchian",name:"Donchian Breakout",desc:"Пробой 20-барного канала Дончиана",fn:b3_Donchian},
-  {id:"supertrend",name:"SuperTrend",desc:"Переворот SuperTrend(10,3) + EMA 200 фильтр",fn:b4_SuperTrend},
-  {id:"ichimoku",name:"Ichimoku Cloud",desc:"Cross Tenkan/Kijun над/под облаком",fn:b5_Ichimoku},
-  {id:"range",name:"Диапазон (Range)",desc:"ADX≤25, отскок от границ канала 40 баров, цель — середина. SL за границей.",fn:rangeReversal}
+  {id:"bb_rev",name:"Разворот Bollinger",desc:"Возврат внутрь полос BB(20,2) + RSI + ADX≤25",fn:s_bb},
+  {id:"rsi_div",name:"Дивергенция RSI",desc:"Свинговая дивергенция RSI + подтверждающая свеча",fn:s_rsiDiv},
+  {id:"stoch_ema",name:"Стохастик + EMA 50",desc:"Стохастик выходит из зон 20/80 с фильтром EMA 50",fn:s_stoch},
+  {id:"atr_break",name:"Пробой канала ATR",desc:"Пробой ±1.5 ATR от SMA 20",fn:s_atr},
+  {id:"sr_bounce",name:"Отбой от уровней",desc:"Поглощение у 30-барного экстремума",fn:s_sr},
+  {id:"ema_trend",name:"EMA-тренд",desc:"EMA 9/21/50 + ADX≥18 + импульсная свеча",fn:s_ema},
+  {id:"macd_mom",name:"MACD Momentum",desc:"Пересечение MACD сигнальной из противоположной зоны",fn:s_macd},
+  {id:"donchian",name:"Donchian Breakout",desc:"Пробой 20-барного канала Дончиана",fn:s_don},
+  {id:"supertrend",name:"SuperTrend",desc:"Переворот SuperTrend(10,3) + EMA 200 фильтр",fn:s_st},
+  {id:"ichimoku",name:"Ichimoku Cloud",desc:"Cross Tenkan/Kijun над/под облаком",fn:s_ichi},
+  {id:"range",name:"Диапазон (Range)",desc:"ADX≤25, отскок от границ канала 40 баров, цель — середина. SL за границей.",fn:s_range}
 ];
 const REGISTRY={gold:COMMON_STRATEGIES,bitcoin:COMMON_STRATEGIES};
 
 function buildCtx(candles){
   const close=candles.map(function(c){return c.close;});
-  const bb=bbArr(close,20,2);
-  const rsiV=rsiArr(close,14);
-  const atrV=atrArr(candles,14);
-  const adxV=adxArr(candles,14);
+  const bb=bbArr(close,20,2),rsiV=rsiArr(close,14),atrV=atrArr(candles,14),adxV=adxArr(candles,14);
   const ema9=emaArr(close,9),ema21=emaArr(close,21),ema50=emaArr(close,50),ema200=emaArr(close,200);
   const sma20=sma(close,20);
   const m=macdArr(close);
@@ -696,73 +733,50 @@ function buildCtx(candles){
   const ich=ichimokuArr(candles);
   return{candles,close,bb,rsiV,atrV,adxV,ema9,ema21,ema50,ema200,sma20,
     macdLine:m.line,macdSig:m.signal,macdHist:m.hist,
-    stochK:stoch.k,stochD:stoch.d,
-    stTrend:st.trend,stLine:st.line,
+    stochK:stoch.k,stochD:stoch.d,stTrend:st.trend,stLine:st.line,
     dHigh:dc.high,dLow:dc.low,
     tenkan:ich.tenkan,kijun:ich.kijun,senkouA:ich.senkouA,senkouB:ich.senkouB};
 }
 
-/* ===== АКТИВНАЯ СТРАТЕГИЯ РЫНКА ===== */
+/* ========== АКТИВНАЯ СТРАТЕГИЯ РЫНКА ========== */
 function loadMarketStrategies(){return safeRead("gb-market-strategies",{});}
 function saveMarketStrategies(v){try{localStorage.setItem("gb-market-strategies",JSON.stringify(v));}catch(e){}}
-function setMarketStrategy(asset,id,name){
-  const all=loadMarketStrategies();
-  all[asset]={id,name,appliedAt:new Date().toLocaleString("ru-RU")};
-  saveMarketStrategies(all);
-}
+function setMarketStrategy(asset,id,name){const all=loadMarketStrategies();all[asset]={id,name,appliedAt:new Date().toLocaleString("ru-RU")};saveMarketStrategies(all);}
 function getMarketStrategyInfo(asset){
-  const all=loadMarketStrategies();
-  const s=all[asset];
+  const all=loadMarketStrategies();const s=all[asset];
   if(s&&s.id){const r=REGISTRY[asset].find(function(x){return x.id===s.id;});if(r)return r;}
   return REGISTRY[asset][0];
 }
 
-/* ===== АНАЛИЗ РЫНКА ПО АКТИВНОЙ СТРАТЕГИИ ===== */
+/* ========== АНАЛИЗ РЫНКА ========== */
 function analyze(asset){
   const strat=getMarketStrategyInfo(asset);
   const candles=closedCandles(asset,"MINUTE_5");
   const price=candles.length?candles[candles.length-1].close:getPrice(asset);
-  const trends={
-    HOUR_4:getTrend(asset,"HOUR_4"),
-    HOUR:getTrend(asset,"HOUR"),
-    MINUTE_15:getTrend(asset,"MINUTE_15"),
-    MINUTE_5:getTrend(asset,"MINUTE_5")
-  };
-  const base={asset,side:"WAIT",ready:false,price,rsi:null,atr:null,adx:null,
-    e9:null,e21:null,macd:null,trends,quality:0,stop:null,target:null,
+  const trends={HOUR_4:getTrend(asset,"HOUR_4"),HOUR:getTrend(asset,"HOUR"),MINUTE_15:getTrend(asset,"MINUTE_15"),MINUTE_5:getTrend(asset,"MINUTE_5")};
+  const base={asset,side:"WAIT",ready:false,price,rsi:null,atr:null,adx:null,e9:null,e21:null,macd:null,trends,quality:0,stop:null,target:null,
     strategyId:strat.id,strategyName:strat.name,
     explanation:"Недостаточно данных для стратегии «"+strat.name+"»."};
   if(candles.length<60)return base;
-
   const ctx=buildCtx(candles);
   const i=candles.length-1;
   let sig=null;
   try{sig=strat.fn(ctx,i);}catch(e){sig=null;}
-
   let side="WAIT";
   if(sig&&sig.side==="LONG")side="BUY";
   else if(sig&&sig.side==="SHORT")side="SELL";
   else if(sig&&(sig.side==="BUY"||sig.side==="SELL"))side=sig.side;
-
   const atrNow=ctx.atrV[i];
   let stop=sig&&Number.isFinite(sig.stop)?sig.stop:null;
   let target=sig&&Number.isFinite(sig.target)?sig.target:null;
-  if(side==="BUY"){
-    if(stop==null&&atrNow)stop=price-atrNow*1.5;
-    if(target==null&&atrNow)target=price+atrNow*3;
-  }else if(side==="SELL"){
-    if(stop==null&&atrNow)stop=price+atrNow*1.5;
-    if(target==null&&atrNow)target=price-atrNow*3;
-  }
-
+  if(side==="BUY"){if(stop==null&&atrNow)stop=price-atrNow*1.5;if(target==null&&atrNow)target=price+atrNow*3;}
+  else if(side==="SELL"){if(stop==null&&atrNow)stop=price+atrNow*1.5;if(target==null&&atrNow)target=price-atrNow*3;}
   let quality=35;
   if(side==="BUY"||side==="SELL")quality=70;
   if(ctx.adxV[i]!=null&&ctx.adxV[i]>18)quality=Math.min(95,quality+10);
   if(atrNow&&price&&atrNow/price*100>0.05)quality=Math.min(95,quality+5);
-
   return Object.assign({},base,{
-    side,ready:true,quality,
-    rsi:ctx.rsiV[i],atr:atrNow,adx:ctx.adxV[i],
+    side,ready:true,quality,rsi:ctx.rsiV[i],atr:atrNow,adx:ctx.adxV[i],
     e9:ctx.ema9[i],e21:ctx.ema21[i],
     macd:{hist:ctx.macdHist[i],line:ctx.macdLine[i],signal:ctx.macdSig[i]},
     stop,target,
@@ -770,24 +784,21 @@ function analyze(asset){
   });
 }
 
-/* ===== АВТО-ЖУРНАЛ: открытие/закрытие сделок ===== */
-function hasOpenAutoTrade(asset,stratId){
-  return state.trades.some(function(t){return t.auto&&t.status==="OPEN"&&t.asset===asset&&t.strategyId===stratId;});
-}
+/* ========== АВТО-ЖУРНАЛ ========== */
+function hasOpenAutoTrade(asset,stratId){return state.trades.some(function(t){return t.auto&&t.status==="OPEN"&&t.asset===asset&&t.strategyId===stratId;});}
 function autoJournalSignal(s){
   if(!s||!s.ready)return;
   if(s.side!=="BUY"&&s.side!=="SELL")return;
   if(s.stop==null||s.target==null)return;
   if(hasOpenAutoTrade(s.asset,s.strategyId))return;
-  const t={
+  state.trades.push({
     id:Date.now()+"-"+Math.random().toString(36).slice(2,7),
-    asset:s.asset,direction:s.side,entry:Number(s.price),
-    exit:null,stop:Number(s.stop),target:Number(s.target),
+    asset:s.asset,direction:s.side,entry:Number(s.price),exit:null,
+    stop:Number(s.stop),target:Number(s.target),
     note:s.explanation||"",date:new Date().toLocaleString("ru-RU"),
     status:"OPEN",auto:true,strategyId:s.strategyId,strategyName:s.strategyName,
     entryTime:Math.floor(Date.now()/1000)
-  };
-  state.trades.push(t);
+  });
   saveTrades();
 }
 function updateOpenAutoTrades(){
@@ -804,18 +815,12 @@ function updateOpenAutoTrades(){
       if(t.stop!=null&&p>=t.stop){hitExit=t.stop;result="LOSS";}
       else if(t.target!=null&&p<=t.target){hitExit=t.target;result="WIN";}
     }
-    if(hitExit!==null){
-      t.exit=hitExit;
-      t.status="CLOSED";
-      t.result=result;
-      t.closedAt=Math.floor(Date.now()/1000);
-      changed=true;
-    }
+    if(hitExit!==null){t.exit=hitExit;t.status="CLOSED";t.result=result;t.closedAt=Math.floor(Date.now()/1000);changed=true;}
   }
   if(changed){saveTrades();renderTrades();}
 }
 
-/* ===== ГРАФИК ===== */
+/* ========== ГРАФИК ========== */
 function initChart(){
   const host=$("chart");
   if(!window.LightweightCharts){setText("chartStatus","График не загрузился.");return;}
@@ -851,12 +856,7 @@ function updateChartLevels(){
   if(signature===state.levelSignature)return;
   for(const line of state.priceLines){try{state.candleSeries.removePriceLine(line);}catch(e){}}
   state.priceLines=[];
-  for(const l of levels){
-    try{
-      const line=state.candleSeries.createPriceLine({price:l.price,color:l.color,lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:l.title+" "+fmt(l.price,2)});
-      state.priceLines.push(line);
-    }catch(e){}
-  }
+  for(const l of levels){try{const line=state.candleSeries.createPriceLine({price:l.price,color:l.color,lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:l.title+" "+fmt(l.price,2)});state.priceLines.push(line);}catch(e){}}
   state.levelSignature=signature;
 }
 function renderChart(fit){
@@ -878,7 +878,7 @@ function renderChart(fit){
   setText("chartStatus",TF_LABELS[state.resolution]+" · свечей: "+c.length);
 }
 
-/* ===== UI РЕНДЕР ===== */
+/* ========== UI РЕНДЕР ========== */
 function signalClass(s){return s==="BUY"?"buy":s==="SELL"?"sell":"wait";}
 function updateLamp(id,side){const e=$(id);if(e)e.className="lamp "+signalClass(side);}
 
@@ -939,15 +939,15 @@ function renderDashboard(){
   setText("strategyRulesText","Активная стратегия: «"+((s&&s.strategyName)||getMarketStrategyInfo(state.asset).name)+"». Изменить: вкладка «Стратегия» → «📊 Применить к рынку».");
 }
 
-/* ===== ОПОВЕЩЕНИЯ ===== */
+/* ========== ОПОВЕЩЕНИЯ ========== */
 function unlockAudio(){try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return false;if(!state.audioContext)state.audioContext=new AC();if(state.audioContext.state==="suspended")state.audioContext.resume();return true;}catch(e){return false;}}
 function playSignalSound(){if(!state.settings.soundEnabled)return;try{if(!state.audioContext&&!unlockAudio())return;const ctx=state.audioContext;if(!ctx)return;if(ctx.state==="suspended")ctx.resume();const osc=ctx.createOscillator(),gain=ctx.createGain();osc.type="sine";osc.frequency.value=880;gain.gain.setValueAtTime(.0001,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.12,ctx.currentTime+.025);gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.3);osc.connect(gain);gain.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+.31);}catch(e){}}
 function notificationPermissionText(){if(!("Notification"in window))return"Браузер не поддерживает уведомления.";if(Notification.permission==="granted")return"Разрешено.";if(Notification.permission==="denied")return"Запрещено в настройках браузера.";return"Нажми «Разрешить», чтобы запросить доступ.";}
 function renderSettings(){
   const ids=["alertsEnabled","goldAlertsEnabled","btcAlertsEnabled","soundEnabled"];
-  for(const id of ids)$(id).checked=!!state.settings[id];
+  for(const id of ids){const e=$(id);if(e)e.checked=!!state.settings[id];}
   setText("notificationPermissionText",notificationPermissionText());
-  const b=$("enableBrowserNotifications");
+  const b=$("enableBrowserNotifications");if(!b)return;
   if(!("Notification"in window)){b.textContent="Недоступно";b.disabled=true;}
   else if(Notification.permission==="granted"){b.textContent="Разрешено";b.disabled=true;}
   else if(Notification.permission==="denied"){b.textContent="Запрещено";b.disabled=true;}
@@ -960,19 +960,13 @@ function showSignalAlert(asset,side,s){
   setText("alertStatus",msg+" · "+new Date().toLocaleTimeString("ru-RU"));
   playSignalSound();
   if("Notification"in window&&Notification.permission==="granted"){
-    try{
-      const n=new Notification("Gold & Bitcoin · "+side,{body:name+"\nЦена: "+fmt(s.price)+" · SL: "+fmt(s.stop)+" · TP: "+fmt(s.target),tag:"gb-"+asset+"-"+side});
-      n.onclick=function(){window.focus();switchTab("signals");selectAsset(asset);n.close();};
-    }catch(e){}
+    try{const n=new Notification("Gold & Bitcoin · "+side,{body:name+"\nЦена: "+fmt(s.price)+" · SL: "+fmt(s.stop)+" · TP: "+fmt(s.target),tag:"gb-"+asset+"-"+side});
+      n.onclick=function(){window.focus();switchTab("signals");selectAsset(asset);n.close();};}catch(e){}
   }
   if(navigator.vibrate)navigator.vibrate([120,60,120]);
 }
 function detectNewSignals(next){
-  if(!state.signalInitialized){
-    state.previousSides={gold:(next.gold&&next.gold.side)||"WAIT",bitcoin:(next.bitcoin&&next.bitcoin.side)||"WAIT"};
-    state.signalInitialized=true;
-    return;
-  }
+  if(!state.signalInitialized){state.previousSides={gold:(next.gold&&next.gold.side)||"WAIT",bitcoin:(next.bitcoin&&next.bitcoin.side)||"WAIT"};state.signalInitialized=true;return;}
   for(const a of ["gold","bitcoin"]){
     const old=state.previousSides[a]||"WAIT",current=(next[a]&&next[a].side)||"WAIT";
     if(current!==old&&(current==="BUY"||current==="SELL"))showSignalAlert(a,current,next[a]);
@@ -980,28 +974,17 @@ function detectNewSignals(next){
   }
 }
 
-/* ===== ЖУРНАЛ СДЕЛОК ===== */
+/* ========== ЖУРНАЛ СДЕЛОК ========== */
 function calcPnl(t,exit){const entry=Number(t.entry),x=Number(exit);return t.direction==="BUY"?x-entry:entry-x;}
 function hasLevel(v){return v!==""&&v!==null&&v!==undefined&&Number.isFinite(Number(v))&&Number(v)>0;}
 function getTradeOutcome(t){
-  if(t.status==="CLOSED"){
+  if(t.status==="CLOSED"||t.status==="MANUAL_CLOSED"){
     const pnl=hasLevel(t.exit)?calcPnl(t,t.exit):0;
-    if(pnl>0)return"WIN";
-    if(pnl<0)return"LOSS";
-    return"BREAKEVEN";
-  }
-  if(t.status==="MANUAL_CLOSED"){
-    const pnl=hasLevel(t.exit)?calcPnl(t,t.exit):0;
-    if(pnl>0)return"WIN";
-    if(pnl<0)return"LOSS";
-    return"BREAKEVEN";
+    if(pnl>0)return"WIN";if(pnl<0)return"LOSS";return"BREAKEVEN";
   }
   if(!t.status||t.status==="OPEN"){
     if(!hasLevel(t.exit))return"OPEN";
-    const pnl=calcPnl(t,t.exit);
-    if(pnl>0)return"WIN";
-    if(pnl<0)return"LOSS";
-    return"BREAKEVEN";
+    const pnl=calcPnl(t,t.exit);if(pnl>0)return"WIN";if(pnl<0)return"LOSS";return"BREAKEVEN";
   }
   return"OPEN";
 }
@@ -1024,13 +1007,11 @@ function renderStats(){
   setText("statAuto",autos.length);
 }
 function renderTrades(){
-  const list=$("tradeList");
+  const list=$("tradeList");if(!list)return;
   setText("tradeCount","Сделок: "+state.trades.length);
   list.replaceChildren();
   renderStats();
-  if(!state.trades.length){
-    const e=document.createElement("div");e.className="sub";e.textContent="Пока нет записей.";list.appendChild(e);return;
-  }
+  if(!state.trades.length){const e=document.createElement("div");e.className="sub";e.textContent="Пока нет записей.";list.appendChild(e);return;}
   for(const t of state.trades.slice().reverse()){
     const row=document.createElement("div");row.className="trade";
     const top=document.createElement("div");top.className="trade-top";
@@ -1059,18 +1040,15 @@ function renderTrades(){
       actions.append(close);
     }
     const remove=document.createElement("button");remove.textContent="Удалить";
-    remove.addEventListener("click",function(){
-      state.trades=state.trades.filter(function(x){return x.id!==t.id;});
-      saveTrades();renderTrades();
-    });
+    remove.addEventListener("click",function(){state.trades=state.trades.filter(function(x){return x.id!==t.id;});saveTrades();renderTrades();});
     actions.append(remove);row.append(actions);list.append(row);
   }
 }
 
-/* ===== ВКЛАДКИ / ВЫБОР ===== */
+/* ========== ВКЛАДКИ ========== */
 function switchTab(n){
   const pages={market:"marketPage",signals:"signalsPage",trades:"tradesPage",account:"accountPage",strategy:"strategyPage"};
-  for(const name in pages){$(pages[name]).classList.toggle("hidden",name!==n);}
+  for(const name in pages){const e=$(pages[name]);if(e)e.classList.toggle("hidden",name!==n);}
   document.querySelectorAll("[data-tab]").forEach(function(b){b.classList.toggle("active",b.dataset.tab===n);});
   if(n==="trades")renderTrades();
   if(n==="signals"){renderDashboard();renderSettings();renderMarketSignals();}
@@ -1079,10 +1057,7 @@ function switchTab(n){
 }
 function selectAsset(a){
   if(["gold","bitcoin"].indexOf(a)===-1)return;
-  if(state.asset===a){
-    document.querySelectorAll('.quote[data-asset]').forEach(function(q){q.classList.toggle('active',q.dataset.asset===a);});
-    return;
-  }
+  if(state.asset===a){document.querySelectorAll('.quote[data-asset]').forEach(function(q){q.classList.toggle('active',q.dataset.asset===a);});return;}
   state.asset=a;state.chartReady=false;state.lastCandleSignature="";state.levelSignature="";
   document.querySelectorAll('.quote[data-asset]').forEach(function(q){q.classList.toggle('active',q.dataset.asset===a);});
   renderChart(true);renderDashboard();renderMarket();renderMarketSignals();
@@ -1094,7 +1069,7 @@ function selectTimeframe(r){
   renderChart(true);
 }
 
-/* ===== ОБНОВЛЕНИЕ ===== */
+/* ========== ОБНОВЛЕНИЕ ========== */
 async function refreshAll(){
   if(state.refreshing)return;
   state.refreshing=true;
@@ -1104,43 +1079,30 @@ async function refreshAll(){
     try{await fetchPrices();}catch(e){errors.push("котировки");}
     const results=await Promise.allSettled(RESOLUTIONS.map(fetchCandles));
     results.forEach(function(r,i){if(r.status==="rejected"){errors.push(TF_LABELS[RESOLUTIONS[i]]);}});
-
     const next={gold:analyze("gold"),bitcoin:analyze("bitcoin")};
-
-    // Авто-журнал: новые сигналы
-    for(const a of ["gold","bitcoin"]){
-      autoJournalSignal(next[a]);
-    }
-
+    for(const a of ["gold","bitcoin"])autoJournalSignal(next[a]);
     detectNewSignals(next);
     state.strategy=next;
     state.lastRefresh=new Date();
     state.lastErrors=errors;
-    renderPrices();
-    renderMarketSignals();
-    renderChart();
-    renderMarket();
-    renderDashboard();
+    renderPrices();renderMarketSignals();renderChart();renderMarket();renderDashboard();
     updateOpenAutoTrades();
-
-    const status=errors.length?"Ошибка: "+errors.join(", "):"Обновлено "+state.lastRefresh.toLocaleTimeString("ru-RU");
+    const status=errors.length?("Нет части данных: "+errors.join(", ")):("Обновлено "+state.lastRefresh.toLocaleTimeString("ru-RU"));
     setText("footerStatus",status);
-    setText("headerStatus",errors.length?"Есть ошибка API":"LIVE · "+state.lastRefresh.toLocaleTimeString("ru-RU"));
+    setText("headerStatus",errors.length?("LIVE (частично) · "+state.lastRefresh.toLocaleTimeString("ru-RU")):("LIVE · "+state.lastRefresh.toLocaleTimeString("ru-RU")));
   }catch(e){
-    setText("footerStatus","Ошибка обновления.");
+    setText("footerStatus","Ошибка обновления: "+(e&&e.message?e.message:e));
     setText("headerStatus","Нет связи");
-  }finally{
-    state.refreshing=false;
-  }
+  }finally{state.refreshing=false;}
 }
 
-/* ===== ОБРАБОТЧИКИ ===== */
+/* ========== ОБРАБОТЧИКИ ========== */
 document.querySelectorAll("[data-tab]").forEach(function(b){b.addEventListener("click",function(){switchTab(b.dataset.tab);});});
 document.querySelectorAll("[data-tf]").forEach(function(b){b.addEventListener("click",function(){selectTimeframe(b.dataset.tf);});});
 document.querySelectorAll('.quote[data-asset]').forEach(function(q){q.addEventListener("click",function(){selectAsset(q.dataset.asset);});});
 $("showAllCandles").addEventListener("click",function(){if(state.chart&&closedCandles(state.asset,state.resolution).length)state.chart.timeScale().fitContent();});
 $("resetChartView").addEventListener("click",function(){if(!state.chart)return;const c=closedCandles(state.asset,state.resolution);if(c.length)state.chart.timeScale().setVisibleLogicalRange({from:Math.max(0,c.length-70),to:c.length+3});});
-$("recordSignal").addEventListener("click",function(){alert("Используй вкладку «Стратегия» — сигналы пишутся автоматически.");});
+$("recordSignal").addEventListener("click",function(){alert("Сигналы пишутся автоматически. Можно добавить сделку вручную во вкладке «Сделки».");});
 ["alertsEnabled","goldAlertsEnabled","btcAlertsEnabled","soundEnabled"].forEach(function(id){
   $(id).addEventListener("change",function(){
     state.settings[id]=$(id).checked;saveSettings();
@@ -1178,11 +1140,13 @@ $("tradeForm").addEventListener("submit",function(e){
 });
 $("clearTrades").addEventListener("click",function(){if(state.trades.length&&confirm("Удалить все записи журнала сделок?")){state.trades=[];saveTrades();renderTrades();}});
 
-/* ===== СТРАНИЦА «СТРАТЕГИЯ» ===== */
+/* ========== СТРАНИЦА «СТРАТЕГИЯ» ========== */
 let selectedAsset="gold",selectedStrategy=null,lastResult=null,allTrades=[];
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function dateLabel(v){const t=Number(v)||Date.parse(v)||0;if(!t)return"—";return new Date(t).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}
+
 function renderStrategyList(){
-  const list=$("slStrategyList");
-  if(!list)return;
+  const list=$("slStrategyList");if(!list)return;
   list.replaceChildren();
   const arr=REGISTRY[selectedAsset];
   const market=getMarketStrategyInfo(selectedAsset);
@@ -1206,8 +1170,6 @@ function updateRunButtons(){
   if(b1){b1.disabled=!selectedStrategy;b1.textContent=selectedStrategy?"Запустить тест":"Выбери стратегию";}
   if(b2)b2.disabled=!selectedStrategy;
 }
-function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
-function dateLabel(v){const t=Number(v)||Date.parse(v)||0;if(!t)return"—";const d=new Date(t);return d.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}
 
 function findAssetArray(data,asset){
   if(!data)return[];
@@ -1246,19 +1208,26 @@ function normalizeStrategyCandles(raw){
   return out.filter(function(c,i,a){return i===0||timeNum(c.time)!==timeNum(a[i-1].time);});
 }
 async function loadStrategyCandles(asset,tf,limit){
-  const res=await fetch("/api/candles?resolution=MINUTE",{cache:"no-store"});
-  if(!res.ok)throw new Error("HTTP "+res.status);
-  const data=await res.json();
-  const candles=normalizeStrategyCandles(findAssetArray(data,asset));
-  if(!candles.length)throw new Error("Нет свечей для "+asset);
-  const step=tf*60000,buckets=new Map();
-  for(const c of candles){
-    const t=timeNum(c.time);if(!t)continue;
-    const key=Math.floor(t/step)*step,old=buckets.get(key);
-    if(!old)buckets.set(key,{time:key,open:c.open,high:c.high,low:c.low,close:c.close});
-    else{old.high=Math.max(old.high,c.high);old.low=Math.min(old.low,c.low);old.close=c.close;}
+  const intMap={1:"1m",5:"5m",15:"15m",60:"1h",240:"4h"};
+  const interval=intMap[tf]||"5m";
+  try{
+    const res=await fetch("/api/candles?resolution=MINUTE",{cache:"no-store"});
+    if(!res.ok)throw new Error("HTTP "+res.status);
+    const data=await res.json();
+    const candles=normalizeStrategyCandles(findAssetArray(data,asset));
+    if(!candles.length)throw new Error("empty");
+    const step=tf*60000,buckets=new Map();
+    for(const c of candles){
+      const t=timeNum(c.time);if(!t)continue;
+      const key=Math.floor(t/step)*step,old=buckets.get(key);
+      if(!old)buckets.set(key,{time:key,open:c.open,high:c.high,low:c.low,close:c.close});
+      else{old.high=Math.max(old.high,c.high);old.low=Math.min(old.low,c.low);old.close=c.close;}
+    }
+    return Array.from(buckets.values()).sort(function(a,b){return a.time-b.time;}).slice(-limit);
+  }catch(e){
+    const raw=await binanceKlinesRaw(BINANCE_SYMBOLS[asset],interval,Math.min(limit||500,1000));
+    return normalizeStrategyCandles(raw).slice(-limit);
   }
-  return Array.from(buckets.values()).sort(function(a,b){return a.time-b.time;}).slice(-limit);
 }
 
 function backtest(candles,asset,strat,cfg){
@@ -1336,7 +1305,6 @@ function renderStrategyTrades(trades){
   }).join("");
   $("sl-trades").innerHTML='<table><thead><tr><th>Время</th><th>Сторона</th><th>Вход</th><th>Выход</th><th>R</th><th>Причина</th></tr></thead><tbody>'+(body||'<tr><td colspan="6">Сделок не найдено.</td></tr>')+'</tbody></table>';
 }
-
 async function runStrategyTest(){
   const btn=$("sl-run");btn.disabled=true;$("sl-csv").disabled=true;$("sl-demo").disabled=true;
   $("sl-status").textContent="Загружаю свечи и считаю…";
@@ -1366,9 +1334,7 @@ async function runStrategyTest(){
     $("sl-status").textContent="Готово. Сделок: "+r.count+", свечей: "+candles.length+".";
   }catch(e){
     $("sl-status").textContent="Ошибка: "+(e&&e.message?e.message:e);
-  }finally{
-    btn.disabled=false;
-  }
+  }finally{btn.disabled=false;}
 }
 function exportCSV(){
   if(!allTrades.length)return;
@@ -1376,9 +1342,8 @@ function exportCSV(){
   for(const t of allTrades)rows.push([dateLabel(t.time),t.side,t.entry,t.exit,t.R,t.reason,t.held]);
   const csv="\uFEFF"+rows.map(function(r){return r.map(function(v){return '"'+String(v==null?"":v).replace(/"/g,'""')+'"';}).join(";");}).join("\r\n");
   const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
-  const a=document.createElement("a");
-  a.href=url;a.download="backtest-"+selectedAsset+"-"+selectedStrategy+".csv";
-  a.click();setTimeout(function(){URL.revokeObjectURL(url);},1000);
+  const a=document.createElement("a");a.href=url;a.download="backtest-"+selectedAsset+"-"+selectedStrategy+".csv";a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);},1000);
 }
 function applyToMarket(){
   if(!selectedStrategy)return;
@@ -1386,14 +1351,13 @@ function applyToMarket(){
   const s=arr.find(function(x){return x.id===selectedStrategy;});
   if(!s)return;
   setMarketStrategy(selectedAsset,s.id,s.name);
-  // принудительный пересчёт сигнала
   state.strategy[selectedAsset]=analyze(selectedAsset);
   renderMarket();renderDashboard();renderMarketSignals();
   renderStrategyList();
   alert("✅ Стратегия «"+s.name+"» применена к рынку для "+(selectedAsset==="gold"?"Золота":"Bitcoin")+".\n\nГлавная страница теперь использует её.");
 }
 
-/* ===== АКТИВНЫЕ СТРАТЕГИИ НА DEMO ===== */
+/* ========== АКТИВНЫЕ СТРАТЕГИИ НА DEMO ========== */
 function loadActiveStrategies(){return safeRead("gb-active-strats",{});}
 function saveActiveStrategies(v){try{localStorage.setItem("gb-active-strats",JSON.stringify(v));}catch(e){}renderActiveCard();}
 let monitorTimer=null;
@@ -1402,7 +1366,7 @@ function renderActiveCard(){
   const active=loadActiveStrategies();
   list.replaceChildren();
   const keys=Object.keys(active).filter(function(k){return active[k];});
-  $("activeStratBadge").textContent=keys.length;
+  const badge=$("activeStratBadge");if(badge)badge.textContent=keys.length;
   if(!keys.length){
     list.textContent="Стратегии не запущены. Перейди во вкладку «Стратегия», протестируй и нажми «Запустить на Demo».";
     const st=$("activeStrategiesStatus");if(st)st.textContent="";
@@ -1425,12 +1389,10 @@ function startDemoRun(){
   const r=lastResult;
   const active=loadActiveStrategies();
   const name=r.asset==="gold"?"🥇 Золото":"₿ Bitcoin";
-  if(active[r.asset]){
-    if(!confirm("Для "+name+" уже запущена стратегия «"+active[r.asset].name+"». Заменить на «"+r.strat.name+"»?"))return;
-  }
+  if(active[r.asset]){if(!confirm("Для "+name+" уже запущена стратегия «"+active[r.asset].name+"». Заменить на «"+r.strat.name+"»?"))return;}
   active[r.asset]={id:r.strat.id,name:r.strat.name,startedAt:new Date().toLocaleString("ru-RU"),signals:0,cfg:r.cfg};
   saveActiveStrategies(active);
-  alert("✅ Стратегия «"+r.strat.name+"» запущена на Demo для "+name+".\n\nПерейди во вкладку «Счёт» — там будет статус.");
+  alert("✅ Стратегия «"+r.strat.name+"» запущена на Demo для "+name+".");
   if(!monitorTimer)monitorTimer=setInterval(checkActiveStrategies,30000);
   checkActiveStrategies();
 }
@@ -1469,15 +1431,13 @@ async function placeDemoOrder(asset,side,entry,stop,target,stratName,reason){
     const res=await fetch("/api/demo/order",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(payload)});
     if(res.ok){if(status)status.textContent="✅ Ордер: "+asset+" "+side+" @ "+entry.toFixed(2)+" ("+new Date().toLocaleTimeString("ru-RU")+")";}
     else{const err=await res.text();if(status)status.textContent="⚠️ Ордер не отправлен (HTTP "+res.status+"): "+err.slice(0,120);}
-  }catch(e){
-    if(status)status.textContent="⚠️ Сеть: сигнал "+asset+" "+side+" @ "+entry.toFixed(2)+" (ордер не отправлен)";
-  }
+  }catch(e){if(status)status.textContent="⚠️ Сеть: сигнал "+asset+" "+side+" @ "+entry.toFixed(2)+" (ордер не отправлен)";}
   if("Notification"in window&&Notification.permission==="granted"){
     try{new Notification("Сигнал · "+stratName,{body:(asset==="gold"?"Золото":"Bitcoin")+" "+side+" @ "+entry.toFixed(2)+"\nSL: "+stop.toFixed(2)+" · TP: "+target.toFixed(2),tag:"demo-"+asset});}catch(e){}
   }
 }
 
-/* ===== ИНИЦИАЛИЗАЦИЯ СТРАНИЦЫ СТРАТЕГИИ ===== */
+/* ========== ОБРАБОТЧИКИ СТРАНИЦЫ «СТРАТЕГИЯ» ========== */
 document.querySelectorAll(".sl-asset-btn").forEach(function(b){
   b.addEventListener("click",function(){
     selectedAsset=b.dataset.slAsset;
@@ -1496,37 +1456,59 @@ if(Object.keys(loadActiveStrategies()).filter(function(k){return loadActiveStrat
   monitorTimer=setInterval(checkActiveStrategies,30000);
 }
 
-/* ===== СТАРТ ===== */
-renderSettings();
-initChart();
-renderTrades();
-document.querySelectorAll('.quote[data-asset]').forEach(function(q){q.classList.toggle('active',q.dataset.asset===state.asset);});
-refreshAll();
-setInterval(refreshAll,30000);
+/* ========== DEMO-СЧЁТ ========== */
+function accountMoney(value){if(value===null||value===undefined||!Number.isFinite(Number(value)))return"$—";return"$"+Number(value).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function accountSet(id,value){const el=$(id);if(el)el.textContent=value;}
+async function refreshDemoAccount(){
+  try{
+    const response=await fetch("/api/account",{method:"GET",cache:"no-store",headers:{"Accept":"application/json"}});
+    const data=await response.json();
+    if(!response.ok||data.error)throw new Error(data.error||"HTTP "+response.status);
+    accountSet("demoBalance",accountMoney(data.balance));
+    accountSet("demoAvailable",accountMoney(data.available));
+    accountSet("demoDeposit",accountMoney(data.deposit));
+    const pnlEl=$("demoProfitLoss");
+    const pnl=Number(data.profitLoss);
+    if(pnlEl){pnlEl.textContent=accountMoney(data.profitLoss);pnlEl.style.color=Number.isFinite(pnl)?(pnl>0?"#32d296":pnl<0?"#ff6474":"#edf3fb"):"#edf3fb";}
+    const positions=Array.isArray(data.openPositions)?data.openPositions:[];
+    accountSet("demoPositionCount",String(positions.length));
+    const list=$("demoPositions");list.replaceChildren();
+    if(!positions.length){list.textContent="Открытых позиций нет.";}
+    else{
+      positions.forEach(function(position){
+        const row=document.createElement("div");row.className="account-position";
+        const title=document.createElement("strong");
+        title.textContent=(position.name||position.epic||"Инструмент")+" · "+(position.direction||"—");
+        const details=document.createElement("div");details.className="account-muted";
+        details.textContent="Размер: "+(position.size!=null?position.size:"—")+" · Вход: "+accountMoney(position.level)+" · Текущая: "+accountMoney(position.currentPrice);
+        const profit=document.createElement("div");
+        const value=Number(position.profitLoss);
+        profit.textContent="P/L: "+accountMoney(position.profitLoss);
+        profit.style.color=Number.isFinite(value)?(value>0?"#32d296":value<0?"#ff6474":"#edf3fb"):"#edf3fb";
+        row.append(title,details,profit);list.appendChild(row);
+      });
+    }
+    accountSet("demoAccountUpdated","Обновлено: "+new Date().toLocaleTimeString("ru-RU")+" · Автообновление каждые 30 секунд");
+    const upd=$("demoAccountUpdated");if(upd)upd.classList.remove("account-error");
+  }catch(error){
+    accountSet("demoAccountUpdated","Не удалось обновить Demo-счёт: "+(error.message||"ошибка соединения")+".");
+    const upd=$("demoAccountUpdated");if(upd)upd.classList.add("account-error");
+  }
+}
 
-/* ===== DEMO-СЧЁТ ===== */
+/* ========== ИСТОРИЯ ОПЕРАЦИЙ ========== */
 (function(){
-  function accountMoney(value){if(value===null||value===undefined||!Number.isFinite(Number(value)))return"$—";return"$"+Number(value).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});}
-  function accountSet(id,value){const el=$(id);if(el)el.textContent=value;}
-  async function refreshDemoAccount(){
-    try{
-      const response=await fetch("/api/account",{method:"GET",cache:"no-store",headers:{"Accept":"application/json"}});
-      const data=await response.json();
-      if(!response.ok||data.error)throw new Error(data.error||"HTTP "+response.status);
-      accountSet("demoBalance",accountMoney(data.balance));
-      accountSet("demoAvailable",accountMoney(data.available));
-      accountSet("demoDeposit",accountMoney(data.deposit));
-      const pnlEl=$("demoProfitLoss");
-      const pnl=Number(data.profitLoss);
-      if(pnlEl){pnlEl.textContent=accountMoney(data.profitLoss);pnlEl.style.color=Number.isFinite(pnl)?(pnl>0?"#32d296":pnl<0?"#ff6474":"#edf3fb"):"#edf3fb";}
-      const positions=Array.isArray(data.openPositions)?data.openPositions:[];
-      accountSet("demoPositionCount",String(positions.length));
-      const list=$("demoPositions");list.replaceChildren();
-      if(!positions.length){list.textContent="Открытых позиций нет.";}
-      else{
-        positions.forEach(function(position){
-          const row=document.createElement("div");row.className="account-position";
-          const title=document.createElement("strong");
-          title.textContent=(position.name||position.epic||"Инструмент")+" · "+(position.direction||"—");
-          const details=document.createElement("div");details.className="account-muted";
-          details.textContent="Размер: "+(position.size!=null?position.size:"—")+"
+  const card=$("tradeHistoryCard");if(!card)return;
+  const countEl=$("thCount"),periodEl=$("thPeriod"),messageEl=$("thMessage"),listEl=$("thList"),updatedEl=$("thUpdated"),refreshBtn=$("thRefresh");
+  const buttons=Array.prototype.slice.call(card.querySelectorAll(".th-period"));
+  let days=1,requestId=0;
+  function safeText(value){if(value===null||value===undefined||value==="")return"—";if(typeof value==="object")return JSON.stringify(value);return String(value);}
+  function addText(parent,tag,className,value){const el=document.createElement(tag);if(className)el.className=className;el.textContent=safeText(value);parent.appendChild(el);return el;}
+  function firstValue(obj,keys){for(const key of keys){if(obj&&obj[key]!==undefined&&obj[key]!==null)return obj[key];}return null;}
+  function renderTransactions(transactions){
+    listEl.replaceChildren();
+    if(!transactions.length){messageEl.hidden=false;messageEl.textContent="За выбранный период операций не найдено.";return;}
+    messageEl.hidden=true;
+    transactions.forEach(function(tx){
+      const item=document.createElement("div");item.className="th-item";
+      const instrument=firstValue(tx,["instrumentName","instrument","marketName","epic","symbol"])
