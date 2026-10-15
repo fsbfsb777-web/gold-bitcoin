@@ -12,7 +12,7 @@
 body{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 button,input,select{font:inherit;color:var(--text)}
 button{cursor:pointer;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 10px}
-button:disabled{opacity:.45}button.active{border-color:var(--blue);background:#21344d}
+button:disabled{opacity:.45}
 header{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#111924;border-bottom:1px solid var(--line)}
 h1{font-size:17px;margin:0;font-weight:800}.hst{font-size:10px;color:var(--muted)}
 .wsdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#657184;margin-right:5px;vertical-align:middle;transition:background .2s}
@@ -21,13 +21,13 @@ h1{font-size:17px;margin:0;font-weight:800}.hst{font-size:10px;color:var(--muted
 main{max-width:900px;margin:auto;padding:8px 8px 90px}
 .tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:8px}
 .tabs button{font-size:11px;padding:9px 2px}
+.tabs button.on{border-color:var(--blue);background:#21344d}
 .quotes{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
 .quote,.panel{background:var(--panel);border:1px solid var(--line);border-radius:11px}
 .quote{padding:8px;cursor:pointer}.quote.on{border-color:var(--blue);background:#1a2634}
 .qname{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .qprice{font-size:clamp(18px,5vw,24px);font-weight:800;margin:6px 0;font-variant-numeric:tabular-nums;transition:color .25s}
-.qprice.tick-up{color:#32d296}
-.qprice.tick-down{color:#ff6474}
+.qprice.tick-up{color:#32d296}.qprice.tick-down{color:#ff6474}
 .qsig{font-size:10px;font-weight:800}
 .lamp{display:inline-block;width:9px;height:9px;border-radius:50%;background:#657184}
 .lamp.buy{background:var(--green);box-shadow:0 0 8px #32d29670}
@@ -38,7 +38,7 @@ main{max-width:900px;margin:auto;padding:8px 8px 90px}
 .ptitle{font-size:13px;font-weight:800;margin-bottom:8px}
 .tfs{display:flex;gap:5px;margin-bottom:6px}
 .tfs button{flex:1;font-size:11px;padding:7px 2px}
-.tfs button.on{border-color:var(--blue);background:#21344d;color:var(--blue);font-weight:800;box-shadow:0 0 0 1px #73a7ff55 inset}
+.tfs button.on{border-color:var(--blue);background:#21344d;color:var(--blue);font-weight:800}
 #chart{width:100%;height:300px}
 .sub{font-size:10px;color:var(--muted);line-height:1.5}
 .sig-strip{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
@@ -228,7 +228,7 @@ th{background:#202b38;color:var(--muted);position:sticky;top:0}
 <div class="stat"><small>Авто</small><b id="stAuto">0</b></div>
 <div class="stat"><small>Закрыто</small><b id="stClosed">0</b></div>
 </div>
-<div class="note">Авто-сделки создаются при появлении нового сигнала и закрываются при SL/TP или через 6 часов автоматически.</div>
+<div class="note">Авто-сделки создаются при появлении нового сигнала и закрываются при SL/TP или через 6 часов.</div>
 </div>
 
 <div class="panel">
@@ -275,7 +275,7 @@ th{background:#202b38;color:var(--muted);position:sticky;top:0}
 <div><label>Мин. волатильность, %</label><input id="sMinVol" type="number" value="0.04" step="0.01"></div>
 </div>
 <div class="srow">
-<div><div class="stitle">Трендовый фильтр (EMA50)</div><div class="sub">Не входить против локального тренда (только для трендовых стратегий)</div></div>
+<div><div class="stitle">Трендовый фильтр (EMA50)</div><div class="sub">Не входить против локального тренда</div></div>
 <label class="toggle"><input type="checkbox" id="sTrend" checked><span class="toggle-track"></span></label>
 </div>
 <div class="srow">
@@ -287,7 +287,7 @@ th{background:#202b38;color:var(--muted);position:sticky;top:0}
 <button id="sOpt" class="primary">⚙ Оптимизация</button>
 <button id="sCsv" disabled>Экспорт CSV</button>
 </div>
-<div class="status" id="sStatus">Нажми «Проверить все стратегии» — прогонятся все стратегии на одних свечах.</div>
+<div class="status" id="sStatus">Нажми «Проверить все стратегии».</div>
 <div class="prog" id="sProg" style="display:none"><div id="sProgFill"></div></div>
 </div>
 
@@ -298,7 +298,7 @@ th{background:#202b38;color:var(--muted);position:sticky;top:0}
 
 <div class="panel" id="optPanel" style="display:none">
 <div class="ptitle">4. Топ комбинаций (оптимизация)</div>
-<div class="sub">Стратегия · ATR× · R · Win · PF · R итог</div>
+<div class="sub">Стратегия · ATR× · R · PF · Win%</div>
 <div id="optList" style="margin-top:8px"></div>
 </div>
 
@@ -315,7 +315,7 @@ th{background:#202b38;color:var(--muted);position:sticky;top:0}
 <div class="srow"><div><div class="stitle">Оповещения по золоту</div><div class="sub">XAU/USD</div></div><label class="toggle"><input type="checkbox" id="moG" checked><span class="toggle-track"></span></label></div>
 <div class="srow"><div><div class="stitle">Оповещения по Bitcoin</div><div class="sub">BTC/USD</div></div><label class="toggle"><input type="checkbox" id="moB" checked><span class="toggle-track"></span></label></div>
 <div class="srow"><div><div class="stitle">Звук и вибрация</div><div class="sub">При новом BUY/SELL</div></div><label class="toggle"><input type="checkbox" id="moSnd" checked><span class="toggle-track"></span></label></div>
-<div class="srow"><div><div class="stitle">Автоотправка ордеров на Demo</div><div class="sub">POST /api/demo/order при новом сигнале</div></div><label class="toggle"><input type="checkbox" id="moOrder"><span class="toggle-track"></span></label></div>
+<div class="srow"><div><div class="stitle">Автоотправка ордеров на Demo</div><div class="sub">POST /api/demo/order</div></div><label class="toggle"><input type="checkbox" id="moOrder"><span class="toggle-track"></span></label></div>
 <div class="srow"><div><div class="stitle">Уведомления браузера</div><div class="sub" id="moNotifyState">Проверка…</div></div><button id="moNotifyBtn" class="primary">Разрешить</button></div>
 <div class="sub" id="moStatus" style="margin-top:8px">—</div>
 </div>
@@ -436,23 +436,16 @@ function buildCtx(candles){
   var bb=bbArr(close,20,2),rsi=rsiArr(close,14),atr=atrArr(candles,14),adx=adxArr(candles,14);
   var ema9=emaArr(close,9),ema21=emaArr(close,21),ema50=emaArr(close,50),ema200=emaArr(close,200),sma20=sma(close,20);
   var m=macdArr(close),stoch=stochArr(candles,14,3),st=supertrendArr(candles,10,3),dc=donchianArr(candles,20),ich=ichimokuArr(candles);
-  return{candles:candles,close:close,bb:bb,rsi:rsi,atr:atr,adx:adx,ema9:ema9,ema21:ema21,ema50:ema50,ema200:ema200,sma20:sma20,
-    macdLine:m.line,macdHist:m.hist,stochK:stoch.k,stochD:stoch.d,st:st.trend,dHigh:dc.high,dLow:dc.low,
-    tk:ich.tenkan,kj:ich.kijun,sa:ich.sa,sb:ich.sb};
+  return{candles:candles,close:close,bb:bb,rsi:rsi,atr:atr,adx:adx,ema9:ema9,ema21:ema21,ema50:ema50,ema200:ema200,sma20:sma20,macdLine:m.line,macdHist:m.hist,stochK:stoch.k,stochD:stoch.d,st:st.trend,dHigh:dc.high,dLow:dc.low,tk:ich.tenkan,kj:ich.kijun,sa:ich.sa,sb:ich.sb};
 }
 
 function closed(candles,sec){var now=Math.floor(Date.now()/1000);return candles.filter(function(c){return c.time+sec<=now;});}
 
-/* ============ WebSocket ============ */
 function wsSetStatus(active){var dot=$("wsdot");if(dot)dot.className="wsdot "+(active?"on":"off");}
 
 function buildStreamUrl(base){
   var streams=[];
-  for(var a of ["gold","bitcoin"]){
-    var sym=SYM[a].toLowerCase();
-    streams.push(sym+"@miniTicker");
-    streams.push(sym+"@kline_5m");
-  }
+  for(var a of ["gold","bitcoin"]){var sym=SYM[a].toLowerCase();streams.push(sym+"@miniTicker");streams.push(sym+"@kline_5m");}
   return base+streams.join("/");
 }
 
@@ -461,48 +454,25 @@ function wsConnect(){
   var base=WS.urls[WS.urlIdx%WS.urls.length];
   var url=buildStreamUrl(base);
   var ws;
-  try{ws=new WebSocket(url);}catch(e){
-    WS.urlIdx++;
-    setTimeout(wsConnect,WS.reconnectMs);
-    WS.reconnectMs=Math.min(30000,WS.reconnectMs*2);
-    return;
-  }
+  try{ws=new WebSocket(url);}catch(e){WS.urlIdx++;setTimeout(wsConnect,WS.reconnectMs);WS.reconnectMs=Math.min(30000,WS.reconnectMs*2);return;}
   WS.conn=ws;
-
   var openTimer=setTimeout(function(){if(!WS.active){try{ws.close();}catch(e){}}},8000);
-
   ws.onopen=function(){
     clearTimeout(openTimer);
-    WS.active=true;
-    WS.reconnectMs=1000;
-    wsSetStatus(true);
+    WS.active=true;WS.reconnectMs=1000;wsSetStatus(true);
     T("hdr","WS · LIVE · "+new Date().toLocaleTimeString("ru-RU"));
-    if(S.candles.MINUTE_5){
-      loadCandles("MINUTE_5").then(function(){if(S.tf==="MINUTE_5")renderChart();});
-    }
+    if(S.candles.MINUTE_5){loadCandles("MINUTE_5").then(function(){if(S.tf==="MINUTE_5")renderChart();});}
   };
-
   ws.onmessage=function(ev){
-    var msg;
-    try{msg=JSON.parse(ev.data);}catch(e){return;}
-    var d=msg.data||msg;
-    WS.lastMsg=Date.now();
+    var msg;try{msg=JSON.parse(ev.data);}catch(e){return;}
+    var d=msg.data||msg;WS.lastMsg=Date.now();
     if(d.e==="24hrMiniTicker"){handleTicker(d);}
     else if(d.e==="kline"){handleKline(d);}
   };
-
   ws.onerror=function(){try{ws.close();}catch(e){}};
-
   ws.onclose=function(){
-    clearTimeout(openTimer);
-    WS.active=false;
-    wsSetStatus(false);
-    if(WS.conn===ws){
-      WS.urlIdx++;
-      T("hdr","REST · переподключение…");
-      setTimeout(wsConnect,WS.reconnectMs);
-      WS.reconnectMs=Math.min(30000,WS.reconnectMs*2);
-    }
+    clearTimeout(openTimer);WS.active=false;wsSetStatus(false);
+    if(WS.conn===ws){WS.urlIdx++;T("hdr","REST · переподключение…");setTimeout(wsConnect,WS.reconnectMs);WS.reconnectMs=Math.min(30000,WS.reconnectMs*2);}
   };
 }
 
@@ -510,17 +480,10 @@ function handleTicker(d){
   var sym=d.s;
   for(var a of ["gold","bitcoin"]){
     if(SYM[a]===sym){
-      var newPrice=+d.c;
-      var oldPrice=S.price[a];
-      S.price[a]=newPrice;
+      var newPrice=+d.c,oldPrice=S.price[a];S.price[a]=newPrice;
       if(oldPrice&&newPrice!==oldPrice){
         var el=$(a==="gold"?"pg":"pb");
-        if(el){
-          el.classList.remove("tick-up","tick-down");
-          void el.offsetWidth;
-          el.classList.add(newPrice>oldPrice?"tick-up":"tick-down");
-          setTimeout(function(){el.classList.remove("tick-up","tick-down");},400);
-        }
+        if(el){el.classList.remove("tick-up","tick-down");void el.offsetWidth;el.classList.add(newPrice>oldPrice?"tick-up":"tick-down");setTimeout(function(){el.classList.remove("tick-up","tick-down");},400);}
       }
       break;
     }
@@ -529,9 +492,7 @@ function handleTicker(d){
 }
 
 function handleKline(d){
-  var k=d.k;
-  if(!k)return;
-  if(k.i!=="5m")return;
+  var k=d.k;if(!k||k.i!=="5m")return;
   var asset=null;
   for(var a of ["gold","bitcoin"]){if(SYM[a]===k.s){asset=a;break;}}
   if(!asset)return;
@@ -549,22 +510,16 @@ function handleKline(d){
 function reanalyze(asset){
   try{
     var next=analyze(asset,"MINUTE_5");
-    var mon=getMon();
-    var prev=prevSide[asset];
+    var mon=getMon();var prev=prevSide[asset];
     autoAdd(next);
-    if(monInitDone&&mon.enabled&&mon[asset]&&(next.side==="BUY"||next.side==="SELL")&&prev!==next.side){
-      notifySignal(asset,next,mon);
-      if(mon.order)sendDemoOrder(asset,next);
-    }
-    prevSide[asset]=next.side;
-    S.sig[asset]=next;
+    if(monInitDone&&mon.enabled&&mon[asset]&&(next.side==="BUY"||next.side==="SELL")&&prev!==next.side){notifySignal(asset,next,mon);if(mon.order)sendDemoOrder(asset,next);}
+    prevSide[asset]=next.side;S.sig[asset]=next;
     renderSignals();
     if(asset===S.asset)renderMarket();
     T("hdr","WS · LIVE · "+new Date().toLocaleTimeString("ru-RU"));
   }catch(e){}
 }
 
-/* ============ REST ============ */
 async function loadPrices(){
   for(var a of ["gold","bitcoin"]){
     try{
@@ -577,8 +532,7 @@ async function loadPrices(){
 }
 
 async function loadCandles(tf){
-  var interval=TF_MAP[tf];
-  S.candles[tf]=S.candles[tf]||{};
+  var interval=TF_MAP[tf];S.candles[tf]=S.candles[tf]||{};
   for(var a of ["gold","bitcoin"]){
     try{
       var r=await fetch(BINANCE+"/api/v3/klines?symbol="+SYM[a]+"&interval="+interval+"&limit=500",{cache:"no-store"});
@@ -597,16 +551,13 @@ function analyze(asset,tf){
   var candles=S.candles[tf]&&S.candles[tf][asset]||[];
   var cc=closed(candles,TF_SEC[tf]);
   var price=cc.length?cc[cc.length-1].close:S.price[asset];
-  var base={asset:asset,side:"WAIT",ready:false,price:price,stratId:strat.id,stratName:strat.name,
-    rsi:null,adx:null,atr:null,ema50:null,stop:null,target:null,checks:[],readiness:0,
-    explanation:"Недостаточно данных для «"+strat.name+"»."};
+  var base={asset:asset,side:"WAIT",ready:false,price:price,stratId:strat.id,stratName:strat.name,rsi:null,adx:null,atr:null,ema50:null,stop:null,target:null,checks:[],readiness:0,explanation:"Недостаточно данных для «"+strat.name+"»."};
   if(cc.length<60)return base;
   var ctx=buildCtx(cc);
   var lastIdx=cc.length-1;
   var sig=null;
   for(var k=lastIdx;k>=Math.max(60,lastIdx-2);k--){
-    var s=null;
-    try{s=strat.fn(ctx,k);}catch(e){}
+    var s=null;try{s=strat.fn(ctx,k);}catch(e){}
     if(s){sig=s;break;}
   }
   var side="WAIT";
@@ -619,14 +570,7 @@ function analyze(asset,tf){
   }
   var readiness=0,checks=[];
   if(STRAT_CHECKS[strat.id]){
-    try{
-      var chk=STRAT_CHECKS[strat.id](ctx,lastIdx);
-      if(Array.isArray(chk)){
-        checks=chk;
-        var okN=chk.filter(function(x){return x.ok;}).length;
-        readiness=chk.length?Math.round(okN/chk.length*100):0;
-      }
-    }catch(e){}
+    try{var chk=STRAT_CHECKS[strat.id](ctx,lastIdx);if(Array.isArray(chk)){checks=chk;var okN=chk.filter(function(x){return x.ok;}).length;readiness=chk.length?Math.round(okN/chk.length*100):0;}}catch(e){}
   }
   var atr=ctx.atr[lastIdx];
   var stop=sig&&isFinite(sig.stop)?sig.stop:null;
@@ -641,9 +585,7 @@ function autoAdd(s){
   if(!s||!s.ready||(s.side!=="BUY"&&s.side!=="SELL"))return;
   if(s.stop==null||s.target==null)return;
   if(hasOpen(s.asset,s.stratId))return;
-  S.trades.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,7),asset:s.asset,direction:s.side,
-    entry:+s.price,exit:null,stop:+s.stop,target:+s.target,note:s.explanation,
-    date:new Date().toLocaleString("ru-RU"),status:"OPEN",auto:true,sid:s.stratId,sname:s.stratName});
+  S.trades.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,7),asset:s.asset,direction:s.side,entry:+s.price,exit:null,stop:+s.stop,target:+s.target,note:s.explanation,date:new Date().toLocaleString("ru-RU"),status:"OPEN",auto:true,sid:s.stratId,sname:s.stratName});
   saveTrades();
 }
 function closeOpen(){
@@ -651,11 +593,7 @@ function closeOpen(){
   for(var t of S.trades){
     if(!t.auto||t.status!=="OPEN")continue;
     var createdTs=parseInt(String(t.id).split("-")[0],10);
-    if(createdTs&&(now-createdTs)>MAX_AGE_MS){
-      var pAge=S.price[t.asset];
-      if(pAge){t.exit=pAge;t.status="CLOSED";t.note=(t.note||"")+" [авто-закрытие по времени 6ч]";changed=true;}
-      continue;
-    }
+    if(createdTs&&(now-createdTs)>MAX_AGE_MS){var pAge=S.price[t.asset];if(pAge){t.exit=pAge;t.status="CLOSED";t.note=(t.note||"")+" [авто-закрытие по времени 6ч]";changed=true;}continue;}
     var p=S.price[t.asset];if(!p)continue;
     var hit=null;
     if(t.direction==="BUY"){if(t.stop&&p<=t.stop)hit=t.stop;else if(t.target&&p>=t.target)hit=t.target;}
@@ -669,11 +607,7 @@ function outcome(t){if(t.status==="CLOSED"||t.status==="MANUAL"){var p=pnl(t);re
 
 function initChart(){
   var host=$("chart");if(!host||!window.LightweightCharts){T("cstatus","График недоступен.");return;}
-  S.chart=LightweightCharts.createChart(host,{width:host.clientWidth,height:host.clientHeight,
-    layout:{background:{color:"#151d28"},textColor:"#aab8ca"},
-    grid:{vertLines:{color:"#222d3a"},horzLines:{color:"#222d3a"}},
-    rightPriceScale:{borderColor:"#344154",minimumWidth:58},
-    timeScale:{borderColor:"#344154",timeVisible:true,secondsVisible:false,rightOffset:5,barSpacing:7,minBarSpacing:2}});
+  S.chart=LightweightCharts.createChart(host,{width:host.clientWidth,height:host.clientHeight,layout:{background:{color:"#151d28"},textColor:"#aab8ca"},grid:{vertLines:{color:"#222d3a"},horzLines:{color:"#222d3a"}},rightPriceScale:{borderColor:"#344154",minimumWidth:58},timeScale:{borderColor:"#344154",timeVisible:true,secondsVisible:false,rightOffset:5,barSpacing:7,minBarSpacing:2}});
   S.series=S.chart.addCandlestickSeries({upColor:"#32d296",downColor:"#ff6474",borderUpColor:"#32d296",borderDownColor:"#ff6474",wickUpColor:"#32d296",wickDownColor:"#ff6474"});
   window.addEventListener("resize",function(){if(S.chart)S.chart.applyOptions({width:host.clientWidth,height:host.clientHeight});});
 }
@@ -794,14 +728,8 @@ function renderTrades(){
       d.textContent="Вход: "+f(t.entry)+" · Выход: "+(t.exit==null?"—":f(t.exit))+" · SL: "+(t.stop==null?"—":f(t.stop))+" · TP: "+(t.target==null?"—":f(t.target))+" · P/L: "+(p>0?"+":"")+f(p)+(t.sname?" · "+t.sname:"")+(t.date?" · "+t.date:"");
       div.append(d);
       var btns=document.createElement("div");btns.className="fa";
-      if(o==="OPEN"){
-        var b1=document.createElement("button");b1.textContent="Закрыть";
-        b1.onclick=function(){var v=prompt("Цена выхода:",S.price[t.asset]||"");if(v==null)return;var n=+v;if(!isFinite(n)||n<=0)return;t.exit=n;t.status="MANUAL";saveTrades();renderTrades();};
-        btns.append(b1);
-      }
-      var b2=document.createElement("button");b2.className="danger";b2.textContent="Удалить";
-      b2.onclick=function(){S.trades=S.trades.filter(function(x){return x.id!==t.id;});saveTrades();renderTrades();};
-      btns.append(b2);div.append(btns);list.append(div);
+      if(o==="OPEN"){var b1=document.createElement("button");b1.textContent="Закрыть";b1.onclick=function(){var v=prompt("Цена выхода:",S.price[t.asset]||"");if(v==null)return;var n=+v;if(!isFinite(n)||n<=0)return;t.exit=n;t.status="MANUAL";saveTrades();renderTrades();};btns.append(b1);}
+      var b2=document.createElement("button");b2.className="danger";b2.textContent="Удалить";b2.onclick=function(){S.trades=S.trades.filter(function(x){return x.id!==t.id;});saveTrades();renderTrades();};btns.append(b2);div.append(btns);list.append(div);
     });
   }
   var all=S.trades;
@@ -850,11 +778,11 @@ function renderMonUI(){
 }
 ["moOn","moG","moB","moSnd","moOrder"].forEach(function(id){var el=$(id);if(!el)return;el.addEventListener("change",function(){var mon=getMon();mon.enabled=$("moOn").checked;mon.gold=$("moG").checked;mon.bitcoin=$("moB").checked;mon.sound=$("moSnd").checked;mon.order=$("moOrder").checked;saveMon(mon);});});
 if($("moNotifyBtn"))$("moNotifyBtn").addEventListener("click",async function(){
-  if(!("Notification" in window)){alert("⚠️ Браузер не поддерживает уведомления.\n\nСкорее всего страница открыта как файл (file://) или в приватном режиме.\n\nРешение: добавь страницу на главный экран телефона и открой как приложение.");return;}
-  if(!window.isSecureContext){alert("⚠️ Уведомления работают только на HTTPS или localhost.\n\nСейчас страница открыта по небезопасному протоколу (file:// или http://).\n\nРешение: добавь страницу на главный экран телефона и открой как приложение.");return;}
+  if(!("Notification" in window)){alert("⚠️ Браузер не поддерживает уведомления.");return;}
+  if(!window.isSecureContext){alert("⚠️ Уведомления работают только на HTTPS или localhost.");return;}
   if(Notification.permission==="granted"){alert("✅ Уведомления уже разрешены.");return;}
-  if(Notification.permission==="denied"){alert("❌ Уведомления запрещены в настройках браузера.\n\nЗайди в Настройки браузера → Уведомления и разреши их для этой страницы.");return;}
-  try{var p=await Notification.requestPermission();if(p==="granted"){alert("✅ Уведомления разрешены!");}else if(p==="denied"){alert("❌ Ты отказал в уведомлениях. Кнопка больше не спросит — измени вручную в настройках браузера.");}else{alert("⏳ Запрос уведомлений проигнорирован.");}renderMonUI();}catch(e){alert("⚠️ Ошибка запроса уведомлений: "+(e.message||e)+"\n\nСкорее всего причина в том, что страница открыта как файл, а не как приложение.");}
+  if(Notification.permission==="denied"){alert("❌ Уведомления запрещены в настройках браузера.");return;}
+  try{var p=await Notification.requestPermission();if(p==="granted")alert("✅ Уведомления разрешены!");else if(p==="denied")alert("❌ Ты отказал в уведомлениях.");else alert("⏳ Запрос проигнорирован.");renderMonUI();}catch(e){alert("⚠️ Ошибка: "+(e.message||e));}
 });
 
 var demoBackoffMs=30000,demoLastCall=0,demoLastErr=0,demoConsecutiveErr=0;
@@ -902,12 +830,8 @@ async function refreshAll(){
     var mon=getMon();
     for(var a of ["gold","bitcoin"]){
       autoAdd(next[a]);
-      if(monInitDone&&mon.enabled&&mon[a]&&(next[a].side==="BUY"||next[a].side==="SELL")&&prevSide[a]!==next[a].side){
-        notifySignal(a,next[a],mon);
-        if(mon.order)sendDemoOrder(a,next[a]);
-      }
-      prevSide[a]=next[a].side;
-      S.sig[a]=next[a];
+      if(monInitDone&&mon.enabled&&mon[a]&&(next[a].side==="BUY"||next[a].side==="SELL")&&prevSide[a]!==next[a].side){notifySignal(a,next[a],mon);if(mon.order)sendDemoOrder(a,next[a]);}
+      prevSide[a]=next[a].side;S.sig[a]=next[a];
     }
     monInitDone=true;
     closeOpen();
@@ -917,7 +841,6 @@ async function refreshAll(){
   }catch(e){T("hdr","Ошибка: "+(e.message||e));}
 }
 
-/* ===== СТРАТЕГИЯ UI ===== */
 var selAsset="gold",lastResults={},lastAllTrades=[],bestCombo={};
 
 function renderStrategies(){
@@ -953,7 +876,7 @@ function updateStratCard(sid,r){
       if(best.trail!=null)$("sTrail").value=best.trail;
       ["sAtr","sR","sTrail"].forEach(function(id){var el=$(id);if(!el)return;el.style.borderColor="#32d296";el.style.boxShadow="0 0 8px #32d29680";setTimeout(function(){el.style.borderColor="";el.style.boxShadow="";},2000);});
       if($("sAtr"))$("sAtr").scrollIntoView({behavior:"smooth",block:"center"});
-      alert("✅ Подставлены лучшие значения:\n\nСтоп ATR × "+best.atr+"\nЦель R = "+best.r+(best.trail!=null?"\nTrailing ATR × "+best.trail:"")+"\n\nТеперь нажми «🔍 Проверить все стратегии».");
+      alert("✅ Подставлены лучшие значения.");
     };actEl.append(b2);
   }
 }
@@ -1074,4 +997,120 @@ async function runOptimization(){
       }
     }
     $("sProgFill").style.width="100%";
-    var good
+    var good=all.filter(function(x){return x.count>=15&&isFinite(x.pf)&&x.pf>1;});
+    good.sort(function(a,b){return b.pf-a.pf||b.total-a.total;});
+    var top=good.slice(0,15);
+    bestCombo={};
+    good.forEach(function(g){
+      if(!bestCombo[g.sid]||g.pf>bestCombo[g.sid].pf){
+        bestCombo[g.sid]={atr:g.atr,r:g.r,trail:g.trail,pf:g.pf,winRate:g.winRate,total:g.total};
+      }
+    });
+    Object.keys(lastResults).forEach(function(sid){updateStratCard(sid,lastResults[sid]);});
+    var html='<div class="opt-row opt-head"><span>Стратегия</span><b>ATR</b><b>R</b><b>PF</b><b>Win%</b></div>';
+    if(!top.length){
+      html+='<div class="sub" style="margin-top:8px">Ни одна комбинация не дала PF > 1 при ≥15 сделках.</div>';
+    }else{
+      top.forEach(function(g){
+        html+='<div class="opt-row"><span>'+g.strat+'</span><b>'+g.atr+'</b><b>'+g.r+'</b><b class="good">'+f(g.pf,2)+'</b><b>'+f(g.winRate,0)+'%</b></div>';
+      });
+    }
+    $("optList").innerHTML=html;
+    $("sStatus").textContent="Оптимизация завершена.";
+  }catch(e){
+    $("optList").innerHTML='<div class="sub">Ошибка: '+(e.message||e)+'</div>';
+  }finally{
+    btn.disabled=false;$("sRunAll").disabled=false;
+    setTimeout(function(){$("sProg").style.display="none";},1500);
+  }
+}
+
+function renderTestJournal(){
+  if(!lastAllTrades.length){
+    $("sTrades").innerHTML='<table><thead><tr><th>Стратегия</th><th>Время</th><th>Сторона</th><th>Вход</th><th>Выход</th><th>R</th></tr></thead><tbody><tr><td colspan="6">Нет сделок.</td></tr></tbody></table>';
+    return;
+  }
+  var body=lastAllTrades.slice().reverse().slice(0,300).map(function(t){
+    return '<tr><td>'+t.strat+'</td><td>'+new Date(t.time*1000).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})+'</td><td class="'+(t.side==="LONG"?"good":"bad")+'">'+t.side+'</td><td>'+f(t.entry,4)+'</td><td>'+f(t.exit,4)+'</td><td class="'+(t.R>0?"good":t.R<0?"bad":"")+'">'+f(t.R)+'R</td></tr>';
+  }).join("");
+  $("sTrades").innerHTML='<table><thead><tr><th>Стратегия</th><th>Время</th><th>Сторона</th><th>Вход</th><th>Выход</th><th>R</th></tr></thead><tbody>'+body+'</tbody></table>';
+}
+
+function exportCSV(){
+  if(!lastAllTrades.length)return;
+  var rows=[["strategy","time","side","entry","exit","R","reason"]];
+  lastAllTrades.forEach(function(t){rows.push([t.strat,new Date(t.time*1000).toISOString(),t.side,t.entry,t.exit,t.R,t.reason]);});
+  var csv="\uFEFF"+rows.map(function(r){return r.map(function(v){return '"'+String(v==null?"":v).replace(/"/g,'""')+'"';}).join(";");}).join("\r\n");
+  var url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  var a=document.createElement("a");a.href=url;a.download="backtest-"+selAsset+"-all.csv";a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);},1000);
+}
+
+function applyToMarket(sid){
+  var s=STRATS.find(function(x){return x.id===sid;});
+  if(!s)return;
+  setStrat(selAsset,s.id);
+  S.sig[selAsset]=analyze(selAsset,"MINUTE_5");
+  renderStrategies();renderMarket();renderSignals();
+  alert("✅ «"+s.name+"» применена к "+(selAsset==="gold"?"Золоту":"Bitcoin")+".");
+}
+
+function switchTab(n){
+  var pages={market:"pMarket",signals:"pSignals",trades:"pTrades",strategy:"pStrategy",account:"pAccount"};
+  for(var k in pages){var el=$(pages[k]);if(el)el.classList.toggle("hidden",k!==n);}
+  document.querySelectorAll("[data-tab]").forEach(function(b){b.classList.toggle("on",b.dataset.tab===n);});
+  if(n==="trades")renderTrades();
+  if(n==="strategy")renderStrategies();
+  if(n==="account"){renderMonUI();demoRefreshSoft();}
+  if(n==="market"&&S.chart)setTimeout(function(){S.chart.applyOptions({width:$("chart").clientWidth,height:$("chart").clientHeight});renderChart();},50);
+}
+
+document.querySelectorAll("[data-tab]").forEach(function(b){b.onclick=function(){switchTab(b.dataset.tab);};});
+document.querySelectorAll("[data-tf]").forEach(function(b){b.onclick=function(){
+  document.querySelectorAll("[data-tf]").forEach(function(x){x.classList.remove("on");});
+  b.classList.add("on");
+  S.tf=b.dataset.tf;S.chartReady=false;
+  if(!S.candles[S.tf])loadCandles(S.tf).then(renderChart);
+  else renderChart();
+};});
+document.querySelectorAll(".quote[data-a]").forEach(function(q){q.onclick=function(){
+  var a=q.dataset.a;if(a!=="gold"&&a!=="bitcoin")return;
+  S.asset=a;S.chartReady=false;
+  document.querySelectorAll(".quote[data-a]").forEach(function(x){x.classList.toggle("on",x.dataset.a===a);});
+  renderChart();renderMarket();renderSignals();
+};});
+document.querySelectorAll(".atabs [data-a]").forEach(function(b){b.onclick=function(){
+  selAsset=b.dataset.a;
+  lastResults={};lastAllTrades=[];bestCombo={};
+  document.querySelectorAll(".atabs [data-a]").forEach(function(x){x.classList.toggle("on",x.dataset.a===selAsset);});
+  renderStrategies();
+  $("sStatus").textContent="Актив: "+(selAsset==="gold"?"Золото":"Bitcoin")+". Нажми «Проверить все стратегии».";
+};});
+$("sRunAll").onclick=runAllTests;
+$("sOpt").onclick=runOptimization;
+$("sCsv").onclick=exportCSV;
+$("clrTr").onclick=function(){if(S.trades.length&&confirm("Удалить все?")){S.trades=[];saveTrades();renderTrades();}};
+$("tForm").onsubmit=function(e){
+  e.preventDefault();
+  var entry=+$("fE").value;if(!isFinite(entry)||entry<=0)return alert("Проверь вход");
+  var exit=$("fX").value===""?null:+$("fX").value;
+  var stop=$("fS").value===""?null:+$("fS").value;
+  var target=$("fT").value===""?null:+$("fT").value;
+  S.trades.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,7),asset:$("fA").value,direction:$("fD").value,entry:entry,exit:exit,stop:stop,target:target,date:new Date().toLocaleString("ru-RU"),status:exit!=null?"MANUAL":"OPEN",auto:false});
+  saveTrades();renderTrades();e.target.reset();
+};
+
+renderStrategies();
+initChart();
+renderTrades();
+renderMonUI();
+
+wsConnect();
+refreshAll();
+refreshDemo();
+
+setInterval(refreshAll,30000);
+setInterval(refreshDemo,60000);
+</script>
+</body>
+</html>
