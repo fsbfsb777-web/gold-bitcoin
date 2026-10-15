@@ -107,6 +107,13 @@ th{background:#202b38;color:var(--muted);position:sticky;top:0}
 .opt-head{color:var(--muted);font-weight:700}
 .prog{height:6px;background:#0c131d;border-radius:4px;overflow:hidden;margin-top:8px}
 .prog>div{height:100%;width:0;background:var(--blue);transition:width .1s}
+.checks-line{display:flex;align-items:center;gap:6px;padding:3px 0}
+.checks-line .mk{width:14px;text-align:center;flex:0 0 14px}
+.checks-line .nm{flex:1;min-width:0;font-size:11px;color:#c4d0df;overflow-wrap:anywhere}
+.checks-line .ok{color:var(--green)}
+.checks-line .no{color:#647086}
+.readiness-bar{height:5px;background:#0c131d;border-radius:4px;overflow:hidden;margin-top:8px}
+.readiness-bar>div{height:100%;background:linear-gradient(90deg,#f4c95d,#32d296);transition:width .3s}
 @media(min-width:650px){#chart{height:430px}.metrics{grid-template-columns:repeat(4,1fr)}.stat-grid{grid-template-columns:repeat(4,1fr)}}
 </style>
 </head>
@@ -163,6 +170,10 @@ th{background:#202b38;color:var(--muted);position:sticky;top:0}
 <div class="lvl target"><small>Take Profit</small><b id="mtp">—</b></div>
 <div class="lvl stop"><small>Stop Loss</small><b id="msl">—</b></div>
 </div>
+<div class="slabel">Условия сигнала</div>
+<div id="mchecks"><div class="sub">—</div></div>
+<div class="readiness-bar"><div id="mreadBar"></div></div>
+<div class="sub" id="mreadTxt" style="margin-top:4px">Готовность: —</div>
 </div>
 
 <div class="panel">
@@ -212,7 +223,7 @@ th{background:#202b38;color:var(--muted);position:sticky;top:0}
 <div class="stat"><small>Авто</small><b id="stAuto">0</b></div>
 <div class="stat"><small>Закрыто</small><b id="stClosed">0</b></div>
 </div>
-<div class="note">Авто-сделки создаются при появлении нового сигнала и закрываются при достижении SL или TP.</div>
+<div class="note">Авто-сделки создаются при появлении нового сигнала и закрываются при достижении SL/TP или через 6 часов автоматически.</div>
 </div>
 
 <div class="panel">
@@ -259,7 +270,7 @@ th{background:#202b38;color:var(--muted);position:sticky;top:0}
 <div><label>Мин. волатильность, %</label><input id="sMinVol" type="number" value="0.04" step="0.01"></div>
 </div>
 <div class="srow">
-<div><div class="stitle">Трендовый фильтр (EMA50)</div><div class="sub">Не входить против локального тренда</div></div>
+<div><div class="stitle">Трендовый фильтр (EMA50)</div><div class="sub">Не входить против локального тренда (только для трендовых стратегий)</div></div>
 <label class="toggle"><input type="checkbox" id="sTrend" checked><span class="toggle-track"></span></label>
 </div>
 <div class="srow">
@@ -390,7 +401,7 @@ function sIchi(c,i){if(i<60||c.tk[i]==null||c.kj[i]==null||c.sa[i]==null||c.sb[i
 function sRange(c,i){if(i<60||c.atr[i]==null||c.adx[i]==null)return null;if(c.adx[i]>25||c.adx[i]<8)return null;var lb=40,hi=-Infinity,lo=Infinity;for(var k=i-lb;k<i;k++){if(c.candles[k].high>hi)hi=c.candles[k].high;if(c.candles[k].low<lo)lo=c.candles[k].low;}var sz=hi-lo;if(sz<c.atr[i]*3||sz>c.atr[i]*20)return null;var mid=(hi+lo)/2,buf=c.atr[i]*0.5,cd=c.candles[i],pd=c.candles[i-1];if(cd.low<=lo+buf&&cd.close>cd.open&&cd.close>pd.close)return{side:"LONG",reason:"Диапазон: отскок от нижней",stop:lo-c.atr[i]*0.8,target:mid};if(cd.high>=hi-buf&&cd.close<cd.open&&cd.close<pd.close)return{side:"SHORT",reason:"Диапазон: отскок от верхней",stop:hi+c.atr[i]*0.8,target:mid};return null;}
 function sRangeBreak(c,i){if(i<60||c.atr[i]==null||c.adx[i]==null)return null;if(c.adx[i]<8)return null;var lb=40,hi=-Infinity,lo=Infinity;for(var k=i-lb;k<i;k++){if(c.candles[k].high>hi)hi=c.candles[k].high;if(c.candles[k].low<lo)lo=c.candles[k].low;}var sz=hi-lo;if(sz<c.atr[i]*3||sz>c.atr[i]*20)return null;var cd=c.candles[i],pd=c.candles[i-1],buf=c.atr[i]*0.3;if(pd.close<hi&&cd.close>hi+buf&&cd.close>cd.open)return{side:"LONG",reason:"Пробой диапазона вверх",stop:hi-c.atr[i]*1.2,target:hi+sz};if(pd.close>lo&&cd.close<lo-buf&&cd.close<cd.open)return{side:"SHORT",reason:"Пробой диапазона вниз",stop:lo+c.atr[i]*1.2,target:lo-sz};return null;}
 
-/* ============ НОВЫЕ СТРАТЕГИИ: СКАЛЬПИНГ ============ */
+/* ============ СКАЛЬПИНГ ============ */
 function sScalpEMA(c,i){
   if(i<30||!c.ema9[i]||!c.ema21[i]||!c.atr[i]||!c.rsi[i])return null;
   var cd=c.candles[i];
@@ -432,13 +443,16 @@ function sScalpPullback(c,i){
 }
 function sVWAP(c,i){
   if(i<40||!c.atr[i]||!c.rsi[i])return null;
-  var sumPV=0;
-  for(var k=i-19;k<=i;k++){
-    var tp=(c.candles[k].high+c.candles[k].low+c.candles[k].close)/3;
-    sumPV+=tp;
-  }
-  var vwap=sumPV/20;
   var cd=c.candles[i];
+  var hasVol = typeof cd.volume==="number";
+  var sumPV=0, sumV=0;
+  for(var k=i-19;k<=i;k++){
+    var kc=c.candles[k];
+    var tp=(kc.high+kc.low+kc.close)/3;
+    var v = hasVol ? (kc.volume||1) : 1;
+    sumPV+=tp*v; sumV+=v;
+  }
+  var vwap = sumV>0 ? sumPV/sumV : cd.close;
   var distPct=(cd.close-vwap)/vwap*100;
   var risk=c.atr[i]*1.0;
   if(distPct<-0.15 && cd.close>cd.open && c.rsi[i]<45 && c.rsi[i]>25)
@@ -448,7 +462,7 @@ function sVWAP(c,i){
   return null;
 }
 
-/* ============ НОВЫЕ СТРАТЕГИИ: ЧАСОВЫЕ ============ */
+/* ============ ЧАСОВЫЕ ============ */
 function sH1Trend(c,i){
   if(i<210||!c.ema50[i]||!c.ema200[i]||!c.atr[i]||!c.rsi[i]||!c.adx[i])return null;
   if(c.adx[i] < 20) return null;
@@ -496,28 +510,95 @@ function sH1Swing(c,i){
 }
 
 var STRATS=[
-  {id:"bb",         name:"Разворот Bollinger",  desc:"BB(20,2) + RSI + ADX≤25",               fn:sBB,            tag:"Универсал"},
-  {id:"rsidiv",     name:"Дивергенция RSI",     desc:"Свинговая дивергенция + свеча",         fn:sRSIDiv,        tag:"Универсал"},
-  {id:"stoch",      name:"Стохастик + EMA50",   desc:"Стохастик 20/80 + EMA 50",              fn:sStoch,         tag:"Универсал"},
+  {id:"bb",         name:"Разворот Bollinger",  desc:"BB(20,2) + RSI + ADX≤25",               fn:sBB,            tag:"Универсал", counterTrend:true},
+  {id:"rsidiv",     name:"Дивергенция RSI",     desc:"Свинговая дивергенция + свеча",         fn:sRSIDiv,        tag:"Универсал", counterTrend:true},
+  {id:"stoch",      name:"Стохастик + EMA50",   desc:"Стохастик 20/80 + EMA 50",              fn:sStoch,         tag:"Универсал", counterTrend:true},
   {id:"atr",        name:"Пробой канала ATR",   desc:"Пробой ±1.5 ATR от SMA20",              fn:sATR,           tag:"Универсал"},
-  {id:"sr",         name:"Отбой от уровней",    desc:"Поглощение у экстремума",               fn:sSR,            tag:"Универсал"},
+  {id:"sr",         name:"Отбой от уровней",    desc:"Поглощение у экстремума",               fn:sSR,            tag:"Универсал", counterTrend:true},
   {id:"ema",        name:"EMA-тренд",           desc:"EMA 9/21/50 + ADX",                     fn:sEMA,           tag:"Универсал"},
   {id:"macd",       name:"MACD Momentum",       desc:"Cross MACD в противоположной зоне",     fn:sMACD,          tag:"Универсал"},
   {id:"don",        name:"Donchian Breakout",   desc:"Пробой канала Дончиана 20",             fn:sDon,           tag:"Универсал"},
   {id:"st",         name:"SuperTrend",          desc:"Разворот SuperTrend(10,3)",             fn:sST,            tag:"Универсал"},
   {id:"ichi",       name:"Ichimoku Cloud",      desc:"Cross Tenkan/Kijun + облако",           fn:sIchi,          tag:"Универсал"},
-  {id:"range",      name:"Диапазон (Range)",    desc:"ADX≤25, отскок от границ 40 баров",     fn:sRange,         tag:"Универсал"},
+  {id:"range",      name:"Диапазон (Range)",    desc:"ADX≤25, отскок от границ 40 баров",     fn:sRange,         tag:"Универсал", counterTrend:true},
   {id:"rangebreak", name:"Пробой диапазона",    desc:"Выход за границу канала + продолжение", fn:sRangeBreak,    tag:"Универсал"},
 
   {id:"scalpEMA",   name:"⚡ Скальп EMA 9/21",  desc:"Скальп 1м/5м: cross EMA9/21 + RSI",     fn:sScalpEMA,      tag:"Скальп"},
   {id:"momentum",   name:"⚡ Скальп импульс",   desc:"Скальп: 3 свечи в одну сторону + пробой",fn:sMomentum,      tag:"Скальп"},
   {id:"scalpPB",    name:"⚡ Скальп пулбэк",    desc:"Скальп: отскок от EMA50 в тренде",      fn:sScalpPullback, tag:"Скальп"},
-  {id:"vwap",       name:"⚡ Скальп VWAP",      desc:"Скальп: реверс от VWAP (20-барный)",    fn:sVWAP,          tag:"Скальп"},
+  {id:"vwap",       name:"⚡ Скальп VWAP",      desc:"Скальп: реверс от VWAP (объёмный)",     fn:sVWAP,          tag:"Скальп", counterTrend:true},
 
   {id:"h1trend",    name:"🕐 H1 тренд+пулбэк",  desc:"EMA50/200 стек + ADX≥20 + отскок",      fn:sH1Trend,       tag:"Часовые"},
   {id:"h1brk",      name:"🕐 H1 пробой 55",     desc:"Пробой Donchian 55 + ADX≥18",           fn:sH1Breakout,    tag:"Часовые"},
   {id:"h1swing",    name:"🕐 H1 MACD+EMA200",   desc:"MACD cross с фильтром EMA200",          fn:sH1Swing,       tag:"Часовые"}
 ];
+
+/* ============ ДИАГНОСТИКА УСЛОВИЙ ДЛЯ ЖИВОГО РЫНКА ============ */
+var STRAT_CHECKS = {
+  scalpPB: function(c,i){
+    if(i<60||!c.ema50[i]||!c.ema9[i]||!c.ema21[i]||!c.rsi[i])return[];
+    var cd=c.candles[i];
+    var up=c.ema9[i]>c.ema21[i]&&c.ema21[i]>c.ema50[i];
+    var dn=c.ema9[i]<c.ema21[i]&&c.ema21[i]<c.ema50[i];
+    if(up)return[
+      {name:"Тренд EMA9>21>50",ok:true},
+      {name:"Касание EMA50",ok:cd.low<=c.ema50[i]},
+      {name:"Отскок вверх",ok:cd.close>c.ema50[i]&&cd.close>cd.open},
+      {name:"RSI 40–65",ok:c.rsi[i]>40&&c.rsi[i]<65}
+    ];
+    if(dn)return[
+      {name:"Тренд EMA9<21<50",ok:true},
+      {name:"Касание EMA50",ok:cd.high>=c.ema50[i]},
+      {name:"Отскок вниз",ok:cd.close<c.ema50[i]&&cd.close<cd.open},
+      {name:"RSI 35–60",ok:c.rsi[i]<60&&c.rsi[i]>35}
+    ];
+    return[
+      {name:"EMA9>21>50 или EMA9<21<50",ok:false},
+      {name:"Касание EMA50",ok:false},
+      {name:"Отскок свечой",ok:false},
+      {name:"RSI в рабочем диапазоне",ok:c.rsi[i]>35&&c.rsi[i]<65}
+    ];
+  },
+  scalpEMA: function(c,i){
+    if(i<30||!c.ema9[i]||!c.ema21[i]||!c.rsi[i])return[];
+    var cd=c.candles[i];
+    var gap=Math.abs(c.ema9[i]-c.ema21[i])/cd.close*100;
+    return[
+      {name:"EMA9 близко к EMA21 (<0.05%)",ok:gap<0.05},
+      {name:"RSI 28–72",ok:c.rsi[i]>28&&c.rsi[i]<72},
+      {name:"Свеча направленная",ok:cd.close>cd.open||cd.close<cd.open},
+      {name:"Наличие ATR",ok:!!c.atr[i]}
+    ];
+  },
+  momentum: function(c,i){
+    if(i<25||!c.rsi[i])return[];
+    var cd=c.candles;
+    var up2=cd[i].close>cd[i].open&&cd[i-1].close>cd[i-1].open;
+    var dn2=cd[i].close<cd[i].open&&cd[i-1].close<cd[i-1].open;
+    var body=Math.abs(cd[i].close-cd[i].open);
+    var avg=(Math.abs(cd[i].close-cd[i].open)+Math.abs(cd[i-1].close-cd[i-1].open)+Math.abs(cd[i-2].close-cd[i-2].open))/3;
+    return[
+      {name:"2+ свечи в одну сторону",ok:up2||dn2},
+      {name:"Тело ≥ 80% среднего",ok:body>=avg*0.8},
+      {name:"RSI 20–80",ok:c.rsi[i]>20&&c.rsi[i]<80},
+      {name:"Пробой high/low",ok:cd[i].close>cd[i-1].high||cd[i].close<cd[i-1].low}
+    ];
+  },
+  vwap: function(c,i){
+    if(i<40||!c.rsi[i]||!c.atr[i])return[];
+    var cd=c.candles[i];
+    var sumPV=0,sumV=0,hasVol=typeof cd.volume==="number";
+    for(var k=i-19;k<=i;k++){var kc=c.candles[k];var tp=(kc.high+kc.low+kc.close)/3;var v=hasVol?(kc.volume||1):1;sumPV+=tp*v;sumV+=v;}
+    var vwap=sumV>0?sumPV/sumV:cd.close;
+    var dist=(cd.close-vwap)/vwap*100;
+    return[
+      {name:"Отклонение от VWAP (>0.15%)",ok:Math.abs(dist)>0.15},
+      {name:"Свеча в сторону возврата",ok:(dist<0&&cd.close>cd.open)||(dist>0&&cd.close<cd.open)},
+      {name:"RSI 25–75",ok:c.rsi[i]>25&&c.rsi[i]<75},
+      {name:"Наличие ATR",ok:!!c.atr[i]}
+    ];
+  }
+};
 
 function buildCtx(candles){
   var close=candles.map(function(c){return c.close;});
@@ -547,7 +628,7 @@ async function loadCandles(tf){
     try{
       var r=await fetch(BINANCE+"/api/v3/klines?symbol="+SYM[a]+"&interval="+interval+"&limit=500",{cache:"no-store"});
       var d=await r.json();
-      S.candles[tf][a]=d.map(function(k){return{time:Math.floor(k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4]};});
+      S.candles[tf][a]=d.map(function(k){return{time:Math.floor(k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5],quoteVol:+k[7]};});
     }catch(e){}
   }
 }
@@ -566,7 +647,8 @@ function analyze(asset,tf){
   var cc=closed(candles,TF_SEC[tf]);
   var price=cc.length?cc[cc.length-1].close:S.price[asset];
   var base={asset:asset,side:"WAIT",ready:false,price:price,stratId:strat.id,stratName:strat.name,
-    rsi:null,adx:null,atr:null,ema50:null,stop:null,target:null,explanation:"Недостаточно данных для «"+strat.name+"»."};
+    rsi:null,adx:null,atr:null,ema50:null,stop:null,target:null,checks:[],readiness:0,
+    explanation:"Недостаточно данных для «"+strat.name+"»."};
   if(cc.length<60)return base;
   var ctx=buildCtx(cc);
   var lastIdx=cc.length-1;
@@ -582,10 +664,24 @@ function analyze(asset,tf){
   if(sig&&sig.side==="LONG")side="BUY";
   else if(sig&&sig.side==="SHORT")side="SELL";
 
-  if(sig&&ctx.ema50[lastIdx]!=null){
+  // EMA50-фильтр применяем ТОЛЬКО к трендовым стратегиям
+  if(sig && !strat.counterTrend && ctx.ema50[lastIdx]!=null){
     var cclose=cc[lastIdx].close;
     if(side==="BUY"&&cclose<ctx.ema50[lastIdx]){side="WAIT";sig=null;}
     else if(side==="SELL"&&cclose>ctx.ema50[lastIdx]){side="WAIT";sig=null;}
+  }
+
+  // Диагностика пошаговых условий (что мешает сигналу)
+  var readiness=0, checks=[];
+  if(STRAT_CHECKS[strat.id]){
+    try{
+      var chk=STRAT_CHECKS[strat.id](ctx, lastIdx);
+      if(Array.isArray(chk)){
+        checks=chk;
+        var okN=chk.filter(function(x){return x.ok;}).length;
+        readiness=chk.length?Math.round(okN/chk.length*100):0;
+      }
+    }catch(e){}
   }
 
   var atr=ctx.atr[lastIdx];
@@ -596,7 +692,7 @@ function analyze(asset,tf){
 
   return Object.assign({},base,{
     side:side,ready:true,rsi:ctx.rsi[lastIdx],adx:ctx.adx[lastIdx],atr:atr,stop:stop,target:target,
-    ema50:ctx.ema50[lastIdx],
+    ema50:ctx.ema50[lastIdx],checks:checks,readiness:readiness,
     explanation:sig?sig.reason:"Ожидание условий «"+strat.name+"»"
   });
 }
@@ -613,8 +709,22 @@ function autoAdd(s){
 }
 function closeOpen(){
   var changed=false;
+  var now=Date.now();
+  var MAX_AGE_MS = 6*3600*1000; // авто-закрытие по возрасту — 6 часов
   for(var t of S.trades){
     if(!t.auto||t.status!=="OPEN")continue;
+    // авто-закрытие "зависших" сделок
+    var createdTs = parseInt(String(t.id).split("-")[0],10);
+    if(createdTs && (now - createdTs) > MAX_AGE_MS){
+      var pAge = S.price[t.asset];
+      if(pAge){
+        t.exit=pAge;
+        t.status="CLOSED";
+        t.note=(t.note||"")+" [авто-закрытие по времени 6ч]";
+        changed=true;
+      }
+      continue;
+    }
     var p=S.price[t.asset];
     if(!p)continue;
     var hit=null;
@@ -658,77 +768,55 @@ function renderPrices(){
   T("cprice","Цена: "+(S.price[S.asset]?f(S.price[S.asset]):"—"));
 }
 
-/* ============ ИСПРАВЛЕНО: signalScore ============ */
+/* ============ ОБНОВЛЁННЫЙ signalScore ============ */
 function signalScore(s){
   if(!s) return 0;
+  if(s.side==="BUY"||s.side==="SELL") return 100;
+  // если есть пошаговые проверки — берём их как базу (30…95%)
+  if(s.checks && s.checks.length){
+    return Math.max(20, Math.min(95, Math.round(30 + s.readiness*0.65)));
+  }
   if(!s.ready) return 5;
-  if(s.side === "BUY" || s.side === "SELL") return 100;
-
-  var score = 0;
-  if(s.rsi != null){
-    var edge = Math.max(30 - s.rsi, s.rsi - 70, 0);
-    score += Math.min(20, edge);
-  }
-  if(s.adx != null){
-    score += Math.min(15, Math.max(0, s.adx - 15) * 0.7);
-  }
-  if(s.ema50 != null && s.price > 0){
-    var distPct = Math.abs(s.price - s.ema50) / s.ema50 * 100;
-    score += Math.min(15, distPct * 3);
-  }
-  if(s.atr != null && s.price > 0){
-    var atrPct = s.atr / s.price * 100;
-    score += Math.min(15, atrPct * 6);
-  }
+  var score=0;
+  if(s.rsi!=null){var edge=Math.max(30-s.rsi,s.rsi-70,0);score+=Math.min(20,edge);}
+  if(s.adx!=null){score+=Math.min(15,Math.max(0,s.adx-15)*0.7);}
+  if(s.ema50!=null&&s.price>0){var d=Math.abs(s.price-s.ema50)/s.ema50*100;score+=Math.min(15,d*3);}
+  if(s.atr!=null&&s.price>0){var ap=s.atr/s.price*100;score+=Math.min(15,ap*6);}
   return Math.max(5, Math.min(65, Math.round(score)));
 }
 
-/* ============ НОВОЕ: тренд по таймфреймам ============ */
-function computeTrendTag(tf, asset){
-  var candles = (S.candles[tf] && S.candles[tf][asset]) || [];
-  var cc = closed(candles, TF_SEC[tf]);
-  if(cc.length < 55) return {text:"—", cls:"neutral"};
-  var close = cc.map(function(c){return c.close;});
-  var e50  = emaArr(close, 50);
-  var e200 = emaArr(close, 200);
-  var last = cc.length - 1;
-  if(e50[last] == null) return {text:"—", cls:"neutral"};
-
-  var price = cc[last].close;
-  var score = 0;
-  score += price > e50[last] ? 1 : -1;
-  if(e200[last] != null) score += e50[last] > e200[last] ? 1 : -1;
-
-  if(cc.length >= 5){
-    var chg = (cc[last].close - cc[last-4].close) / cc[last-4].close;
-    if(chg >  0.002) score++;
-    else if(chg < -0.002) score--;
+function computeTrendTag(tf,asset){
+  var candles=(S.candles[tf]&&S.candles[tf][asset])||[];
+  var cc=closed(candles,TF_SEC[tf]);
+  if(cc.length<55)return{text:"—",cls:"neutral"};
+  var close=cc.map(function(c){return c.close;});
+  var e50=emaArr(close,50);
+  var e200=emaArr(close,200);
+  var last=cc.length-1;
+  if(e50[last]==null)return{text:"—",cls:"neutral"};
+  var price=cc[last].close;
+  var score=0;
+  score+=price>e50[last]?1:-1;
+  if(e200[last]!=null)score+=e50[last]>e200[last]?1:-1;
+  if(cc.length>=5){
+    var chg=(cc[last].close-cc[last-4].close)/cc[last-4].close;
+    if(chg>0.002)score++;else if(chg<-0.002)score--;
   }
-
-  if(score >=  2) return {text:"▲ UP",   cls:"up"};
-  if(score <= -2) return {text:"▼ DOWN", cls:"down"};
-  return {text:"● FLAT", cls:"neutral"};
+  if(score>=2)return{text:"▲ UP",cls:"up"};
+  if(score<=-2)return{text:"▼ DOWN",cls:"down"};
+  return{text:"● FLAT",cls:"neutral"};
 }
 
 function renderSignals(){
   for(var a of ["gold","bitcoin"]){
-    var s = S.sig[a], side = s ? s.side : "WAIT", g = a === "gold";
-    var score = signalScore(s);
-
-    var e1 = $(g ? "sg" : "sb");
-    if(e1){
-      e1.className = "qsig " + cls(side);
-      e1.textContent = side + " · " + score + "%";
-    }
-
-    var l1 = $(g ? "lamp-g" : "lamp-b"); if(l1) l1.className = "lamp " + cls(side);
-    var l2 = $(g ? "lamp-g2" : "lamp-b2"); if(l2) l2.className = "lamp " + cls(side);
-
-    var e2 = $(g ? "sg2" : "sb2");
-    if(e2){
-      e2.className = "qsig " + cls(side);
-      e2.textContent = side + " · " + score + "%";
-    }
+    var s=S.sig[a],side=s?s.side:"WAIT",g=a==="gold";
+    var score=signalScore(s);
+    var e1=$(g?"sg":"sb");
+    if(e1){e1.className="qsig "+cls(side);e1.textContent=side+" · "+score+"%";}
+    var l1=$(g?"lamp-g":"lamp-b");if(l1)l1.className="lamp "+cls(side);
+    var l2=$(g?"lamp-g2":"lamp-b2");if(l2)l2.className="lamp "+cls(side);
+    var e2=$(g?"sg2":"sb2");
+    if(e2){e2.className="qsig "+cls(side);e2.textContent=side+" · "+score+"%";}
   }
 }
 
@@ -749,13 +837,31 @@ function renderMarket(){
   T("supd","Обновлено: "+new Date().toLocaleTimeString("ru-RU"));
   T("slupd","Обновлено: "+new Date().toLocaleTimeString("ru-RU"));
 
-  // ИСПРАВЛЕНО: реальный тренд по ТФ
   var tfs=[["HOUR_4","t4h"],["HOUR","t1h"],["MINUTE_15","t15"],["MINUTE_5","t5"]];
   for(var p of tfs){
     var e=$(p[1]); if(!e) continue;
-    var t=computeTrendTag(p[0], S.asset);
+    var t=computeTrendTag(p[0],S.asset);
     e.textContent=t.text;
     e.className=t.cls;
+  }
+
+  // Диагностика условий
+  var chkBox=$("mchecks");
+  var bar=$("mreadBar");
+  var rtxt=$("mreadTxt");
+  if(chkBox){
+    if(s && s.checks && s.checks.length){
+      chkBox.innerHTML = s.checks.map(function(x){
+        var mark = x.ok ? '<span class="mk ok">✅</span>' : '<span class="mk no">⛔</span>';
+        return '<div class="checks-line">'+mark+'<span class="nm">'+x.name+'</span></div>';
+      }).join("");
+      if(bar) bar.style.width = s.readiness+"%";
+      if(rtxt) rtxt.textContent = "Готовность: "+s.readiness+"%";
+    } else {
+      chkBox.innerHTML = '<div class="sub">Для этой стратегии пошаговая диагностика не задана.</div>';
+      if(bar) bar.style.width = "0%";
+      if(rtxt) rtxt.textContent = "Готовность: —";
+    }
   }
 }
 function renderTrades(){
@@ -876,13 +982,9 @@ if($("moNotifyBtn"))$("moNotifyBtn").addEventListener("click",async function(){
   }
   try{
     var p = await Notification.requestPermission();
-    if(p === "granted"){
-      alert("✅ Уведомления разрешены!");
-    }else if(p === "denied"){
-      alert("❌ Ты отказал в уведомлениях. Кнопка больше не спросит — измени вручную в настройках браузера.");
-    }else{
-      alert("⏳ Запрос уведомлений проигнорирован.");
-    }
+    if(p === "granted"){alert("✅ Уведомления разрешены!");}
+    else if(p === "denied"){alert("❌ Ты отказал в уведомлениях. Кнопка больше не спросит — измени вручную в настройках браузера.");}
+    else{alert("⏳ Запрос уведомлений проигнорирован.");}
     renderMonUI();
   }catch(e){
     alert("⚠️ Ошибка запроса уведомлений: " + (e.message || e) + "\n\nСкорее всего причина в том, что страница открыта как файл, а не как приложение.");
@@ -923,7 +1025,6 @@ async function refreshAll(){
   try{
     await loadPrices();
 
-    // ИСПРАВЛЕНО: грузим все нужные таймфреймы для тренд-панели
     var tfList = ["MINUTE_5","MINUTE_15","HOUR","HOUR_4"];
     if(tfList.indexOf(S.tf) === -1) tfList.push(S.tf);
     for(var i = 0; i < tfList.length; i++){
@@ -967,9 +1068,10 @@ function renderStrategies(){
     d.className="strat-item";
     d.dataset.sid=s.id;
     var isActive=active.id===s.id;
-    // ИСПРАВЛЕНО: показан тег группы стратегии
+    var ctBadge=s.counterTrend?'<span class="badge" style="background:#3a2450;color:#c79bff">контр-тренд</span>':'';
     d.innerHTML='<div class="sname">'+s.name
       +'<span class="badge tag">'+s.tag+'</span>'
+      +ctBadge
       +(isActive?'<span class="badge mk">НА РЫНКЕ</span>':'')+'</div>'
       +'<div class="sdesc">'+s.desc+'</div>'
       +'<div class="sres sub">—</div>'
@@ -1005,33 +1107,40 @@ function updateStratCard(sid,r){
       $("sAtr").value = best.atr;
       $("sR").value = best.r;
       if(best.trail != null) $("sTrail").value = best.trail;
-
       ["sAtr","sR","sTrail"].forEach(function(id){
         var el = $(id); if(!el) return;
         el.style.borderColor = "#32d296";
         el.style.boxShadow = "0 0 8px #32d29680";
-        setTimeout(function(){
-          el.style.borderColor = "";
-          el.style.boxShadow = "";
-        }, 2000);
+        setTimeout(function(){el.style.borderColor="";el.style.boxShadow="";}, 2000);
       });
-
       if($("sAtr")) $("sAtr").scrollIntoView({behavior:"smooth", block:"center"});
-
-      alert("✅ Подставлены лучшие значения:\n\nСтоп ATR × " + best.atr + "\nЦель R = " + best.r + (best.trail != null ? "\nTrailing ATR × " + best.trail : "") + "\n\nТеперь нажми «🔍 Проверить все стратегии» для проверки.");
+      alert("✅ Подставлены лучшие значения:\n\nСтоп ATR × " + best.atr + "\nЦель R = " + best.r + (best.trail != null ? "\nTrailing ATR × " + best.trail : "") + "\n\nТеперь нажми «🔍 Проверить все стратегии».");
     };
     actEl.append(b2);
   }
 }
 
+/* ============ ПАГИНАЦИЯ: до 5000 свечей ============ */
 async function loadTestCandles(asset,tf,limit){
   var key=Object.keys(TF_MAP).find(function(k){return TF_SEC[k]===tf*60;})||"MINUTE_5";
   var interval=TF_MAP[key];
-  var r=await fetch(BINANCE+"/api/v3/klines?symbol="+SYM[asset]+"&interval="+interval+"&limit="+Math.min(limit||500,1000),{cache:"no-store"});
-  var d=await r.json();
-  return d.map(function(k){return{time:Math.floor(k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4]};});
+  var want=Math.min(Math.max(1,limit||500),5000);
+  var out=[];
+  while(out.length<want){
+    var need=Math.min(1000, want-out.length);
+    var url=BINANCE+"/api/v3/klines?symbol="+SYM[asset]+"&interval="+interval+"&limit="+need;
+    if(out.length) url+="&endTime="+(out[0].time*1000-1);
+    var r=await fetch(url,{cache:"no-store"});
+    var d=await r.json();
+    if(!Array.isArray(d)||!d.length) break;
+    var batch=d.map(function(k){return{time:Math.floor(k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5],quoteVol:+k[7]};});
+    out=batch.concat(out);
+    if(batch.length<need) break;
+  }
+  return out.slice(-want);
 }
 
+/* ============ БЭКТЕСТ: без look-ahead + двусторонние издержки ============ */
 function runBacktest(candles,ctx,strat,cfg,useTrend,useVolF,trailAtr){
   var trades=[],pos=null;
   for(var i=60;i<candles.length;i++){
@@ -1039,33 +1148,36 @@ function runBacktest(candles,ctx,strat,cfg,useTrend,useVolF,trailAtr){
     if(pos){
       var held=i-pos.i,exit=null,reason="";
 
-      // ИСПРАВЛЕНО: единая переменная newStop для обеих веток
-      if(trailAtr>0 && ctx.atr[i]){
-        var newStop;
-        if(pos.side==="LONG"){
-          newStop = Math.max(pos.stop, c.high - trailAtr*ctx.atr[i]);
-          if(newStop > pos.stop) pos.stop = newStop;
-        } else {
-          newStop = Math.min(pos.stop, c.low + trailAtr*ctx.atr[i]);
-          if(newStop < pos.stop) pos.stop = newStop;
-        }
-      }
-
+      // 1) СНАЧАЛА проверяем выход по СТАРОМУ стопу/цели
       if(pos.side==="LONG"&&c.low<=pos.stop){exit=pos.stop;reason="Стоп";}
       else if(pos.side==="SHORT"&&c.high>=pos.stop){exit=pos.stop;reason="Стоп";}
       else if(pos.side==="LONG"&&c.high>=pos.target){exit=pos.target;reason="Цель";}
       else if(pos.side==="SHORT"&&c.low<=pos.target){exit=pos.target;reason="Цель";}
       else if(held>=cfg.bars){exit=c.close;reason="Тайм-аут";}
+      // 2) trailing двигаем ТОЛЬКО если сделка ещё жива
+      else if(trailAtr>0 && ctx.atr[i]){
+        if(pos.side==="LONG"){
+          var ns=Math.max(pos.stop, c.high - trailAtr*ctx.atr[i]);
+          if(ns>pos.stop)pos.stop=ns;
+        }else{
+          var ns2=Math.min(pos.stop, c.low + trailAtr*ctx.atr[i]);
+          if(ns2<pos.stop)pos.stop=ns2;
+        }
+      }
+
       if(exit!==null){
         var raw=pos.side==="LONG"?(exit-pos.entry)/pos.risk:(pos.entry-exit)/pos.risk;
-        var cost=(pos.entry*(cfg.cost/100))/pos.risk;
-        trades.push({time:c.time,side:pos.side,entry:pos.entry,exit:exit,R:raw-cost,reason:reason+(pos.reason?" · "+pos.reason:"")});
+        // двусторонние издержки: половина на вход, половина на выход
+        var costR=((pos.entry+exit)*(cfg.cost/100)/2)/pos.risk;
+        trades.push({time:c.time,side:pos.side,entry:pos.entry,exit:exit,R:raw-costR,reason:reason+(pos.reason?" · "+pos.reason:"")});
         pos=null;
       }
       continue;
     }
     var sig=strat.fn(ctx,i);if(!sig)continue;
-    if(useTrend && ctx.ema50 && ctx.ema50[i]!=null){
+
+    // EMA50-фильтр только для трендовых стратегий (не counter-trend)
+    if(useTrend && !strat.counterTrend && ctx.ema50 && ctx.ema50[i]!=null){
       if(sig.side==="LONG" && c.close < ctx.ema50[i])continue;
       if(sig.side==="SHORT" && c.close > ctx.ema50[i])continue;
     }
@@ -1099,7 +1211,7 @@ async function runAllTests(){
     var candles=await loadTestCandles(selAsset,tf,limit);
     if(candles.length<100)throw new Error("Мало свечей: "+candles.length);
     var ctx=buildCtx(candles);
-    $("sStatus").textContent="Прогон "+STRATS.length+" стратегий…";
+    $("sStatus").textContent="Прогон "+STRATS.length+" стратегий… (свечей: "+candles.length+")";
     for(var i=0;i<STRATS.length;i++){
       var strat=STRATS[i];
       var r=runBacktest(candles,ctx,strat,cfg,useTrend,useVolF,trail);
