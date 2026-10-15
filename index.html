@@ -1787,6 +1787,105 @@ setInterval(refreshAll,30000);
   else updateStrategy();
 })();
 </script>
+
+<script>
+(function () {
+  const oldAnalyze = window.analyze;
+
+  function trendAnalyze(asset) {
+    const c = closedCandles(asset, "MINUTE_5");
+    const v = c.map(x => x.close);
+    const price = v.length ? v[v.length - 1] : getPrice(asset);
+    const e9 = ema(v, 9), e21 = ema(v, 21), e50 = ema(v, 50);
+    const r = rsi(v, 14), a = atr(c, 14), m = macd(v);
+    const ad = adx(c, 14);
+    const trends = {
+      HOUR_4: getTrend(asset, "HOUR_4"),
+      HOUR: getTrend(asset, "HOUR"),
+      MINUTE_15: getTrend(asset, "MINUTE_15"),
+      MINUTE_5: getTrend(asset, "MINUTE_5")
+    };
+
+    const base = {
+      asset, side: "WAIT", ready: false, price,
+      e9, e21, rsi: r, atr: a, adx: ad, macd: m,
+      trends, buy: 0, sell: 0, quality: 0,
+      stop: null, target: null, candles: c.length,
+      explanation: "Недостаточно данных для трендовой стратегии."
+    };
+
+    if (c.length < 55 || [e9,e21,e50,r,a,ad].some(x => x == null) || !m)
+      return base;
+
+    const last = c[c.length - 1];
+    const prev = c[c.length - 2];
+    const up = trends.HOUR_4 === "UP" &&
+      trends.HOUR !== "DOWN" && trends.MINUTE_15 === "UP";
+    const down = trends.HOUR_4 === "DOWN" &&
+      trends.HOUR !== "UP" && trends.MINUTE_15 === "DOWN";
+
+    const buy = up && trends.MINUTE_5 === "UP" &&
+      e9 > e21 && e21 > e50 && last.close > e9 &&
+      last.close > last.open && last.close > prev.high &&
+      r >= 50 && r < 68 && m.hist > 0 &&
+      m.line > m.signal && ad >= 18;
+
+    const sell = down && trends.MINUTE_5 === "DOWN" &&
+      e9 < e21 && e21 < e50 && last.close < e9 &&
+      last.close < last.open && last.close < prev.low &&
+      r > 32 && r <= 50 && m.hist < 0 &&
+      m.line < m.signal && ad >= 18;
+
+    const side = buy ? "BUY" : sell ? "SELL" : "WAIT";
+    return {
+      ...base, ready: true, side,
+      buy: buy ? 1 : 0, sell: sell ? 1 : 0,
+      quality: side === "WAIT" ? 0 : 80,
+      stop: side === "BUY" ? price - 1.5*a :
+            side === "SELL" ? price + 1.5*a : null,
+      target: side === "BUY" ? price + 3*a :
+              side === "SELL" ? price - 3*a : null,
+      explanation: side === "BUY"
+        ? "BUY: тренд вверх подтверждён EMA, MACD, RSI, ADX и старшими таймфреймами."
+        : side === "SELL"
+        ? "SELL: тренд вниз подтверждён EMA, MACD, RSI, ADX и старшими таймфреймами."
+        : "WAIT: все условия входа по тренду пока не совпали."
+    };
+  }
+
+  window.analyze = function (asset) {
+    return localStorage.getItem("gb-strategy-mode") === "trend"
+      ? trendAnalyze(asset)
+      : oldAnalyze(asset);
+  };
+
+  function updateStrategy() {
+    const select = document.getElementById("gbStrategyMode");
+    if (!select) return;
+    select.addEventListener("change", function () {
+      state.strategy = {
+        gold: window.analyze("gold"),
+        bitcoin: window.analyze("bitcoin")
+      };
+      state.previousSides = {
+        gold: state.strategy.gold.side,
+        bitcoin: state.strategy.bitcoin.side
+      };
+      renderMarketSignals();
+      renderMarket();
+      renderDashboard();
+      setText("footerStatus",
+        select.value === "trend"
+          ? "Включена экспериментальная трендовая стратегия."
+          : "Возвращена текущая стратегия.");
+    });
+  }
+
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", updateStrategy);
+  else updateStrategy();
+})();
+</script>
 </body>
 </html>
 
