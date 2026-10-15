@@ -31,7 +31,10 @@ main{max-width:900px;margin:auto;padding:8px 8px 90px}
 .buy{color:var(--green)}.sell{color:var(--red)}.wait{color:var(--gold)}
 .panel{padding:9px;margin-bottom:8px}
 .ptitle{font-size:13px;font-weight:800;margin-bottom:8px}
-.tfs{display:flex;gap:5px;margin-bottom:6px}.tfs button{flex:1;font-size:11px;padding:7px 2px}
+/* ИЗМЕНЕНО: подсветка активного таймфрейма */
+.tfs{display:flex;gap:5px;margin-bottom:6px}
+.tfs button{flex:1;font-size:11px;padding:7px 2px}
+.tfs button.on{border-color:var(--blue);background:#21344d;color:var(--blue);font-weight:800;box-shadow:0 0 0 1px #73a7ff55 inset}
 #chart{width:100%;height:300px}
 .sub{font-size:10px;color:var(--muted);line-height:1.5}
 .sig-strip{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
@@ -449,7 +452,7 @@ function analyze(asset,tf){
   var cc=closed(candles,TF_SEC[tf]);
   var price=cc.length?cc[cc.length-1].close:S.price[asset];
   var base={asset:asset,side:"WAIT",ready:false,price:price,stratId:strat.id,stratName:strat.name,
-    rsi:null,adx:null,atr:null,stop:null,target:null,explanation:"Недостаточно данных для «"+strat.name+"»."};
+    rsi:null,adx:null,atr:null,ema50:null,stop:null,target:null,explanation:"Недостаточно данных для «"+strat.name+"»."};
   if(cc.length<60)return base;
   var ctx=buildCtx(cc);
   var lastIdx=cc.length-1;
@@ -481,6 +484,7 @@ function analyze(asset,tf){
 
   return Object.assign({},base,{
     side:side,ready:true,rsi:ctx.rsi[lastIdx],adx:ctx.adx[lastIdx],atr:atr,stop:stop,target:target,
+    ema50:ctx.ema50[lastIdx],
     explanation:sig?sig.reason:"Ожидание условий «"+strat.name+"»"
   });
 }
@@ -545,22 +549,37 @@ function renderPrices(){
 /* ============ ИЗМЕНЕНО: динамическая оценка силы сигнала ============ */
 function signalScore(s){
   if(!s) return 0;
-  // Есть реальный сигнал — 100%
+  // Есть реальный сигнал — 100
   if(s.side === "BUY" || s.side === "SELL") return 100;
-  var sc = 40; // базовый минимум для WAIT
-  // RSI близко к крайним зонам — рынок "нагрет" и сигнал ближе
+  // Недостаточно данных
+  if(!s.ready) return 30;
+
+  var score = 0;
+
+  // 1. RSI — чем ближе к краю (30/70), тем больше очков. Макс 25
   if(s.rsi != null){
-    if(s.rsi <= 25 || s.rsi >= 75) sc += 25;
-    else if(s.rsi <= 35 || s.rsi >= 65) sc += 15;
-    else if(s.rsi <= 45 || s.rsi >= 55) sc += 5;
+    var dist = Math.abs(s.rsi - 50);   // 0..50
+    score += Math.min(25, dist * 0.5);
   }
-  // ADX — сила тренда
+
+  // 2. ADX — сила тренда. Макс 25
   if(s.adx != null){
-    if(s.adx >= 30) sc += 20;
-    else if(s.adx >= 22) sc += 12;
-    else if(s.adx >= 15) sc += 6;
+    score += Math.min(25, s.adx * 0.8);
   }
-  return Math.min(95, Math.round(sc));
+
+  // 3. Расстояние цены от EMA50, % — импульс. Макс 25
+  if(s.ema50 != null && s.price > 0){
+    var distPct = Math.abs(s.price - s.ema50) / s.ema50 * 100;
+    score += Math.min(25, distPct * 4);
+  }
+
+  // 4. Волатильность (ATR% от цены). Макс 25
+  if(s.atr != null && s.price > 0){
+    var atrPct = s.atr / s.price * 100;
+    score += Math.min(25, atrPct * 8);
+  }
+
+  return Math.max(5, Math.min(95, Math.round(score)));
 }
 
 function renderSignals(){
@@ -568,7 +587,7 @@ function renderSignals(){
     var s = S.sig[a], side = s ? s.side : "WAIT", g = a === "gold";
     var score = signalScore(s);
 
-    // Большая карточка вверху (Рынок)
+    // Большая карточка вверху
     var e1 = $(g ? "sg" : "sb");
     if(e1){
       e1.className = "qsig " + cls(side);
@@ -708,8 +727,35 @@ function renderMonUI(){
   });
 });
 if($("moNotifyBtn"))$("moNotifyBtn").addEventListener("click",async function(){
-  if(!("Notification"in window))return;
-  try{await Notification.requestPermission();renderMonUI();}catch(e){}
+  if(!("Notification" in window)){
+    alert("⚠️ Браузер не поддерживает уведомления.\n\nСкорее всего страница открыта как файл (file://) или в приватном режиме.\n\nРешение: добавь страницу на главный экран телефона и открой как приложение.");
+    return;
+  }
+  if(!window.isSecureContext){
+    alert("⚠️ Уведомления работают только на HTTPS или localhost.\n\nСейчас страница открыта по небезопасному протоколу (file:// или http://).\n\nРешение: добавь страницу на главный экран телефона и открой как приложение.");
+    return;
+  }
+  if(Notification.permission === "granted"){
+    alert("✅ Уведомления уже разрешены.");
+    return;
+  }
+  if(Notification.permission === "denied"){
+    alert("❌ Уведомления запрещены в настройках браузера.\n\nЗайди в Настройки браузера → Уведомления и разреши их для этой страницы.");
+    return;
+  }
+  try{
+    var p = await Notification.requestPermission();
+    if(p === "granted"){
+      alert("✅ Уведомления разрешены!");
+    }else if(p === "denied"){
+      alert("❌ Ты отказал в уведомлениях. Кнопка больше не спросит — измени вручную в настройках браузера.");
+    }else{
+      alert("⏳ Запрос уведомлений проигнорирован.");
+    }
+    renderMonUI();
+  }catch(e){
+    alert("⚠️ Ошибка запроса уведомлений: " + (e.message || e) + "\n\nСкорее всего причина в том, что страница открыта как файл, а не как приложение.");
+  }
 });
 
 async function refreshDemo(){
@@ -795,6 +841,7 @@ function renderStrategies(){
   });
 }
 
+/* ============ ИЗМЕНЕНО: кнопка «Исп. лучшие» теперь с уведомлением и подсветкой ============ */
 function updateStratCard(sid,r){
   var card=document.querySelector('.strat-item[data-sid="'+sid+'"]');
   if(!card)return;
@@ -818,13 +865,32 @@ function updateStratCard(sid,r){
     b2.style.fontSize="11px";
     b2.textContent="Исп. лучшие";
     b2.onclick=function(){
-      $("sAtr").value=best.atr;
-      $("sR").value=best.r;
-      if(best.trail!=null)$("sTrail").value=best.trail;
+      // Подставляем значения
+      $("sAtr").value = best.atr;
+      $("sR").value = best.r;
+      if(best.trail != null) $("sTrail").value = best.trail;
+
+      // Подсвечиваем поля зелёным на 2 сек
+      ["sAtr","sR","sTrail"].forEach(function(id){
+        var el = $(id); if(!el) return;
+        el.style.borderColor = "#32d296";
+        el.style.boxShadow = "0 0 8px #32d29680";
+        setTimeout(function(){
+          el.style.borderColor = "";
+          el.style.boxShadow = "";
+        }, 2000);
+      });
+
+      // Прокручиваем к полям
+      if($("sAtr")) $("sAtr").scrollIntoView({behavior:"smooth", block:"center"});
+
+      // Показываем, что подставилось
+      alert("✅ Подставлены лучшие значения:\n\nСтоп ATR × " + best.atr + "\nЦель R = " + best.r + (best.trail != null ? "\nTrailing ATR × " + best.trail : "") + "\n\nТеперь нажми «🔍 Проверить все стратегии» для проверки.");
     };
     actEl.append(b2);
   }
 }
+/* ============ конец изменённого блока ============ */
 
 async function loadTestCandles(asset,tf,limit){
   var key=Object.keys(TF_MAP).find(function(k){return TF_SEC[k]===tf*60;})||"MINUTE_5";
