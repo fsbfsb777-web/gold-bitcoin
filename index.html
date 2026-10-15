@@ -126,7 +126,7 @@ background:#111924ed;border-top:1px solid var(--line);backdrop-filter:blur(12px)
 .bottom-nav button{padding:8px 2px;font-size:9.5px;border-radius:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bottom-nav button.active{color:var(--blue);border-color:var(--blue)}
 
-/* Demo account card */
+/* Demo account */
 .account-card{background:linear-gradient(145deg,#172638,#111a26);border:1px solid #34475e;border-radius:14px;padding:13px;margin:0 0 9px}
 .account-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:13px}
 .account-title{font-size:14px;font-weight:850}
@@ -142,7 +142,7 @@ background:#111924ed;border-top:1px solid var(--line);backdrop-filter:blur(12px)
 .account-muted{font-size:10px;color:#92a2b7;line-height:1.5}
 .account-error{color:#ffad5c}
 
-/* Trade history card */
+/* Trade history */
 #tradeHistoryCard{margin:0 0 9px;padding:15px;border:1px solid #26364a;border-radius:14px;background:linear-gradient(145deg,#111c2b,#0b111b);color:#e8eef8}
 #tradeHistoryCard .th-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 #tradeHistoryCard .th-title{font-size:16px;font-weight:750}
@@ -166,12 +166,12 @@ background:#111924ed;border-top:1px solid var(--line);backdrop-filter:blur(12px)
 #strategyPage h3{font-size:15px;margin:0 0 10px}
 #strategyPage p,#strategyPage .muted{color:var(--muted);font-size:12px;line-height:1.5}
 #strategyPage .sl-panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:14px;margin:11px 0}
-#strategyPage .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
-#strategyPage .fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
-#strategyPage .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+#strategyPage .grid{display:grid;grid-template-columns:1fr;gap:11px}
+#strategyPage .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#strategyPage .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 #strategyPage .metric{background:#111923;border:1px solid var(--line);border-radius:11px;padding:10px;min-width:0}
-#strategyPage .metric small{display:block;color:var(--muted);font-size:11px}
-#strategyPage .metric strong{display:block;font-size:18px;margin-top:4px;overflow-wrap:anywhere}
+#strategyPage .metric small{display:block;color:var(--muted);font-size:11px;line-height:1.3;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#strategyPage .metric strong{display:block;font-size:clamp(14px,4.2vw,18px);margin:0;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #strategyPage label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
 #strategyPage input,#strategyPage select{width:100%;background:#101720;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px;font-size:13px}
 #strategyPage button{border:0;border-radius:9px;padding:12px 15px;font-weight:700;cursor:pointer;background:var(--gold);color:#171717;font-size:13px}
@@ -183,7 +183,7 @@ background:#111924ed;border-top:1px solid var(--line);backdrop-filter:blur(12px)
 #strategyPage .bad{color:var(--red)}
 #strategyPage .gold{color:var(--gold)}
 #strategyPage .blue{color:var(--blue)}
-#strategyPage .tablewrap{overflow:auto;max-height:420px;border:1px solid var(--line);border-radius:10px}
+#strategyPage .tablewrap{overflow:auto;max-height:420px;border:1px solid var(--line);border-radius:10px;-webkit-overflow-scrolling:touch}
 #strategyPage table{border-collapse:collapse;width:100%;font-size:11px;white-space:nowrap}
 #strategyPage th,#strategyPage td{text-align:left;padding:8px;border-bottom:1px solid var(--line)}
 #strategyPage th{position:sticky;top:0;background:#202b38;color:var(--muted);z-index:1}
@@ -195,6 +195,9 @@ main{padding-top:12px}
 .metrics,.stat-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 .quote-price{font-size:25px}
 .account-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+#strategyPage .fields{grid-template-columns:repeat(3,minmax(0,1fr))}
+#strategyPage .metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+#strategyPage .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:390px){
 header{height:44px;padding:0 8px}
@@ -207,7 +210,7 @@ main{padding-left:5px;padding-right:5px;padding-top:5px}
 .panel{padding:7px}
 .chart-tools button{padding:6px 5px}
 .tabs button{font-size:10px}
-#strategyPage .grid,#strategyPage .fields{grid-template-columns:1fr}
+#strategyPage .fields{grid-template-columns:1fr}
 #strategyPage .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 </style>
@@ -513,7 +516,7 @@ main{padding-left:5px;padding-right:5px;padding-top:5px}
 <div class="sl-panel">
 <h2>4. Журнал сделок</h2>
 <div id="sl-trades" class="tablewrap">
-<table><thead><tr><th>Актив</th><th>Стратегия</th><th>Время</th><th>Сторона</th><th>Вход</th><th>Выход</th><th>R после издержек</th><th>Причина</th></tr></thead><tbody><tr><td colspan="8">Пока нет сделок.</td></tr></tbody></table>
+<table><thead><tr><th>Актив</th><th>Стратегия</th><th>Время</th><th>Сторона</th><th>Вход</th><th>Выход</th><th>R</th><th>Причина</th></tr></thead><tbody><tr><td colspan="8">Пока нет сделок.</td></tr></tbody></table>
 </div>
 </div>
 
@@ -540,7 +543,7 @@ const RESOLUTIONS=["MINUTE","MINUTE_5","MINUTE_15","HOUR","HOUR_4"];
 const TF_SECONDS={MINUTE:60,MINUTE_5:300,MINUTE_15:900,HOUR:3600,HOUR_4:14400};
 const TF_LABELS={MINUTE:"1м",MINUTE_5:"5м",MINUTE_15:"15м",HOUR:"1ч",HOUR_4:"4ч"};
 const ASSET_NAMES={gold:"Золото · XAU/USD",bitcoin:"Bitcoin · BTC/USD"};
-const $=id=>document.getElementById(id);
+const $=function(id){return document.getElementById(id);};
 function safeRead(key,fallback){try{const x=JSON.parse(localStorage.getItem(key));return x===null?fallback:x;}catch(e){return fallback;}}
 function loadTrades(){const a=safeRead("goldBitcoinTrades",null);if(Array.isArray(a))return a;const b=safeRead("gb-trades",[]);return Array.isArray(b)?b:[];}
 function loadSettings(){return Object.assign({alertsEnabled:true,goldAlertsEnabled:true,btcAlertsEnabled:true,soundEnabled:true},safeRead("gb-signal-settings",{}));}
@@ -554,30 +557,30 @@ chartReady:false,resizeObserver:null,settings:loadSettings(),
 signalInitialized:false,previousSides:{gold:null,bitcoin:null},
 audioContext:null,lastCandleSignature:"",lastErrors:[]
 };
-function fmt(v,d=2){if(v===null||v===undefined||!Number.isFinite(Number(v)))return "—";return Number(v).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});}
+function fmt(v,d){if(d===undefined)d=2;if(v===null||v===undefined||!Number.isFinite(Number(v)))return "—";return Number(v).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});}
 function setText(id,v){const e=$(id);if(e)e.textContent=v;}
 function saveTrades(){try{const s=JSON.stringify(state.trades);localStorage.setItem("goldBitcoinTrades",s);localStorage.setItem("gb-trades",s);}catch(e){setText("footerStatus","Не удалось сохранить журнал.");}}
 function saveSettings(){try{localStorage.setItem("gb-signal-settings",JSON.stringify(state.settings));}catch(e){}}
-function normalizeCandles(list){if(!Array.isArray(list))return [];const a=list.map(c=>({time:typeof c.time==="number"?c.time:Math.floor(new Date(c.time).getTime()/1000),open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close)})).filter(c=>Number.isFinite(c.time)&&[c.open,c.high,c.low,c.close].every(Number.isFinite)&&c.high>=c.low&&c.low<=Math.min(c.open,c.close)&&c.high>=Math.max(c.open,c.close)).sort((a,b)=>a.time-b.time);const out=[];for(const c of a){if(!out.length||c.time!==out[out.length-1].time)out.push(c);else out[out.length-1]=c;}return out;}
-function closedCandles(asset,res){const a=(state.candlesByResolution[res]&&state.candlesByResolution[res][asset])||[];const now=Math.floor(Date.now()/1000),sec=TF_SECONDS[res]||60;return a.filter(c=>c.time+sec<=now);}
+function normalizeCandles(list){if(!Array.isArray(list))return [];const a=list.map(function(c){return {time:typeof c.time==="number"?c.time:Math.floor(new Date(c.time).getTime()/1000),open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close)};}).filter(function(c){return Number.isFinite(c.time)&&[c.open,c.high,c.low,c.close].every(Number.isFinite)&&c.high>=c.low&&c.low<=Math.min(c.open,c.close)&&c.high>=Math.max(c.open,c.close);}).sort(function(a,b){return a.time-b.time;});const out=[];for(const c of a){if(!out.length||c.time!==out[out.length-1].time)out.push(c);else out[out.length-1]=c;}return out;}
+function closedCandles(asset,res){const a=(state.candlesByResolution[res]&&state.candlesByResolution[res][asset])||[];const now=Math.floor(Date.now()/1000),sec=TF_SECONDS[res]||60;return a.filter(function(c){return c.time+sec<=now;});}
 async function getJSON(url){const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status+" · "+url);return r.json();}
 async function fetchPrices(){const d=await getJSON("/api/prices");if(d.gold)state.prices.gold=d.gold;if(d.bitcoin)state.prices.bitcoin=d.bitcoin;renderPrices();}
 async function fetchCandles(res){const d=await getJSON("/api/candles?resolution="+encodeURIComponent(res));if(!d||(!Array.isArray(d.gold)&&!Array.isArray(d.bitcoin)))throw Error("Некорректный ответ свечей "+res);state.candlesByResolution[res]={gold:normalizeCandles(d.gold),bitcoin:normalizeCandles(d.bitcoin)};}
 function getPrice(asset){const q=state.prices[asset];if(!q)return null;const cands=[q.bid,q.mid,q.price,q.last,q.close,q.ask];for(const v of cands){if(v!==null&&v!==undefined&&v!==""&&Number.isFinite(Number(v))&&Number(v)>0)return Number(v);}return null;}
 function renderPrices(){for(const a of ["gold","bitcoin"]){const p=getPrice(a);setText(a==="gold"?"gold-price":"btc-price",p===null?"Нет котировки":fmt(p,2));setText(a==="gold"?"gold-signal-price":"btc-signal-price",p===null?"—":fmt(p,2));}const p=getPrice(state.asset);setText("chartPrice","Цена: "+(p===null?"—":fmt(p,2)));}
-function ema(v,p){if(v.length<p)return null;const k=2/(p+1);let x=v.slice(0,p).reduce((a,b)=>a+b,0)/p;for(let i=p;i<v.length;i++)x=v[i]*k+x*(1-k);return x;}
-function rsi(v,p=14){if(v.length<p+1)return null;let g=0,l=0;for(let i=1;i<=p;i++){const d=v[i]-v[i-1];if(d>=0)g+=d;else l-=d;}let ag=g/p,al=l/p;for(let i=p+1;i<v.length;i++){const d=v[i]-v[i-1];ag=(ag*(p-1)+Math.max(d,0))/p;al=(al*(p-1)+Math.max(-d,0))/p;}if(al===0)return ag===0?50:100;return 100-100/(1+ag/al);}
-function atr(c,p=14){if(c.length<p+1)return null;const tr=[];for(let i=1;i<c.length;i++){const x=c[i],pr=c[i-1];tr.push(Math.max(x.high-x.low,Math.abs(x.high-pr.close),Math.abs(x.low-pr.close)));}let v=tr.slice(0,p).reduce((a,b)=>a+b,0)/p;for(let i=p;i<tr.length;i++)v=(v*(p-1)+tr[i])/p;return v;}
+function ema(v,p){if(v.length<p)return null;const k=2/(p+1);let x=v.slice(0,p).reduce(function(a,b){return a+b;},0)/p;for(let i=p;i<v.length;i++)x=v[i]*k+x*(1-k);return x;}
+function rsi(v,p){p=p||14;if(v.length<p+1)return null;let g=0,l=0;for(let i=1;i<=p;i++){const d=v[i]-v[i-1];if(d>=0)g+=d;else l-=d;}let ag=g/p,al=l/p;for(let i=p+1;i<v.length;i++){const d=v[i]-v[i-1];ag=(ag*(p-1)+Math.max(d,0))/p;al=(al*(p-1)+Math.max(-d,0))/p;}if(al===0)return ag===0?50:100;return 100-100/(1+ag/al);}
+function atr(c,p){p=p||14;if(c.length<p+1)return null;const tr=[];for(let i=1;i<c.length;i++){const x=c[i],pr=c[i-1];tr.push(Math.max(x.high-x.low,Math.abs(x.high-pr.close),Math.abs(x.low-pr.close)));}let v=tr.slice(0,p).reduce(function(a,b){return a+b;},0)/p;for(let i=p;i<tr.length;i++)v=(v*(p-1)+tr[i])/p;return v;}
 function macd(v){if(v.length<35)return null;let f=v[0],s=v[0],line=[];for(let i=0;i<v.length;i++){f=i?v[i]*(2/13)+f*(11/13):v[i];s=i?v[i]*(2/27)+s*(25/27):v[i];line.push(f-s);}const sig=ema(line.slice(25),9),cur=line[line.length-1];return {line:cur,signal:sig,hist:sig===null?null:cur-sig};}
-function bollinger(values,period=20,multiplier=2){const out=Array(values.length).fill(null);for(let i=period-1;i<values.length;i++){const slice=values.slice(i-period+1,i+1);const mean=slice.reduce((sum,v)=>sum+v,0)/period;const variance=slice.reduce((sum,v)=>sum+(v-mean)*(v-mean),0)/period;const sd=Math.sqrt(variance);out[i]={middle:mean,upper:mean+multiplier*sd,lower:mean-multiplier*sd};}return out;}
-function adx(c,period=14){if(c.length<period*2+1)return null;const tr=[],plusDM=[],minusDM=[];for(let i=1;i<c.length;i++){const cur=c[i],prev=c[i-1];const up=cur.high-prev.high;const down=prev.low-cur.low;tr.push(Math.max(cur.high-cur.low,Math.abs(cur.high-prev.close),Math.abs(cur.low-prev.close)));plusDM.push(up>down&&up>0?up:0);minusDM.push(down>up&&down>0?down:0);}let trSum=tr.slice(0,period).reduce((a,b)=>a+b,0);let plusSum=plusDM.slice(0,period).reduce((a,b)=>a+b,0);let minusSum=minusDM.slice(0,period).reduce((a,b)=>a+b,0);const dx=[];for(let i=period;i<tr.length;i++){trSum=trSum-trSum/period+tr[i];plusSum=plusSum-plusSum/period+plusDM[i];minusSum=minusSum-minusSum/period+minusDM[i];const plusDI=trSum?100*plusSum/trSum:0;const minusDI=trSum?100*minusSum/trSum:0;const denom=plusDI+minusDI;dx.push(denom?100*Math.abs(plusDI-minusDI)/denom:0);}if(dx.length<period)return null;let result=dx.slice(0,period).reduce((a,b)=>a+b,0)/period;for(let i=period;i<dx.length;i++)result=(result*(period-1)+dx[i])/period;return result;}
-function getTrend(asset,res){const c=closedCandles(asset,res);if(c.length<25)return "UNKNOWN";const v=c.map(x=>x.close),a=ema(v,9),b=ema(v,21),last=v[v.length-1];if(a===null||b===null)return "UNKNOWN";if(last>b&&a>b)return "UP";if(last<b&&a<b)return "DOWN";return "SIDE";}
+function bollinger(values,period,multiplier){period=period||20;multiplier=multiplier||2;const out=Array(values.length).fill(null);for(let i=period-1;i<values.length;i++){const slice=values.slice(i-period+1,i+1);const mean=slice.reduce(function(sum,v){return sum+v;},0)/period;const variance=slice.reduce(function(sum,v){return sum+(v-mean)*(v-mean);},0)/period;const sd=Math.sqrt(variance);out[i]={middle:mean,upper:mean+multiplier*sd,lower:mean-multiplier*sd};}return out;}
+function adx(c,period){period=period||14;if(c.length<period*2+1)return null;const tr=[],plusDM=[],minusDM=[];for(let i=1;i<c.length;i++){const cur=c[i],prev=c[i-1];const up=cur.high-prev.high;const down=prev.low-cur.low;tr.push(Math.max(cur.high-cur.low,Math.abs(cur.high-prev.close),Math.abs(cur.low-prev.close)));plusDM.push(up>down&&up>0?up:0);minusDM.push(down>up&&down>0?down:0);}let trSum=tr.slice(0,period).reduce(function(a,b){return a+b;},0);let plusSum=plusDM.slice(0,period).reduce(function(a,b){return a+b;},0);let minusSum=minusDM.slice(0,period).reduce(function(a,b){return a+b;},0);const dx=[];for(let i=period;i<tr.length;i++){trSum=trSum-trSum/period+tr[i];plusSum=plusSum-plusSum/period+plusDM[i];minusSum=minusSum-minusSum/period+minusDM[i];const plusDI=trSum?100*plusSum/trSum:0;const minusDI=trSum?100*minusSum/trSum:0;const denom=plusDI+minusDI;dx.push(denom?100*Math.abs(plusDI-minusDI)/denom:0);}if(dx.length<period)return null;let result=dx.slice(0,period).reduce(function(a,b){return a+b;},0)/period;for(let i=period;i<dx.length;i++)result=(result*(period-1)+dx[i])/period;return result;}
+function getTrend(asset,res){const c=closedCandles(asset,res);if(c.length<25)return "UNKNOWN";const v=c.map(function(x){return x.close;}),a=ema(v,9),b=ema(v,21),last=v[v.length-1];if(a===null||b===null)return "UNKNOWN";if(last>b&&a>b)return "UP";if(last<b&&a<b)return "DOWN";return "SIDE";}
 
 function analyzeGold(){
-const asset="gold";const candles=closedCandles(asset,"MINUTE_5");const closes=candles.map(c=>c.close);const price=closes.length?closes[closes.length-1]:getPrice(asset);
+const asset="gold";const candles=closedCandles(asset,"MINUTE_5");const closes=candles.map(function(c){return c.close;});const price=closes.length?closes[closes.length-1]:getPrice(asset);
 const e9=ema(closes,9),e21=ema(closes,21);const r=rsi(closes,14),a=atr(candles,14),adxValue=adx(candles,14);const bands=bollinger(closes,20,2);const m=macd(closes);
 const trends={HOUR_4:getTrend(asset,"HOUR_4"),HOUR:getTrend(asset,"HOUR"),MINUTE_15:getTrend(asset,"MINUTE_15"),MINUTE_5:getTrend(asset,"MINUTE_5")};
-const base={asset,side:"WAIT",ready:false,price,e9,e21,rsi:r,atr:a,adx:adxValue,macd:m,trends,buy:0,sell:0,quality:0,stop:null,target:null,candles:candles.length,explanation:"Недостаточно закрытых свечей для стратегии золота."};
+const base={asset:asset,side:"WAIT",ready:false,price:price,e9:e9,e21:e21,rsi:r,atr:a,adx:adxValue,macd:m,trends:trends,buy:0,sell:0,quality:0,stop:null,target:null,candles:candles.length,explanation:"Недостаточно закрытых свечей для стратегии золота."};
 if(candles.length<45||r===null||a===null||adxValue===null||!bands[bands.length-1]||!bands[bands.length-2])return base;
 const i=candles.length-1;const last=candles[i],prev=candles[i-1];const currentBand=bands[i],previousBand=bands[i-1];
 const buySetup=prev.close<previousBand.lower&&last.close>=currentBand.lower&&r<=35&&adxValue<=25;
@@ -587,16 +590,16 @@ if(buySetup){side="BUY";quality=80;notes.push("BUY: цена вернулась 
 else if(sellSetup){side="SELL";quality=80;notes.push("SELL: цена вернулась внутрь верхней полосы Bollinger.");notes.push("RSI подтверждает перекупленность, ADX не показывает сильный тренд.");}
 else{if(prev.close<previousBand.lower||prev.close>previousBand.upper){notes.push("Цена вышла за полосу Bollinger, но условия возврата и фильтры ещё не совпали.");}else{notes.push("Ожидание выхода за полосу Bollinger и подтверждённого возврата внутрь.");}if(adxValue>25)notes.push("ADX выше 25: фильтр исключает вход против сильного тренда.");if(r>35&&r<65)notes.push("RSI не достиг порога перепроданности или перекупленности.");}
 let stop=null,target=null;if(side==="BUY"){stop=price-a*1.5;target=price+a*3;}if(side==="SELL"){stop=price+a*1.5;target=price-a*3;}
-return Object.assign({},base,{side,ready:true,price,e9,e21,rsi:r,atr:a,adx:adxValue,macd:m,trends,buy:buySetup?4:0,sell:sellSetup?4:0,quality,stop,target,candles:candles.length,explanation:notes.join(" ")});
+return Object.assign({},base,{side:side,ready:true,price:price,e9:e9,e21:e21,rsi:r,atr:a,adx:adxValue,macd:m,trends:trends,buy:buySetup?4:0,sell:sellSetup?4:0,quality:quality,stop:stop,target:target,candles:candles.length,explanation:notes.join(" ")});
 }
 
 function analyzeBitcoin(asset){
-const candles=closedCandles(asset,"MINUTE_5"),closes=candles.map(c=>c.close);const price=closes.length?closes[closes.length-1]:getPrice(asset);
+const candles=closedCandles(asset,"MINUTE_5"),closes=candles.map(function(c){return c.close;});const price=closes.length?closes[closes.length-1]:getPrice(asset);
 const e9=ema(closes,9),e21=ema(closes,21),r=rsi(closes),a=atr(candles),m=macd(closes);
 const trends={HOUR_4:getTrend(asset,"HOUR_4"),HOUR:getTrend(asset,"HOUR"),MINUTE_15:getTrend(asset,"MINUTE_15"),MINUTE_5:getTrend(asset,"MINUTE_5")};
 let buy=0,sell=0,notes=[];
 const ready=candles.length>=40&&e9!==null&&e21!==null&&r!==null&&a!==null&&m!==null;
-if(!ready)return {asset,side:"WAIT",ready:false,price,e9,e21,rsi:r,atr:a,macd:m,adx:null,trends,buy,sell,quality:0,stop:null,target:null,candles:candles.length,explanation:"Недостаточно закрытых 5-минутных свечей."};
+if(!ready)return {asset:asset,side:"WAIT",ready:false,price:price,e9:e9,e21:e21,rsi:r,atr:a,macd:m,adx:null,trends:trends,buy:buy,sell:sell,quality:0,stop:null,target:null,candles:candles.length,explanation:"Недостаточно закрытых 5-минутных свечей."};
 const last=candles[candles.length-1],prev=candles[candles.length-2];
 if(e9>e21)buy++;else sell++;if(last.close>e9)buy++;else sell++;
 if(r>=52&&r<68)buy++;else if(r<=48&&r>32)sell++;
@@ -614,7 +617,7 @@ if(side==="BUY")notes.push("BUY: EMA, импульс и старшие ТФ по
 else if(side==="SELL")notes.push("SELL: EMA, импульс и старшие ТФ подтверждают движение вниз.");
 else{if(!notes.length)notes.push("WAIT: недостаточно подтверждений.");if(trends.HOUR_4!=="UP"&&trends.HOUR_4!=="DOWN")notes.push("4-часовой тренд не определён.");if(Math.abs(buy-sell)<2)notes.push("Перевес индикаторов слишком мал.");}
 let stop=null,target=null;if(side==="BUY"){stop=price-a*1.5;target=price+a*3;}else if(side==="SELL"){stop=price+a*1.5;target=price-a*3;}
-return {asset,side,ready:true,price,e9,e21,rsi:r,atr:a,macd:m,adx:null,trends,buy,sell,quality,stop,target,candles:candles.length,explanation:notes.join(" ")};
+return {asset:asset,side:side,ready:true,price:price,e9:e9,e21:e21,rsi:r,atr:a,macd:m,adx:null,trends:trends,buy:buy,sell:sell,quality:quality,stop:stop,target:target,candles:candles.length,explanation:notes.join(" ")};
 }
 function analyze(asset){return asset==="gold"?analyzeGold():analyzeBitcoin(asset);}
 function signalClass(s){return s==="BUY"?"buy":s==="SELL"?"sell":"wait";}
@@ -661,7 +664,6 @@ if(n==="signals"){renderDashboard();renderSettings();renderMarketSignals();}
 if(n==="market")requestAnimationFrame(function(){resizeChart();renderChart();});
 }
 document.querySelectorAll("[data-tab]").forEach(function(b){b.addEventListener("click",function(){switchTab(b.dataset.tab);});});
-document.querySelectorAll(".tabs [data-tab]").forEach(function(b){b.addEventListener("click",function(){switchTab(b.dataset.tab);});});
 document.querySelectorAll("[data-tf]").forEach(function(b){b.addEventListener("click",function(){selectTimeframe(b.dataset.tf);});});
 document.querySelectorAll('.quote[data-asset]').forEach(function(q){q.addEventListener("click",function(){selectAsset(q.dataset.asset);});});
 $("showAllCandles").addEventListener("click",function(){if(state.chart&&closedCandles(state.asset,state.resolution).length)state.chart.timeScale().fitContent();});
@@ -869,7 +871,7 @@ function rsi(v,p){p=p||14;const o=Array(v.length).fill(null);if(v.length<=p)retu
 function atr(c,p){p=p||14;const tr=c.map(function(x,i){return i===0?x.high-x.low:Math.max(x.high-x.low,Math.abs(x.high-c[i-1].close),Math.abs(x.low-c[i-1].close));});return sma(tr,p);}
 function adx(c,p){p=p||14;const n=c.length,tr=Array(n).fill(0),plus=Array(n).fill(0),minus=Array(n).fill(0);for(let i=1;i<n;i++){tr[i]=Math.max(c[i].high-c[i].low,Math.abs(c[i].high-c[i-1].close),Math.abs(c[i].low-c[i-1].close));const up=c[i].high-c[i-1].high,down=c[i-1].low-c[i].low;plus[i]=up>down&&up>0?up:0;minus[i]=down>up&&down>0?down:0;}const atrs=sma(tr,p),pma=sma(plus,p),mma=sma(minus,p),dx=Array(n).fill(null);for(let i=0;i<n;i++){if(!atrs[i]||atrs[i]===0)continue;const a=100*pma[i]/atrs[i],b=100*mma[i]/atrs[i];dx[i]=(a+b)===0?0:100*Math.abs(a-b)/(a+b);}return sma(dx.map(function(x){return x===null?0:x;}),p).map(function(x,i){return i<p*2-2?null:x;});}
 function fmt(v,d){d=d==null?2:d;return Number.isFinite(v)?v.toLocaleString("ru-RU",{minimumFractionDigits:d,maximumFractionDigits:d}):"—";}
-function dateLabel(v){const t=timeNum(v);return t?new Date(t).toLocaleString("ru-RU"):"—";}
+function dateLabel(v){const t=timeNum(v);if(!t)return "—";return new Date(t).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
 
 function backtest(candles,asset,strategy,cfg){
@@ -938,14 +940,14 @@ function renderResult(r,cfg){
 const cls=r.total>0?"good":r.total<0?"bad":"";
 const pf=Number.isFinite(r.profitFactor)?fmt(r.profitFactor):"∞";
 const ret=r.total*cfg.riskPct;
-return '<div class="sl-panel" style="margin:0"><h3>'+(r.asset==="gold"?"🥇 Золото":"₿ Bitcoin")+' · '+(r.strategy==="trend"?"По тренду":"Разворот")+'</h3><div class="metrics">'+card("Сделок",r.count)+card("Win rate",fmt(r.winRate)+"%")+card("Итог, R",fmt(r.total),cls)+card("Profit factor",pf)+card("Просадка, R",fmt(r.maxDD),"bad")+card("Прибыль / убыток",r.wins+" / "+r.losses)+card("Оценка доходности*",fmt(ret)+"%",cls)+card("Период",r.trades.length?dateLabel(r.trades[0].time):"Нет сделок")+'</div></div>';
+return '<div class="sl-panel" style="margin:0"><h3>'+(r.asset==="gold"?"🥇 Золото":"₿ Bitcoin")+' · '+(r.strategy==="trend"?"По тренду":"Разворот")+'</h3><div class="metrics">'+card("Сделок",r.count)+card("Win rate",fmt(r.winRate)+"%")+card("Итог, R",fmt(r.total),cls)+card("Profit factor",pf)+card("Просадка, R",fmt(r.maxDD),"bad")+card("Прибыль / убыток",r.wins+" / "+r.losses)+card("Доходность*",fmt(ret)+"%",cls)+card("Период",r.trades.length?dateLabel(r.trades[0].time):"—")+'</div></div>';
 }
 function renderTrades(trades){
-const body=trades.slice().reverse().slice(0,500).map(function(t){return '<tr><td>'+(t.asset==="gold"?"Золото":"BTC")+'</td><td>'+(t.strategy==="trend"?"По тренду":"Разворот")+'</td><td>'+escapeHtml(dateLabel(t.time))+'</td><td class="'+(t.side==="LONG"?"good":"bad")+'">'+t.side+'</td><td>'+fmt(t.entry,4)+'</td><td>'+fmt(t.exit,4)+'</td><td class="'+(t.R>0?"good":t.R<0?"bad":"")+'">'+fmt(t.R)+'R</td><td>'+escapeHtml(t.reason)+'</td></tr>';}).join("");
-$("sl-trades").innerHTML='<table><thead><tr><th>Актив</th><th>Стратегия</th><th>Время</th><th>Сторона</th><th>Вход</th><th>Выход</th><th>R после издержек</th><th>Причина</th></tr></thead><tbody>'+(body||'<tr><td colspan="8">Сделок не найдено.</td></tr>')+'</tbody></table>';
+const body=trades.slice().reverse().slice(0,500).map(function(t){return '<tr><td>'+(t.asset==="gold"?"Золото":"BTC")+'</td><td>'+(t.strategy==="trend"?"Тренд":"Разворот")+'</td><td>'+escapeHtml(dateLabel(t.time))+'</td><td class="'+(t.side==="LONG"?"good":"bad")+'">'+t.side+'</td><td>'+fmt(t.entry,4)+'</td><td>'+fmt(t.exit,4)+'</td><td class="'+(t.R>0?"good":t.R<0?"bad":"")+'">'+fmt(t.R)+'R</td><td>'+escapeHtml(t.reason)+'</td></tr>';}).join("");
+$("sl-trades").innerHTML='<table><thead><tr><th>Актив</th><th>Стратегия</th><th>Время</th><th>Сторона</th><th>Вход</th><th>Выход</th><th>R</th><th>Причина</th></tr></thead><tbody>'+(body||'<tr><td colspan="8">Сделок не найдено.</td></tr>')+'</tbody></table>';
 }
 function renderComparison(results){
-const rows=results.map(function(r){return '<tr><td>'+(r.asset==="gold"?"Золото":"Bitcoin")+'</td><td>'+(r.strategy==="trend"?"По тренду":"Разворот")+'</td><td>'+r.count+'</td><td>'+fmt(r.winRate)+'%</td><td class="'+(r.total>=0?"good":"bad")+'">'+fmt(r.total)+'R</td><td>'+(Number.isFinite(r.profitFactor)?fmt(r.profitFactor):"∞")+'</td><td>'+fmt(r.maxDD)+'R</td></tr>';}).join("");
+const rows=results.map(function(r){return '<tr><td>'+(r.asset==="gold"?"Золото":"Bitcoin")+'</td><td>'+(r.strategy==="trend"?"Тренд":"Разворот")+'</td><td>'+r.count+'</td><td>'+fmt(r.winRate)+'%</td><td class="'+(r.total>=0?"good":"bad")+'">'+fmt(r.total)+'R</td><td>'+(Number.isFinite(r.profitFactor)?fmt(r.profitFactor):"∞")+'</td><td>'+fmt(r.maxDD)+'R</td></tr>';}).join("");
 $("sl-comparison").innerHTML='<table><thead><tr><th>Актив</th><th>Стратегия</th><th>Сделок</th><th>Win rate</th><th>Итог R</th><th>PF</th><th>Просадка R</th></tr></thead><tbody>'+(rows||'<tr><td colspan="7">Нет данных</td></tr>')+'</tbody></table>';
 }
 
