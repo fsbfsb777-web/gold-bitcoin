@@ -266,13 +266,46 @@ th{background:#17212e;color:var(--mut);position:sticky;top:0}
 <div class="srow"><div><div class="stitle">Оповещения по золоту</div><div class="sub">XAU/USD</div></div><label class="toggle"><input type="checkbox" id="moG" checked><span class="toggle-track"></span></label></div>
 <div class="srow"><div><div class="stitle">Оповещения по Bitcoin</div><div class="sub">BTC/USD</div></div><label class="toggle"><input type="checkbox" id="moB" checked><span class="toggle-track"></span></label></div>
 <div class="srow"><div><div class="stitle">Звук и вибрация</div><div class="sub">При новом BUY/SELL</div></div><label class="toggle"><input type="checkbox" id="moSnd" checked><span class="toggle-track"></span></label></div>
+<div class="srow"><div><div class="stitle">Автоотправка ордеров</div><div class="sub">POST /api/demo/order</div></div><label class="toggle"><input type="checkbox" id="moOrder"><span class="toggle-track"></span></label></div>
 <div class="srow"><div><div class="stitle">Уведомления браузера</div><div class="sub" id="moNotifyState">Проверка…</div></div><button id="moNotifyBtn" class="primary">Разрешить</button></div>
 <div class="sub" id="moStatus" style="margin-top:8px">—</div>
+</div>
+<div class="panel">
+  <div class="ptitle">⚙️ Источник котировок золота</div>
+  <div class="srow">
+    <div><div class="stitle">Источник XAU</div><div class="sub">PAXG (proxy) или TwelveData</div></div>
+    <select id="goldSrc" style="max-width:180px"><option value="paxg">PAXG (proxy)</option><option value="twelvedata">TwelveData XAU/USD</option></select>
+  </div>
+  <div class="srow">
+    <div><div class="stitle">TwelveData API key</div><div class="sub">twelvedata.com</div></div>
+    <input id="tdKey" type="password" placeholder="ключ" style="max-width:180px">
+  </div>
+  <button id="saveData" class="primary" style="margin-top:10px">Сохранить источник</button>
+  <div class="note">Если ключ не задан или лимит исчерпан — используется PAXG.</div>
+</div>
+
+<div class="panel">
+  <div class="ptitle">💼 Demo-счёт (backend)</div>
+  <div class="sub" style="margin-bottom:10px">Эндпоинты <code>/api/account</code> и <code>/api/demo/order</code></div>
+  <div class="srow">
+    <div><div class="stitle">Backend URL</div><div class="sub">Пустой = backend не развёрнут</div></div>
+    <input id="backendUrl" type="url" placeholder="https://my-bot.example.com" style="max-width:200px">
+  </div>
+  <button id="saveBackend" class="primary" style="margin-top:10px">Сохранить backend</button>
+  <div class="sub" id="dcUpd" style="margin-top:10px">—</div>
+  <div class="metrics" style="margin-top:10px">
+    <div class="metric"><small>Баланс</small><b id="dcBal">—</b></div>
+    <div class="metric"><small>Доступно</small><b id="dcAvl">—</b></div>
+    <div class="metric"><small>Залог</small><b id="dcDep">—</b></div>
+    <div class="metric"><small>P/L</small><b id="dcPnl">—</b></div>
+  </div>
+  <div class="slabel">Открытые позиции</div>
+  <div id="dcPos" class="sub">Backend не настроен.</div>
 </div>
 </section>
 </main>
 <script>
-"use strict";
+  "use strict";
 var BIN="https://data-api.binance.vision";
 var SYM={gold:"PAXGUSDT",bitcoin:"BTCUSDT"};
 var TFM={MINUTE:"1m",MINUTE_5:"5m",MINUTE_15:"15m",HOUR:"1h",HOUR_4:"4h"};
@@ -282,6 +315,10 @@ var NAME={gold:"Золото · XAU/USD",bitcoin:"Bitcoin · BTC/USD"};
 var $=function(id){return document.getElementById(id)};
 function L(k,d){try{var v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}}
 function Sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function getCfg(){var c=L("gbCfg",{});return{goldSrc:c.goldSrc||"paxg",tdKey:c.tdKey||"",backendUrl:c.backendUrl||""}}
+function saveCfg(v){Sv("gbCfg",v)}
+var TD_TF={MINUTE:"1min",MINUTE_5:"5min",MINUTE_15:"15min",HOUR:"1h",HOUR_4:"4h"};
+
 function loadTrades(){var a=L("gbTrades",[]);return Array.isArray(a)?a:[]}
 function saveTrades(){Sv("gbTrades",S.trades)}
 function loadStrats(){return L("gbMarketStrats",{})}
@@ -290,12 +327,14 @@ function loadResults(){return L("gbResults",{})}
 function saveResults(v){Sv("gbResults",v)}
 function loadBest(){return L("gbBest",{})}
 function saveBest(v){Sv("gbBest",v)}
-function getMon(){var m=L("gbMon",{});return{enabled:m.enabled!==false,gold:m.gold!==false,bitcoin:m.bitcoin!==false,sound:m.sound!==false}}
+function getMon(){var m=L("gbMon",{});return{enabled:m.enabled!==false,gold:m.gold!==false,bitcoin:m.bitcoin!==false,sound:m.sound!==false,order:m.order===true}}
 function saveMon(v){Sv("gbMon",v)}
 function esc(s){if(s==null)return"";return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]})}
 function f(v,d){d=d==null?2:d;if(v==null||!isFinite(v))return"—";return Number(v).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d})}
+function money(v){if(v==null||!isFinite(v))return"$—";return"$"+Number(v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
 function T(id,v){var e=$(id);if(e)e.textContent=v}
 function cls(s){return s==="BUY"?"buy":s==="SELL"?"sell":"wait"}
+
 function sma(v,p){var o=new Array(v.length).fill(null),s=0;for(var i=0;i<v.length;i++){s+=v[i];if(i>=p)s-=v[i-p];if(i>=p-1)o[i]=s/p}return o}
 function ema(v,p){var o=new Array(v.length).fill(null),k=2/(p+1),val=null;for(var i=0;i<v.length;i++){val=val===null?v[i]:v[i]*k+val*(1-k);if(i>=p-1)o[i]=val}return o}
 function rsi(v,p){p=p||14;var o=new Array(v.length).fill(null);if(v.length<=p)return o;var g=0,l=0;for(var i=1;i<=p;i++){var d=v[i]-v[i-1];g+=Math.max(d,0);l+=Math.max(-d,0)}g/=p;l/=p;o[p]=l===0?100:100-100/(1+g/l);for(var i=p+1;i<v.length;i++){var d=v[i]-v[i-1];g=(g*(p-1)+Math.max(d,0))/p;l=(l*(p-1)+Math.max(-d,0))/p;o[i]=l===0?100:100-100/(1+g/l)}return o}
@@ -361,7 +400,7 @@ var STRATS=[
 {id:"scalpBBsq",name:"🔥 1m BB Squeeze",desc:"Сжатие+пробой",fn:sBBsq,tag:"1m Скальп",tfNative:"MINUTE"},
 {id:"scalpORB",name:"🔥 1m ORB London/NY",desc:"Пробой на открытии",fn:sORB,tag:"1m Скальп",tfNative:"MINUTE"}
 ];
-/* ========== CONTEXT ========== */
+  /* ========== CONTEXT ========== */
 function buildCtx(candles){
 var close=candles.map(function(c){return c.close});
 var B=bb(close,20,2),R=rsi(close,14),R2=rsi(close,2),A=atr(candles,14),AD=adx(candles,14);
@@ -391,7 +430,7 @@ function liveTf(s){return s.tfNative||S.tf}
 function getStrat(a){var all=loadStrats();if(all[a]){var s=STRATS.find(function(x){return x.id===all[a].id});if(s)return s}return STRATS[0]}
 function setStrat(a,id){var all=loadStrats();all[a]={id:id};saveStrats(all)}
 
-/* ========== STRAT_CHECKS (диагностика) ========== */
+/* ========== STRAT_CHECKS ========== */
 var STRAT_CHECKS={
   scalpVWAPR:function(c,i){if(i<40||!c.atr[i]||!c.rsi[i])return[];var cd=c.candles;var hasV=typeof cd[i].volume==="number";function vw(idx){var spv=0,sv=0;for(var k=idx-19;k<=idx;k++){if(k<0)continue;var kc=cd[k];var tp=(kc.high+kc.low+kc.close)/3;var v=hasV?(kc.volume||1):1;spv+=tp*v;sv+=v}return sv>0?spv/sv:cd[idx].close}var v0=vw(i-1),v1=vw(i);var crossed=(cd[i-1].close<v0&&cd[i].close>v1)||(cd[i-1].close>v0&&cd[i].close<v1);return[{name:"Пересечение VWAP",ok:crossed},{name:"Свеча совпадает с направлением",ok:(cd[i].close>v1&&cd[i].close>cd[i].open)||(cd[i].close<v1&&cd[i].close<cd[i].open)},{name:"RSI 25–75",ok:c.rsi[i]>25&&c.rsi[i]<75},{name:"ATR ok",ok:!!c.atr[i]}]},
   scalpRSI2:function(c,i){if(i<10||!c.ema50[i]||!c.rsi2[i])return[];var cd=c.candles[i];return[{name:"RSI(2)<10 или >90",ok:c.rsi2[i]<10||c.rsi2[i]>90},{name:"Свеча подтверждения",ok:(c.rsi2[i]<10&&cd.close>cd.open)||(c.rsi2[i]>90&&cd.close<cd.open)},{name:"Цена по нужную сторону EMA50",ok:(c.rsi2[i]<10&&cd.close>c.ema50[i])||(c.rsi2[i]>90&&cd.close<c.ema50[i])},{name:"ATR ok",ok:!!c.atr[i]}]},
@@ -650,12 +689,46 @@ function notify(asset,s,mon){
     try{var n=new Notification("Gold&BTC · "+s.side,{body:body,tag:"gb-"+asset});n.onclick=function(){window.focus();n.close()}}catch(e){}
   }
 }
+async function sendDemoOrder(asset, s) {
+  var cfg = getCfg();
+  if (!cfg.backendUrl) { T("moStatus", "⚠️ Backend URL не задан"); return; }
+  if (!s || !s.ready || s.stop == null || s.target == null) return;
+  var payload = { asset: asset, symbol: asset === "gold" ? "XAUUSD" : "BTCUSD", side: s.side, entry: +s.entry, stop: +s.stop, target: +s.target, strategy: s.stratName, reason: s.explanation, tf: s.tf, timestamp: new Date().toISOString() };
+  try {
+    var r = await fetch(cfg.backendUrl.replace(/\/$/, "") + "/api/demo/order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (r.ok) {
+      var d = await r.json().catch(function () { return {}; });
+      T("moStatus", "✅ Ордер: " + asset + " " + s.side + " @ " + f(s.entry) + " · " + new Date().toLocaleTimeString("ru-RU"));
+    } else { T("moStatus", "⚠️ HTTP " + r.status); }
+  } catch (e) { T("moStatus", "⚠️ Сеть: ордер не отправлен"); }
+}
+async function refreshDemo() {
+  var cfg = getCfg();
+  if (!cfg.backendUrl) { T("dcUpd", "Backend не настроен"); return; }
+  try {
+    var r = await fetch(cfg.backendUrl.replace(/\/$/, "") + "/api/account", { cache: "no-store" });
+    var d = await r.json();
+    if (!r.ok) throw new Error(d.error || "HTTP " + r.status);
+    T("dcBal", money(d.balance)); T("dcAvl", money(d.available)); T("dcDep", money(d.deposit));
+    var p = Number(d.profitLoss), pEl = $("dcPnl");
+    if (pEl) { pEl.textContent = money(d.profitLoss); pEl.style.color = isFinite(p) ? (p > 0 ? "#22e0a0" : p < 0 ? "#ff5c78" : "#e6f1ff") : "#e6f1ff"; }
+    var pos = Array.isArray(d.openPositions) ? d.openPositions : [], box = $("dcPos");
+    if (box) {
+      if (!pos.length) box.innerHTML = '<div class="sub">Открытых позиций нет.</div>';
+      else box.innerHTML = pos.map(function (x) { return '<div style="padding:8px 0;border-top:1px solid var(--ln)"><div style="font-weight:800;font-size:12px">' + esc(x.name || x.epic || "Инструмент") + ' · ' + esc(x.direction || "—") + '</div><div class="sub">Размер: ' + esc(x.size != null ? x.size : "—") + ' · Вход: ' + money(x.level) + ' · Тек: ' + money(x.currentPrice) + ' · P/L: ' + money(x.profitLoss) + '</div></div>'; }).join("");
+    }
+    T("dcUpd", "Обновлено: " + new Date().toLocaleTimeString("ru-RU"));
+  } catch (e) {
+    T("dcUpd", "Demo API: " + (e.message || e)); T("dcBal", "$—"); T("dcAvl", "—"); T("dcDep", "—");
+  }
+}
 function renderMonUI(){
   var mon=getMon();
   if($("moOn"))$("moOn").checked=mon.enabled;
   if($("moG"))$("moG").checked=mon.gold;
   if($("moB"))$("moB").checked=mon.bitcoin;
   if($("moSnd"))$("moSnd").checked=mon.sound;
+  if($("moOrder"))$("moOrder").checked=mon.order;
   var btn=$("moNotifyBtn"),st=$("moNotifyState");
   if(!btn||!st)return;
   if(!("Notification"in window)){st.textContent="Не поддерживается";btn.disabled=true}
@@ -663,7 +736,7 @@ function renderMonUI(){
   else if(Notification.permission==="denied"){st.textContent="Запрещено";btn.disabled=true;btn.textContent="—"}
   else{st.textContent="Не запрошено";btn.disabled=false;btn.textContent="Разрешить"}
 }
-["moOn","moG","moB","moSnd"].forEach(function(id){var e=$(id);if(!e)return;e.addEventListener("change",function(){var m=getMon();m.enabled=$("moOn").checked;m.gold=$("moG").checked;m.bitcoin=$("moB").checked;m.sound=$("moSnd").checked;saveMon(m)})});
+["moOn","moG","moB","moSnd","moOrder"].forEach(function(id){var e=$(id);if(!e)return;e.addEventListener("change",function(){var m=getMon();m.enabled=$("moOn").checked;m.gold=$("moG").checked;m.bitcoin=$("moB").checked;m.sound=$("moSnd").checked;m.order=$("moOrder").checked;saveMon(m)})});
 if($("moNotifyBtn"))$("moNotifyBtn").addEventListener("click",async function(){
   if(!("Notification"in window)){alert("Не поддерживается");return}
   if(!window.isSecureContext){alert("HTTPS required");return}
@@ -721,7 +794,10 @@ function reanalyze(asset){
     var mon=getMon();
     var prev=S.sig[asset]?S.sig[asset].side:null;
     autoAdd(next);
-    if(monInit&&mon.enabled&&mon[asset]&&(next.side==="BUY"||next.side==="SELL")&&prev!==next.side)notify(asset,next,mon);
+    if(monInit&&mon.enabled&&mon[asset]&&(next.side==="BUY"||next.side==="SELL")&&prev!==next.side){
+      notify(asset,next,mon);
+      if(mon.order)sendDemoOrder(asset,next);
+    }
     S.sig[asset]=next;
     renderSignals();
     if(asset===S.asset)renderMarket();
@@ -739,16 +815,56 @@ async function loadPrices(){
   }
   renderPrices();
 }
-async function loadCandles(tf){
-  var iv=TFM[tf];S.candles[tf]=S.candles[tf]||{};
-  for(var a of ["gold","bitcoin"]){
-    try{
-      var r=await fetch(BIN+"/api/v3/klines?symbol="+SYM[a]+"&interval="+iv+"&limit=500",{cache:"no-store"});
-      var d=await r.json();
-      if(!Array.isArray(d))throw new Error("bad");
-      S.candles[tf][a]=d.map(function(k){return{time:Math.floor(k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}});
-    }catch(e){}
+async function loadCandlesTD(tf) {
+  var cfg = getCfg();
+  if (!cfg.tdKey || cfg.goldSrc !== "twelvedata") return null;
+  var interval = TD_TF[tf] || "5min";
+  var url = "https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=" + interval + "&outputsize=500&apikey=" + encodeURIComponent(cfg.tdKey);
+  try {
+    var r = await fetch(url, { cache: "no-store" });
+    var d = await r.json();
+    if (d.status === "error") throw new Error(d.message || "TD error");
+    if (!d.values || !Array.isArray(d.values)) throw new Error("bad TD response");
+    return d.values.map(function (v) {
+      return {
+        time: Math.floor(new Date(v.datetime).getTime() / 1000),
+        open: +v.open, high: +v.high, low: +v.low, close: +v.close, volume: 0
+      };
+    }).reverse();
+  } catch (e) { console.warn("TwelveData error:", e.message); return null; }
+}
+async function loadCandles(tf) {
+  var iv = TFM[tf]; S.candles[tf] = S.candles[tf] || {};
+  var cfg = getCfg();
+  if (cfg.goldSrc === "twelvedata" && cfg.tdKey) {
+    var tdData = await loadCandlesTD(tf);
+    if (tdData && tdData.length) {
+      S.candles[tf].gold = tdData;
+    } else {
+      try {
+        var r = await fetch(BIN + "/api/v3/klines?symbol=PAXGUSDT&interval=" + iv + "&limit=500", { cache: "no-store" });
+        var d = await r.json();
+        if (Array.isArray(d)) S.candles[tf].gold = d.map(function (k) {
+          return { time: Math.floor(k[0] / 1000), open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5] };
+        });
+      } catch (e) {}
+    }
+  } else {
+    try {
+      var r = await fetch(BIN + "/api/v3/klines?symbol=PAXGUSDT&interval=" + iv + "&limit=500", { cache: "no-store" });
+      var d = await r.json();
+      if (Array.isArray(d)) S.candles[tf].gold = d.map(function (k) {
+        return { time: Math.floor(k[0] / 1000), open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5] };
+      });
+    } catch (e) {}
   }
+  try {
+    var r2 = await fetch(BIN + "/api/v3/klines?symbol=BTCUSDT&interval=" + iv + "&limit=500", { cache: "no-store" });
+    var d2 = await r2.json();
+    if (Array.isArray(d2)) S.candles[tf].bitcoin = d2.map(function (k) {
+      return { time: Math.floor(k[0] / 1000), open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5] };
+    });
+  } catch (e) {}
 }
 async function loadTest(asset,tfMin,limit){
   var key=Object.keys(TFM).find(function(k){return TFS[k]===tfMin*60})||"MINUTE_5";
@@ -946,7 +1062,8 @@ async function runOpt(){
     $("optList").innerHTML=html;
     $("sStatus").textContent="✅ Оптимизация завершена. Карточки обновлены.";
   }catch(e){$("optList").innerHTML='<div class="sub">Ошибка: '+esc(e.message||e)+'</div>'}
-  finally{btn.disabled=false;$("sRunAll").disabled=false;setTimeout(function(){$("sProg").style.display="none"},1500)}
+  finally{btn.disabled=false;$("sRunAll").disabled=false;setTimeout(function(){$("sProg").style.display
+   ="none"},1500)}
 }
 function renderJournal(){
   if(!lastAllTrades.length){$("sTrades").innerHTML='<table><thead><tr><th>Стратегия</th><th>Время</th><th>Сторона</th><th>Вход</th><th>Выход</th><th>R</th></tr></thead><tbody><tr><td colspan="6">Нет сделок</td></tr></tbody></table>';return}
@@ -982,7 +1099,10 @@ async function refreshAll(){
     ["gold","bitcoin"].forEach(function(a){
       var prev=S.sig[a]?S.sig[a].side:null;
       autoAdd(next[a]);
-      if(monInit&&mon.enabled&&mon[a]&&(next[a].side==="BUY"||next[a].side==="SELL")&&prev!==next[a].side)notify(a,next[a],mon);
+      if(monInit&&mon.enabled&&mon[a]&&(next[a].side==="BUY"||next[a].side==="SELL")&&prev!==next[a].side){
+        notify(a,next[a],mon);
+        if(mon.order)sendDemoOrder(a,next[a]);
+      }
       S.sig[a]=next[a];
     });
     monInit=true;
@@ -1000,7 +1120,7 @@ function switchTab(n){
   document.querySelectorAll("[data-tab]").forEach(function(b){b.classList.toggle("on",b.dataset.tab===n)});
   if(n==="trades")renderTrades();
   if(n==="strategy")renderStrats();
-  if(n==="account")renderMonUI();
+  if(n==="account"){ renderMonUI(); refreshDemo(); }
   if(n==="market"&&S.chart)requestAnimationFrame(function(){
     var w=$("chart").clientWidth,h=$("chart").clientHeight;
     if(w>0&&h>0)S.chart.applyOptions({width:w,height:h});
@@ -1034,7 +1154,7 @@ document.querySelectorAll(".atabs [data-a]").forEach(function(b){b.onclick=funct
   $("sStatus").textContent="Актив: "+(selAsset==="gold"?"Золото":"Bitcoin")+". Нажми «Проверить все стратегии».";
 }});
 
-/* ========== FORM ========== */
+/* ========== FORM & BUTTONS ========== */
 $("sRunAll").onclick=runAll;
 $("sOpt").onclick=runOpt;
 $("sCsv").onclick=exportCSV;
@@ -1050,14 +1170,27 @@ $("tForm").onsubmit=function(e){
 };
 document.addEventListener("visibilitychange",function(){if(!document.hidden){try{closeOpen()}catch(e){}}});
 
+if ($("saveData")) $("saveData").onclick = function () {
+  var cfg = getCfg(); cfg.goldSrc = $("goldSrc").value; cfg.tdKey = $("tdKey").value.trim(); saveCfg(cfg); alert("✅ Источник сохранён."); location.reload();
+};
+if ($("saveBackend")) $("saveBackend").onclick = function () {
+  var cfg = getCfg(); cfg.backendUrl = $("backendUrl").value.trim().replace(/\/$/, ""); saveCfg(cfg); alert("✅ Backend URL сохранён"); refreshDemo();
+};
+
 /* ========== INIT ========== */
+var _cfg = getCfg();
+if ($("goldSrc")) $("goldSrc").value = _cfg.goldSrc;
+if ($("tdKey")) $("tdKey").value = _cfg.tdKey;
+if ($("backendUrl")) $("backendUrl").value = _cfg.backendUrl;
+
 renderStrats();
 initChart();
 renderTrades();
 renderMonUI();
 wsConnect();
 refreshAll();
-setInterval(refreshAll,30000); 
-  </script>
+setInterval(refreshAll,30000);
+setInterval(refreshDemo,60000);
+</script>
 </body>
-</html>
+</html>                                                                            
