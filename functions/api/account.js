@@ -1,5 +1,3 @@
-
-
 const DEMO_URL = "https://demo-api-capital.backend-capital.com";
 
 function json(data, status = 200) {
@@ -15,15 +13,12 @@ function json(data, status = 200) {
 async function apiFetch(url, options = {}) {
   const response = await fetch(url, options);
   const text = await response.text();
-
   let data = {};
-
   try {
     data = JSON.parse(text);
   } catch {
     // Ответ не является JSON.
   }
-
   if (!response.ok) {
     throw new Error(
       data.errorCode ||
@@ -31,7 +26,6 @@ async function apiFetch(url, options = {}) {
       `Capital.com HTTP ${response.status}`
     );
   }
-
   return { data, response };
 }
 
@@ -47,7 +41,7 @@ export async function onRequest({ request, env }) {
 
   if (!apiKey || !identifier || !password) {
     return json({
-      error: "Не настроены секреты Capital.com Demo"
+      error: "Не настроены секреты Capital.com Demo (проверьте Environment Variables в Cloudflare)"
     }, 500);
   }
 
@@ -72,8 +66,7 @@ export async function onRequest({ request, env }) {
     );
 
     const cst = session.response.headers.get("CST");
-    const security =
-      session.response.headers.get("X-SECURITY-TOKEN");
+    const security = session.response.headers.get("X-SECURITY-TOKEN");
 
     if (!cst || !security) {
       throw new Error("Не удалось создать Demo-сессию");
@@ -88,35 +81,34 @@ export async function onRequest({ request, env }) {
     };
 
     // Запрашиваем счета и открытые позиции.
-    const [accountsResult, positionsResult] =
-      await Promise.all([
-        apiFetch(DEMO_URL + "/api/v1/accounts", {
-          headers
-        }),
-        apiFetch(DEMO_URL + "/api/v1/positions", {
-          headers
-        })
-      ]);
+    const [accountsResult, positionsResult] = await Promise.all([
+      apiFetch(DEMO_URL + "/api/v1/accounts", { headers }),
+      apiFetch(DEMO_URL + "/api/v1/positions", { headers })
+    ]);
 
-    const accountInfo = session.data.accountInfo || {};
     const accounts = accountsResult.data.accounts || [];
     const positions = positionsResult.data.positions || [];
+    
+    // БЕРЕМ ПЕРВЫЙ СЧЕТ ИЗ МАССИВА
+    const primaryAccount = accounts[0] || {};
+    const balanceInfo = primaryAccount.balance || {};
 
     return json({
       mode: "DEMO",
-      currency: session.data.currencyIsoCode || null,
+      currency: primaryAccount.currency || null,
 
-      balance: accountInfo.balance ?? null,
-      available: accountInfo.available ?? null,
-      deposit: accountInfo.deposit ?? null,
-      profitLoss: accountInfo.profitLoss ?? null,
+      // ИСПРАВЛЕНО: Берем баланс из primaryAccount.balance
+      balance: balanceInfo.balance ?? null,
+      available: balanceInfo.available ?? null,
+      deposit: balanceInfo.deposit ?? null,
+      profitLoss: balanceInfo.profitLoss ?? null,
 
       accounts: accounts.map(account => ({
         accountName: account.accountName || null,
         accountType: account.accountType || null,
         preferred: account.preferred ?? null,
-        balance: account.balance ?? null,
-        available: account.available ?? null,
+        balance: account.balance?.balance ?? null,
+        available: account.balance?.available ?? null,
         currency: account.currency || null
       })),
 
@@ -141,8 +133,7 @@ export async function onRequest({ request, env }) {
   } catch (error) {
     return json({
       mode: "DEMO",
-      error: "Ошибка получения данных Demo: " +
-        (error.message || "неизвестная ошибка")
+      error: "Ошибка получения данных Demo: " + (error.message || "неизвестная ошибка")
     }, 502);
   }
 }
