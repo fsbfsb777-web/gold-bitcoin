@@ -267,6 +267,7 @@ th{background:#17212e;color:var(--mut);position:sticky;top:0}
 <div class="srow"><div><div class="stitle">Оповещения по Bitcoin</div><div class="sub">BTC/USD</div></div><label class="toggle"><input type="checkbox" id="moB" checked><span class="toggle-track"></span></label></div>
 <div class="srow"><div><div class="stitle">Звук и вибрация</div><div class="sub">При новом BUY/SELL</div></div><label class="toggle"><input type="checkbox" id="moSnd" checked><span class="toggle-track"></span></label></div>
 <div class="srow"><div><div class="stitle">Автоотправка ордеров</div><div class="sub">POST /api/demo/order</div></div><label class="toggle"><input type="checkbox" id="moOrder"><span class="toggle-track"></span></label></div>
+  <div class="srow"><div><div class="stitle">Размер лота (Size)</div><div class="sub">Объем сделки (например, 0.01)</div></div><input id="ordSize" type="number" step="0.01" min="0.01" value="0.01" style="max-width:100px"></div>
 <div class="srow"><div><div class="stitle">Уведомления браузера</div><div class="sub" id="moNotifyState">Проверка…</div></div><button id="moNotifyBtn" class="primary">Разрешить</button></div>
 <div class="sub" id="moStatus" style="margin-top:8px">—</div>
 </div>
@@ -695,7 +696,7 @@ async function sendDemoOrder(asset, s) {
   
   if (!s || !s.ready || s.stop == null || s.target == null) return;
   
-  var payload = { asset: asset, symbol: asset === "gold" ? "XAUUSD" : "BTCUSD", side: s.side, entry: +s.entry, stop: +s.stop, target: +s.target, strategy: s.stratName, reason: s.explanation, tf: s.tf, timestamp: new Date().toISOString() };
+var payload = { asset: asset, symbol: asset === "gold" ? "XAUUSD" : "BTCUSD", side: s.side, entry: +s.entry, stop: +s.stop, target: +s.target, strategy: s.stratName, reason: s.explanation, tf: s.tf, timestamp: new Date().toISOString(), size: +$("ordSize").value || 0.01 };
   
   try {
     var r = await fetch(baseUrl + "/api/demo/order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
