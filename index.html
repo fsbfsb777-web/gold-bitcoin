@@ -691,11 +691,14 @@ function notify(asset,s,mon){
 }
 async function sendDemoOrder(asset, s) {
   var cfg = getCfg();
-  if (!cfg.backendUrl) { T("moStatus", "⚠️ Backend URL не задан"); return; }
+  var baseUrl = cfg.backendUrl ? cfg.backendUrl.replace(/\/$/, "") : ""; // Убрали проверку на пустоту
+  
   if (!s || !s.ready || s.stop == null || s.target == null) return;
+  
   var payload = { asset: asset, symbol: asset === "gold" ? "XAUUSD" : "BTCUSD", side: s.side, entry: +s.entry, stop: +s.stop, target: +s.target, strategy: s.stratName, reason: s.explanation, tf: s.tf, timestamp: new Date().toISOString() };
+  
   try {
-    var r = await fetch(cfg.backendUrl.replace(/\/$/, "") + "/api/demo/order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    var r = await fetch(baseUrl + "/api/demo/order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     if (r.ok) {
       var d = await r.json().catch(function () { return {}; });
       T("moStatus", "✅ Ордер: " + asset + " " + s.side + " @ " + f(s.entry) + " · " + new Date().toLocaleTimeString("ru-RU"));
@@ -704,22 +707,35 @@ async function sendDemoOrder(asset, s) {
 }
 async function refreshDemo() {
   var cfg = getCfg();
-  if (!cfg.backendUrl) { T("dcUpd", "Backend не настроен"); return; }
+  // Если URL пустой - используем пустую строку (запрос пойдет на этот же домен /api/account)
+  var baseUrl = cfg.backendUrl ? cfg.backendUrl.replace(/\/$/, "") : "";
+  
   try {
-    var r = await fetch(cfg.backendUrl.replace(/\/$/, "") + "/api/account", { cache: "no-store" });
+    var r = await fetch(baseUrl + "/api/account", { cache: "no-store" });
     var d = await r.json();
     if (!r.ok) throw new Error(d.error || "HTTP " + r.status);
-    T("dcBal", money(d.balance)); T("dcAvl", money(d.available)); T("dcDep", money(d.deposit));
+
+    T("dcBal", money(d.balance)); 
+    T("dcAvl", money(d.available)); 
+    T("dcDep", money(d.deposit));
+    
     var p = Number(d.profitLoss), pEl = $("dcPnl");
-    if (pEl) { pEl.textContent = money(d.profitLoss); pEl.style.color = isFinite(p) ? (p > 0 ? "#22e0a0" : p < 0 ? "#ff5c78" : "#e6f1ff") : "#e6f1ff"; }
+    if (pEl) { 
+        pEl.textContent = money(d.profitLoss); 
+        pEl.style.color = isFinite(p) ? (p > 0 ? "#22e0a0" : p < 0 ? "#ff5c78" : "#e6f1ff") : "#e6f1ff"; 
+    }
+    
     var pos = Array.isArray(d.openPositions) ? d.openPositions : [], box = $("dcPos");
     if (box) {
       if (!pos.length) box.innerHTML = '<div class="sub">Открытых позиций нет.</div>';
-      else box.innerHTML = pos.map(function (x) { return '<div style="padding:8px 0;border-top:1px solid var(--ln)"><div style="font-weight:800;font-size:12px">' + esc(x.name || x.epic || "Инструмент") + ' · ' + esc(x.direction || "—") + '</div><div class="sub">Размер: ' + esc(x.size != null ? x.size : "—") + ' · Вход: ' + money(x.level) + ' · Тек: ' + money(x.currentPrice) + ' · P/L: ' + money(x.profitLoss) + '</div></div>'; }).join("");
+      else box.innerHTML = pos.map(function (x) { 
+          return '<div style="padding:8px 0;border-top:1px solid var(--ln)"><div style="font-weight:800;font-size:12px">' + esc(x.name || x.epic || "Инструмент") + ' · ' + esc(x.direction || "—") + '</div><div class="sub">Размер: ' + esc(x.size != null ? x.size : "—") + ' · Вход: ' + money(x.level) + ' · Тек: ' + money(x.currentPrice) + ' · P/L: ' + money(x.profitLoss) + '</div></div>'; 
+      }).join("");
     }
     T("dcUpd", "Обновлено: " + new Date().toLocaleTimeString("ru-RU"));
   } catch (e) {
-    T("dcUpd", "Demo API: " + (e.message || e)); T("dcBal", "$—"); T("dcAvl", "—"); T("dcDep", "—");
+    T("dcUpd", "Ошибка API: " + (e.message || e)); 
+    T("dcBal", "$—"); T("dcAvl", "—"); T("dcDep", "—");
   }
 }
 function renderMonUI(){
