@@ -84,7 +84,8 @@ input:focus,select:focus{outline:none;border-color:var(--blu);box-shadow:var(--g
 .sact{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
 .badge{display:inline-block;font-size:9px;padding:2px 6px;background:#25466d;color:var(--blu);border-radius:5px;margin-left:5px}
 .badge.mk{background:#4a3415;color:var(--gold)}.badge.best{background:#15382e;color:var(--grn)}
-.badge.tag{background:#3a2450;color:var(--pur)}.badge.tf{background:#1a3446;color:var(--blu)}
+.badge.live{background:#3a1a2a;color:var(--red)}.badge.tag{background:#3a2450;color:var(--pur)}.badge.tf{background:#1a3446;color:var(--blu)}
+.badge.wk{background:#3a1a2a;color:var(--red)}
 .status{font-size:12px;color:var(--mut);margin-top:10px;white-space:pre-wrap}
 .good{color:var(--grn)}.bad{color:var(--red)}
 .tablewrap{overflow:auto;max-height:400px;border:1px solid var(--ln);border-radius:10px}
@@ -134,7 +135,7 @@ th{background:#17212e;color:var(--mut);position:sticky;top:0}
 <div id="chart"></div>
 <div class="sub" id="cstatus" style="margin-top:5px">Ожидание свечей…</div>
 <div class="sig-strip">
-<div class="sig-main"><div><div class="sub">Сигнал · <span id="mstrat" class="badge mk">—</span><span id="msigtf" class="badge tf">—</span></div><div class="sub" id="mreason">Ожидание</div></div><div id="msig" class="big wait">WAIT</div></div>
+<div class="sig-main"><div><div class="sub">Сигнал · <span id="mstrat" class="badge mk">—</span><span id="msigtf" class="badge tf">—</span><span id="mwk" class="badge wk hidden">ВЫХОДНОЙ</span></div><div class="sub" id="mreason">Ожидание</div></div><div id="msig" class="big wait">WAIT</div></div>
 <div class="lvl target"><small>Take Profit</small><b id="mtp">—</b></div>
 <div class="lvl stop"><small>Stop Loss</small><b id="msl">—</b></div>
 </div>
@@ -187,7 +188,7 @@ th{background:#17212e;color:var(--mut);position:sticky;top:0}
 <div class="stat"><small>Авто</small><b id="stAuto">0</b></div>
 <div class="stat"><small>Закрыто</small><b id="stClosed">0</b></div>
 </div>
-<div class="note">Авто-сделки создаются по текущей рыночной цене. Блокируются повторно при том же сигнале. Закрытие: SL/TP или через 6 ч.</div>
+<div class="note">Авто-сделки создаются по текущей рыночной цене. Блокируются повторно при том же сигнале. Закрытие: SL/TP или через 6 ч. <b>В субботу и воскресенье торговля отключена.</b></div>
 </div>
 <div class="panel">
 <div class="ptitle">Добавить сделку вручную</div>
@@ -212,7 +213,7 @@ th{background:#17212e;color:var(--mut);position:sticky;top:0}
 <section id="pStrategy" class="hidden">
 <div class="panel">
 <div class="ptitle">1. Параметры теста</div>
-<div class="note" style="margin-top:0;margin-bottom:10px">Каждая стратегия тестируется на своём <code>tfNative</code>: PDH/PDL на 1м, VEPB/ORB на 5м, BB+RSI/VWAP на 15м. Настройка «Свечей» = количество баров <b>на каждый ТФ</b>.</div>
+<div class="note" style="margin-top:0;margin-bottom:10px">Каждая стратегия тестируется на своём <code>tfNative</code>: PDH/PDL на 1м, VEPB/ORB на 5м, BB+RSI/VWAP на 15м. <b>Свечей</b> — количество баров на каждый ТФ. Если для стратегии сохранён BEST, бэктест и live используют его автоматически. <b>Выходные (сб/вс) исключаются автоматически.</b></div>
 <div class="form-grid">
 <div><label>Свечей на стратегию</label><select id="sLimit"><option>500</option><option selected>1000</option><option>1500</option><option>2000</option><option>3000</option><option>5000</option></select></div>
 <div><label>Издержки, %</label><input id="sCost" type="number" value="0.08" step="0.01"></div>
@@ -228,6 +229,7 @@ th{background:#17212e;color:var(--mut);position:sticky;top:0}
 <div class="fa">
 <button id="sRunAll" class="primary">🔍 Проверить все стратегии</button>
 <button id="sOpt" class="primary">⚙ Оптимизация (SL×/TP×)</button>
+<button id="sResetBest">🔄 Сбросить BEST</button>
 <button id="sCsv" disabled>Экспорт CSV</button>
 </div>
 <div class="status" id="sStatus">Нажми «Проверить все стратегии».</div>
@@ -235,7 +237,7 @@ th{background:#17212e;color:var(--mut);position:sticky;top:0}
 </div>
 <div class="panel">
 <div class="ptitle">2. Результаты</div>
-<div class="sub" style="margin-bottom:8px">Приоритет: PF и R. Winrate вторичен.</div>
+<div class="sub" style="margin-bottom:8px">Приоритет: PF и R. Winrate вторичен. Бейдж <span class="badge live">live</span> означает, что эти параметры сейчас применяются к живому сигналу.</div>
 <div id="stratList"></div>
 </div>
 <div class="panel" id="optPanel" style="display:none">
@@ -309,7 +311,7 @@ var TD_TF={MINUTE:"1min",MINUTE_5:"5min",MINUTE_15:"15min",HOUR:"1h",HOUR_4:"4h"
 function loadTrades(){var a=L("gbTrades",[]);return Array.isArray(a)?a:[]}
 function saveTrades(){Sv("gbTrades",S.trades)}
 function loadStrats(){return L("gbMarketStrats",{})}
-function saveStrats(v){Sv("gbMarketStrats",v)}
+function saveStrats(v){Sv("gbMarketStratss",v)}
 function loadResults(){return L("gbResults",{})}
 function saveResults(v){Sv("gbResults",v)}
 function loadBest(){return L("gbBest",{})}
@@ -321,6 +323,8 @@ function f(v,d){d=d==null?2:d;if(v==null)return"—";if(v===Infinity)return"∞"
 function money(v){if(v==null||!isFinite(v))return"$—";return"$"+Number(v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
 function T(id,v){var e=$(id);if(e)e.textContent=v}
 function cls(s){return s==="BUY"?"buy":s==="SELL"?"sell":"wait"}
+function isWeekend(ts){var d=new Date(ts*1000).getUTCDay();return d===0||d===6}
+function isWeekendNow(){var d=new Date().getUTCDay();return d===0||d===6}
 
 function sma(v,p){var o=new Array(v.length).fill(null),s=0;for(var i=0;i<v.length;i++){s+=v[i];if(i>=p)s-=v[i-p];if(i>=p-1)o[i]=s/p}return o}
 function ema(v,p){var o=new Array(v.length).fill(null),k=2/(p+1),val=null;for(var i=0;i<v.length;i++){val=val===null?v[i]:v[i]*k+val*(1-k);if(i>=p-1)o[i]=val}return o}
@@ -334,20 +338,44 @@ function st(c,p,m){p=p||10;m=m||3;var atrv=atr(c,p),n=c.length,tr=new Array(n).f
 function dc(c,p){p=p||20;var n=c.length,h=new Array(n).fill(null),l=new Array(n).fill(null);for(var i=p-1;i<n;i++){var hh=-Infinity,ll=Infinity;for(var j=i-p+1;j<=i;j++){hh=Math.max(hh,c[j].high);ll=Math.min(ll,c[j].low)}h[i]=hh;l[i]=ll}return{high:h,low:l}}
 function ichi(c){var n=c.length,tk=new Array(n).fill(null),kj=new Array(n).fill(null),sa=new Array(n).fill(null),sb=new Array(n).fill(null);function hl(arr,i,p){var hh=-Infinity,ll=Infinity;for(var j=Math.max(0,i-p+1);j<=i;j++){hh=Math.max(hh,arr[j].high);ll=Math.min(ll,arr[j].low)}return(hh+ll)/2}for(var i=0;i<n;i++){if(i>=8)tk[i]=hl(c,i,9);if(i>=25)kj[i]=hl(c,i,26)}for(var i=0;i<n;i++){var j=i-26;if(j>=0&&tk[j]!=null&&kj[j]!=null)sa[i]=(tk[j]+kj[j])/2;if(j>=51)sb[i]=hl(c,j,52)}return{tk:tk,kj:kj,sa:sa,sb:sb}}
 
-// ═══════════ STRATEGIES ═══════════
+function nthWeekdayOfMonth(year,month,weekday,n){
+  var first=new Date(Date.UTC(year,month,1));
+  var firstWd=first.getUTCDay();
+  var offset=(weekday-firstWd+7)%7;
+  return 1+offset+(n-1)*7;
+}
+function usDstActive(d){
+  var y=d.getUTCFullYear(),m=d.getUTCMonth(),day=d.getUTCDate();
+  var dstStart=nthWeekdayOfMonth(y,2,0,2);
+  var dstEnd=nthWeekdayOfMonth(y,10,0,1);
+  if(m>2&&m<10)return true;
+  if(m===2)return day>=dstStart;
+  if(m===10)return day<dstEnd;
+  return false;
+}
 
 function sPDHPDL(c,i){
   if(i<100)return null;
   var cd=c.candles;
   var curDay=Math.floor(cd[i].time/86400);
   var dayStart=-1;
-  for(var k=i-1;k>=0;k--){if(Math.floor(cd[k].time/86400)<curDay){dayStart=k;break}}
+  for(var k=i-1;k>=0;k--){
+    var kdow=new Date(cd[k].time*1000).getUTCDay();
+    if(kdow===0||kdow===6)continue;
+    if(Math.floor(cd[k].time/86400)<curDay){dayStart=k;break}
+  }
   if(dayStart<0)return null;
   var prevDay=Math.floor(cd[dayStart].time/86400);
   var pdStart=0;
-  for(var k=dayStart;k>=0;k--){if(Math.floor(cd[k].time/86400)<prevDay){pdStart=k+1;break}}
+  for(var k=dayStart;k>=0;k--){
+    var kdow=new Date(cd[k].time*1000).getUTCDay();
+    if(kdow===0||kdow===6)continue;
+    if(Math.floor(cd[k].time/86400)<prevDay){pdStart=k+1;break}
+  }
   var pdh=-Infinity,pdl=Infinity,fo=null,lc=null;
   for(var k=pdStart;k<=dayStart;k++){
+    var kdow=new Date(cd[k].time*1000).getUTCDay();
+    if(kdow===0||kdow===6)continue;
     if(cd[k].high>pdh)pdh=cd[k].high;
     if(cd[k].low<pdl)pdl=cd[k].low;
     if(fo===null)fo=cd[k].open;
@@ -403,16 +431,13 @@ function sSessionORB(c,i){
   var cd=c.candles,bar=cd[i],A=c.atr[i];
   var d=new Date(bar.time*1000);
   var minutes=d.getUTCHours()*60+d.getUTCMinutes();
-  var month=d.getUTCMonth();
-  var isDST=(month>=2&&month<=9);
-  var rangeStart=-1,rangeEnd=-1,sessionId=null,sessionEnd=-1;
-  // London: 07:00–07:15 UTC (without DST — UK shifts too, approximating)
+  var isDST=usDstActive(d);
+  var rangeStart=-1,rangeEnd=-1,sessionId=null;
   if(minutes>=420&&minutes<435)return null;
-  if(minutes>=435&&minutes<600){rangeStart=420;rangeEnd=435;sessionId="London";sessionEnd=600}
-  // NY: 13:30 UTC summer, 14:30 UTC winter
+  if(minutes>=435&&minutes<600){rangeStart=420;rangeEnd=435;sessionId="London"}
   var nyOpen=isDST?810:870;
   if(minutes>=nyOpen&&minutes<nyOpen+15)return null;
-  if(minutes>=nyOpen+15&&minutes<nyOpen+150){rangeStart=nyOpen;rangeEnd=nyOpen+15;sessionId="NY";sessionEnd=nyOpen+150}
+  if(minutes>=nyOpen+15&&minutes<nyOpen+150){rangeStart=nyOpen;rangeEnd=nyOpen+15;sessionId="NY"}
   if(rangeStart<0)return null;
   var rHigh=-Infinity,rLow=Infinity,found=0;
   for(var k=i-1;k>=Math.max(0,i-40);k--){
@@ -484,8 +509,36 @@ function buildCtx(candles){
   return{candles:candles,close:close,bb:B,rsi:R,rsi2:R2,atr:A,adx:AD,ema9:e9,ema21:e21,ema50:e50,ema200:e200,sma20:s20,e5:E5,e13:E13,e34:E34,macdLine:M.line,macdHist:M.hist,stochK:STO.k,stochD:STO.d,st:ST,dHigh:DC.high,dLow:DC.low,tk:IC.tk,kj:IC.kj,sa:IC.sa,sb:IC.sb};
 }
 function closed(c,s){var n=Math.floor(Date.now()/1000);return c.filter(function(x){return x.time+s<=n})}
-function getOpts(){return{useTrend:$("sTrend")?$("sTrend").checked:true,useVolF:$("sVolF")?$("sVolF").checked:false,minVol:$("sMinVol")?(+$("sMinVol").value||0):0,atr:$("sAtr")?(+$("sAtr").value||1.5):1.5,r:$("sR")?(+$("sR").value||2):2}}
+
+var bestCombo=loadBest();
+(function(){
+  var needsClear=false;
+  for(var k in bestCombo){
+    var b=bestCombo[k];
+    if(b&&b.atr!==undefined&&b.stopMult===undefined){needsClear=true;break}
+    if(b&&(b.stopMult===undefined||b.tpMult===undefined)){needsClear=true;break}
+  }
+  if(needsClear){bestCombo={};saveBest({});console.info("[migration] bestCombo cleared (old format)")}
+})();
+
+function getOpts(stratId){
+  var best=bestCombo[stratId]||{};
+  return{
+    useTrend:$("sTrend")?$("sTrend").checked:true,
+    useVolF:$("sVolF")?$("sVolF").checked:false,
+    minVol:$("sMinVol")?(+$("sMinVol").value||0):0,
+    atr:$("sAtr")?(+$("sAtr").value||1.5):1.5,
+    r:$("sR")?(+$("sR").value||2):2,
+    stopMult:(best.stopMult!=null)?best.stopMult:1,
+    tpMult:(best.tpMult!=null)?best.tpMult:1
+  };
+}
+
 function evalAt(ctx,i,strat,opts){
+  if(!ctx.candles[i])return null;
+  // ═══ Weekend filter: no trading on Sat/Sun ═══
+  var dow=new Date(ctx.candles[i].time*1000).getUTCDay();
+  if(dow===0||dow===6)return null;
   var sig=null;
   try{sig=strat.fn(ctx,i)}catch(e){return null}
   if(!sig)return null;
@@ -510,13 +563,26 @@ var STRAT_CHECKS={
     var cd=c.candles;
     var curDay=Math.floor(cd[i].time/86400);
     var dayStart=-1;
-    for(var k=i-1;k>=0;k--){if(Math.floor(cd[k].time/86400)<curDay){dayStart=k;break}}
-    if(dayStart<0)return[{name:"Нет вчерашнего дня в истории",ok:false},{name:"Нужно ≥24ч данных",ok:false}];
+    for(var k=i-1;k>=0;k--){
+      var kdow=new Date(cd[k].time*1000).getUTCDay();
+      if(kdow===0||kdow===6)continue;
+      if(Math.floor(cd[k].time/86400)<curDay){dayStart=k;break}
+    }
+    if(dayStart<0)return[{name:"Нет торговой истории ≥24ч",ok:false}];
     var prevDay=Math.floor(cd[dayStart].time/86400);
     var pds=0;
-    for(var k=dayStart;k>=0;k--){if(Math.floor(cd[k].time/86400)<prevDay){pds=k+1;break}}
+    for(var k=dayStart;k>=0;k--){
+      var kdow=new Date(cd[k].time*1000).getUTCDay();
+      if(kdow===0||kdow===6)continue;
+      if(Math.floor(cd[k].time/86400)<prevDay){pds=k+1;break}
+    }
     var pdh=-Infinity,pdl=Infinity,fo=null,lc=null;
-    for(var k=pds;k<=dayStart;k++){pdh=Math.max(pdh,cd[k].high);pdl=Math.min(pdl,cd[k].low);if(fo===null)fo=cd[k].open;lc=cd[k].close}
+    for(var k=pds;k<=dayStart;k++){
+      var kdow=new Date(cd[k].time*1000).getUTCDay();
+      if(kdow===0||kdow===6)continue;
+      pdh=Math.max(pdh,cd[k].high);pdl=Math.min(pdl,cd[k].low);
+      if(fo===null)fo=cd[k].open;lc=cd[k].close;
+    }
     var bullish=lc>fo,bar=cd[i];
     return[
       {name:"Вчера "+(bullish?"бычий":"медвежий")+" → "+(bullish?"LONG":"SHORT"),ok:true},
@@ -545,8 +611,7 @@ var STRAT_CHECKS={
     if(i<30)return[];
     var d=new Date(c.candles[i].time*1000);
     var minutes=d.getUTCHours()*60+d.getUTCMinutes();
-    var month=d.getUTCMonth();
-    var isDST=(month>=2&&month<=9);
+    var isDST=usDstActive(d);
     var nyOpen=isDST?810:870;
     var inLondon=minutes>=435&&minutes<600;
     var inNY=minutes>=nyOpen+15&&minutes<nyOpen+150;
@@ -583,7 +648,7 @@ var STRAT_CHECKS={
       {name:"Режим dn (цена < EMA200 и VWAP)",ok:bar.close<c.ema200[i]&&bar.close<vwap},
       {name:"VWAP "+f(vwap,2)+" · EMA50 "+f(c.ema50[i],2),ok:true},
       {name:"Откат к EMA50",ok:Math.abs(bar.close-c.ema50[i])/bar.close<0.01},
-      {name:"RSI "+f(c.rsi[i]||0,1),ok:(c.rsi[i]||50)>30&&(c.rsi[i]||50)<70}
+      {name:"RSI "+f(c.rsi[i]||0,1),ok:(c.rsi[i]||0)>30&&(c.rsi[i]||0)<70}
     ];
   }
 };
@@ -595,11 +660,23 @@ function analyze(asset,lb){
   var candles=(S.candles[tf]&&S.candles[tf][asset])||[];
   var cc=closed(candles,TFS[tf]);
   var livePrice=S.price[asset]||(cc.length?cc[cc.length-1].close:0);
-  var base={asset:asset,tf:tf,side:"WAIT",ready:false,price:livePrice,entry:livePrice,signalEntry:null,stratId:strat.id,stratName:strat.name,rsi:null,adx:null,atr:null,ema50:null,stop:null,target:null,checks:[],readiness:0,signalTime:null,signalBarAge:null,expired:false,explanation:"Ожидание: "+strat.name};
+  var base={asset:asset,tf:tf,side:"WAIT",ready:false,price:livePrice,entry:livePrice,signalEntry:null,stratId:strat.id,stratName:strat.name,rsi:null,adx:null,atr:null,ema50:null,stop:null,target:null,checks:[],readiness:0,signalTime:null,signalBarAge:null,expired:false,stopMult:1,tpMult:1,weekend:false,explanation:"Ожидание: "+strat.name};
   if(cc.length<60)return base;
+  // ═══ Weekend: no trading Sat/Sun ═══
+  var lastTime=cc[cc.length-1].time;
+  if(isWeekend(lastTime)||isWeekendNow()){
+    return Object.assign({},base,{
+      ready:true,
+      side:"WAIT",
+      weekend:true,
+      explanation:"⏸ Выходной — торговля отключена (сб/вс)",
+      checks:[{name:"Выходной день (сб/вс) — торговля отключена",ok:false}],
+      readiness:0
+    });
+  }
   var ctx=buildCtx(cc);
   var last=cc.length-1;
-  var opts=getOpts();
+  var opts=getOpts(strat.id);
   var found=null,foundIdx=-1;
   var startK=Math.max(60,last-lb+1);
   for(var k=last;k>=startK;k--){
@@ -630,6 +707,27 @@ function analyze(asset,lb){
     if(oStop==null)oStop=side==="BUY"?sigPrice-sigAtr*opts.atr:sigPrice+sigAtr*opts.atr;
     if(oTarget==null)oTarget=side==="BUY"?sigPrice+sigAtr*opts.atr*opts.r:sigPrice-sigAtr*opts.atr*opts.r;
   }
+  // ═══ Apply BEST multipliers ═══
+  if(side!=="WAIT"&&oStop!=null&&oTarget!=null&&isFinite(oStop)&&isFinite(oTarget)){
+    if(opts.stopMult!==1){
+      var baseRisk=Math.abs(sigPrice-oStop);
+      var adjRisk=baseRisk*opts.stopMult;
+      oStop=side==="BUY"?sigPrice-adjRisk:sigPrice+adjRisk;
+    }
+    if(opts.tpMult!==1){
+      var baseReward=Math.abs(oTarget-sigPrice);
+      var adjReward=baseReward*opts.tpMult;
+      oTarget=side==="BUY"?sigPrice+adjReward:sigPrice-adjReward;
+    }
+  }
+  // ═══ Sanity: reject inverted SL/TP after multipliers ═══
+  var invalid=false;
+  if(side==="BUY"&&(oTarget<=sigPrice||oStop>=sigPrice))invalid=true;
+  if(side==="SELL"&&(oTarget>=sigPrice||oStop<=sigPrice))invalid=true;
+  if(invalid){
+    oStop=null;oTarget=null;
+    return Object.assign({},base,{side:side,ready:true,entry:livePrice,signalEntry:sigPrice,rsi:ctx.rsi[last],adx:ctx.adx[last],atr:A,stop:null,target:null,ema50:ctx.ema50[last],checks:checks,readiness:readiness,expired:true,stopMult:opts.stopMult,tpMult:opts.tpMult,explanation:"⚠ SL/TP инвертированы после BEST — сигнал отменён",signalTime:foundIdx>=0?cc[foundIdx].time:null,signalBarAge:foundIdx>=0?(last-foundIdx):null});
+  }
   var liveStop=oStop,liveTarget=oTarget,expired=false;
   if(side!=="WAIT"&&foundIdx>=0&&foundIdx<last&&sigAtr){
     var risk=Math.abs(sigPrice-oStop);
@@ -643,7 +741,7 @@ function analyze(asset,lb){
       }
     }
   }
-  return Object.assign({},base,{side:side,ready:true,entry:livePrice,signalEntry:sigPrice,rsi:ctx.rsi[last],adx:ctx.adx[last],atr:A,stop:liveStop,target:liveTarget,ema50:ctx.ema50[last],checks:checks,readiness:readiness,expired:expired,explanation:found?(expired?"⚠ Сигнал устарел (цена ушла)":found.reason):"Ожидание «"+strat.name+"»",signalTime:foundIdx>=0?cc[foundIdx].time:null,signalBarAge:foundIdx>=0?(last-foundIdx):null});
+  return Object.assign({},base,{side:side,ready:true,entry:livePrice,signalEntry:sigPrice,rsi:ctx.rsi[last],adx:ctx.adx[last],atr:A,stop:liveStop,target:liveTarget,ema50:ctx.ema50[last],checks:checks,readiness:readiness,expired:expired,stopMult:opts.stopMult,tpMult:opts.tpMult,explanation:found?(expired?"⚠ Сигнал устарел (цена ушла)":found.reason):"Ожидание «"+strat.name+"»",signalTime:foundIdx>=0?cc[foundIdx].time:null,signalBarAge:foundIdx>=0?(last-foundIdx):null});
 }
 
 function hasOpen(asset,sid,tf,sigTime){
@@ -657,12 +755,12 @@ function hasOpen(asset,sid,tf,sigTime){
 }
 function autoAdd(s){
   if(!s||!s.ready||(s.side!=="BUY"&&s.side!=="SELL"))return;
-  if(s.expired)return;
+  if(s.expired||s.weekend)return;
   if(s.stop==null||s.target==null)return;
   if(hasOpen(s.asset,s.stratId,s.tf,s.signalTime))return;
   var entry=+s.entry;
   if(!isFinite(entry)||entry<=0)return;
-  S.trades.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,7),asset:s.asset,direction:s.side,entry:entry,exit:null,stop:+s.stop,target:+s.target,note:s.explanation,date:new Date().toLocaleString("ru-RU"),status:"OPEN",auto:true,sid:s.stratId,sname:s.stratName,tf:s.tf,signalTime:s.signalTime});
+  S.trades.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,7),asset:s.asset,direction:s.side,entry:entry,exit:null,stop:+s.stop,target:+s.target,note:s.explanation,date:new Date().toLocaleString("ru-RU"),status:"OPEN",auto:true,sid:s.stratId,sname:s.stratName,tf:s.tf,signalTime:s.signalTime,stopMult:s.stopMult,tpMult:s.tpMult});
   saveTrades();
 }
 function closeOpen(){
@@ -708,6 +806,7 @@ function renderPrices(){
 }
 function signalScore(s){
   if(!s)return 0;
+  if(s.weekend)return 0;
   if(s.side==="BUY"||s.side==="SELL")return 100;
   return s.checks&&s.checks.length?Math.max(20,Math.min(85,s.readiness)):5;
 }
@@ -744,7 +843,12 @@ function renderMarket(){
   T("mstrat",(s&&s.stratName)||getStrat(S.asset).name);
   var tfb=$("msigtf");
   if(tfb){var t=(s&&s.tf)||liveTf(getStrat(S.asset));tfb.textContent=TFL[t]||t}
-  T("mreason",s&&s.ready?s.explanation:"Ожидание");
+  var wk=$("mwk");
+  if(wk){if(s&&s.weekend)wk.classList.remove("hidden");else wk.classList.add("hidden")}
+  var reasonTxt=s&&s.ready?s.explanation:"Ожидание";
+  if(s&&s.side!=="WAIT"&&!s.weekend&&(s.stopMult!==1||s.tpMult!==1))
+    reasonTxt+=" · BEST SL×"+s.stopMult+" TP×"+s.tpMult;
+  T("mreason",reasonTxt);
   T("mtp",!s||s.target==null?"—":f(s.target));
   T("msl",!s||s.stop==null?"—":f(s.stop));
   T("expl",(s&&s.explanation)||"Ожидание");
@@ -766,7 +870,7 @@ function renderMarket(){
         return '<div class="checks-line">'+m+'<span class="nm">'+esc(x.name)+'</span></div>'
       }).join("");
       if(bar)bar.style.width=s.readiness+"%";
-      if(rtxt)rtxt.textContent="Готовность: "+s.readiness+"%";
+      if(rtxt)rtxt.textContent=s.weekend?"Торговля отключена":"Готовность: "+s.readiness+"%";
     }else{
       chkBox.innerHTML='<div class="sub">Диагностика недоступна</div>';
       if(bar)bar.style.width="0%";
@@ -785,7 +889,8 @@ function renderTrades(){
       var div=document.createElement("div");div.className="trade";
       var top=document.createElement("div");top.className="trow";
       var l=document.createElement("span");
-      l.textContent="Золото · "+t.direction+(t.auto?" · авто":"")+(t.tf?" · "+(TFL[t.tf]||t.tf):"");
+      var bestTag=(t.stopMult&&t.stopMult!==1||t.tpMult&&t.tpMult!==1)?" · BEST":"";
+      l.textContent="Золото · "+t.direction+(t.auto?" · авто":"")+(t.tf?" · "+(TFL[t.tf]||t.tf):"")+bestTag;
       var r=document.createElement("span");r.className=o==="WIN"?"up":o==="LOSS"?"down":"neutral";
       r.textContent=o==="WIN"?"ПРИБЫЛЬ":o==="LOSS"?"УБЫТОК":o==="OPEN"?"ОТКРЫТА":"BE";
       top.append(l,r);div.append(top);
@@ -825,14 +930,15 @@ function notify(asset,s,mon){
     if(s.entry!=null)body+="\nВход: "+f(s.entry);
     if(s.stop!=null)body+="\nSL: "+f(s.stop);
     if(s.target!=null)body+="\nTP: "+f(s.target);
+    if(s.stopMult!==1||s.tpMult!==1)body+="\nBEST: SL×"+s.stopMult+" TP×"+s.tpMult;
     try{var n=new Notification("Gold · "+s.side,{body:body,tag:"gb-"+asset});n.onclick=function(){window.focus();n.close()}}catch(e){}
   }
 }
 async function sendDemoOrder(asset,s){
   var cfg=getCfg();
   var baseUrl=cfg.backendUrl?cfg.backendUrl.replace(/\/$/,""):"";
-  if(!s||!s.ready||s.expired||s.stop==null||s.target==null)return;
-  var payload={asset:asset,symbol:"XAUUSD",side:s.side,entry:+s.entry,stop:+s.stop,target:+s.target,strategy:s.stratName,reason:s.explanation,tf:s.tf,timestamp:new Date().toISOString(),size:+$("ordSize").value||0.01};
+  if(!s||!s.ready||s.expired||s.weekend||s.stop==null||s.target==null)return;
+  var payload={asset:asset,symbol:"XAUUSD",side:s.side,entry:+s.entry,stop:+s.stop,target:+s.target,strategy:s.stratName,reason:s.explanation,tf:s.tf,stopMult:s.stopMult,tpMult:s.tpMult,timestamp:new Date().toISOString(),size:+$("ordSize").value||0.01};
   try{
     var r=await fetch(baseUrl+"/api/demo/order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
     if(r.ok){await r.json().catch(function(){return{}});T("moStatus","✅ Ордер: "+asset+" "+s.side+" @ "+f(s.entry)+" · "+new Date().toLocaleTimeString("ru-RU"))}
@@ -924,7 +1030,7 @@ function reanalyze(asset){
     var mon=getMon();
     var prev=S.sig[asset]?S.sig[asset].side:null;
     autoAdd(next);
-    if(monInit&&mon.enabled&&mon[asset]&&!next.expired&&(next.side==="BUY"||next.side==="SELL")&&prev!==next.side){
+    if(monInit&&mon.enabled&&mon[asset]&&!next.expired&&!next.weekend&&(next.side==="BUY"||next.side==="SELL")&&prev!==next.side){
       notify(asset,next,mon);
       if(mon.order)sendDemoOrder(asset,next);
     }
@@ -934,9 +1040,6 @@ function reanalyze(asset){
   }catch(e){}
 }
 
-// ========== LOAD ==========
-// For MINUTE always use 2000 bars paginated (2x1000 calls) so PDH/PDL has previous day.
-// TwelveData intentionally skipped for MINUTE — free tier cannot handle 2000×1m without hitting quota.
 async function loadPrices(){
   try{
     var r=await fetch(BIN+"/api/v3/ticker/price?symbol="+SYM.gold,{cache:"no-store"});
@@ -980,9 +1083,7 @@ async function loadCandles(tf){
       var r=await fetch(url,{cache:"no-store"});
       var d=await r.json();
       if(!Array.isArray(d)||!d.length)break;
-      var batch=d.map(function(k){
-        return{time:Math.floor(k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]};
-      });
+      var batch=d.map(function(k){return{time:Math.floor(k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}});
       out=batch.concat(out);
       if(batch.length<need)break;
     }catch(e){break}
@@ -1049,6 +1150,8 @@ function runBT(candles,ctx,strat,cfg,trail){
       target=sig.side==="LONG"?entry+risk*cfg.r:entry-risk*cfg.r;
     }
     if(risk<=0)continue;
+    if(sig.side==="LONG"&&(target<=entry||stop>=entry))continue;
+    if(sig.side==="SHORT"&&(target>=entry||stop<=entry))continue;
     pos={side:sig.side,entry:entry,risk:risk,stop:stop,target:target,i:i,reason:sig.reason};
   }
   var wins=0,gw=0,gl=0,total=0,peak=0,eq=0,maxDD=0;
@@ -1056,16 +1159,7 @@ function runBT(candles,ctx,strat,cfg,trail){
   return{count:trades.length,winRate:trades.length?wins/trades.length*100:0,total:total,pf:gl?gw/gl:(gw?Infinity:0),maxDD:maxDD,wins:wins,losses:trades.length-wins,trades:trades,name:strat.name,sid:strat.id};
 }
 
-var selAsset="gold",lastResults=loadResults(),lastAllTrades=[],bestCombo=loadBest();
-// Migrate old bestCombo format (atr/r) -> new (stopMult/tpMult): clear if old format found
-(function(){
-  var needsClear=false;
-  for(var k in bestCombo){
-    var b=bestCombo[k];
-    if(b&&b.atr!==undefined&&b.stopMult===undefined){needsClear=true;break}
-  }
-  if(needsClear){bestCombo={};saveBest({});console.info("Migrated bestCombo to new format")}
-})();
+var selAsset="gold",lastResults=loadResults(),lastAllTrades=[];
 
 function renderStrats(){
   var list=$("stratList");if(!list)return;
@@ -1088,15 +1182,31 @@ function updateCard(sid,r){
   var cl=r.total>0?"good":r.total<0?"bad":"";
   var pfStr=(r.pf===Infinity)?"∞":(isFinite(r.pf)?f(r.pf,2):"—");
   var best=bestCombo[sid];
+  var active=getStrat(selAsset);
+  var isLive=(active.id===sid);
   var bb='';
-  if(best){
-    if(best.stopMult!==undefined)bb=' <span class="badge best">BEST: SL×'+best.stopMult+' TP×'+best.tpMult+'</span>';
-    else if(best.atr!==undefined)bb=' <span class="badge best">BEST: ATR'+best.atr+' R'+best.r+' (устар.)</span>';
+  if(best&&best.stopMult!=null&&best.tpMult!=null){
+    bb=' <span class="badge best">BEST: SL×'+best.stopMult+' TP×'+best.tpMult+'</span>';
+    if(isLive)bb+=' <span class="badge live">live</span>';
+  }else{
+    bb=' <span class="badge" style="background:#28323f;color:#8fa0b6">SL×1.0 TP×1.0</span>';
+    if(isLive)bb+=' <span class="badge live">live</span>';
   }
   res.innerHTML='PF: <b>'+pfStr+'</b> · Win: <b>'+f(r.winRate,0)+'%</b> · R: <b class="'+cl+'">'+(r.total>0?"+":"")+f(r.total,1)+'</b> · N: '+r.count+bb;
   act.innerHTML="";
   var btn=document.createElement("button");btn.className="primary";btn.style.fontSize="11px";btn.textContent="→ Применить";
   btn.onclick=function(){apply(sid)};act.append(btn);
+  if(best&&best.stopMult!=null){
+    var b2=document.createElement("button");b2.style.fontSize="11px";b2.textContent="Сброс BEST";
+    b2.onclick=function(){
+      if(!confirm("Сбросить BEST для этой стратегии?"))return;
+      delete bestCombo[sid];saveBest(bestCombo);
+      if(lastResults[sid]){delete lastResults[sid];saveResults(lastResults)}
+      renderStrats();
+      if(isLive){S.sig[selAsset]=analyze(selAsset,3);renderMarket()}
+    };
+    act.append(b2);
+  }
 }
 function apply(sid){
   var s=STRATS.find(function(x){return x.id===sid});if(!s)return;
@@ -1107,7 +1217,9 @@ function apply(sid){
     S.sig[selAsset]=sig;
     autoAdd(sig);
     renderStrats();renderMarket();renderSignals();renderTrades();
-    T("sStatus","✅ Применено: «"+s.name+"» · ТФ "+(TFL[tf]||tf)+" · сигнал: "+sig.side);
+    var bestInfo=(sig.stopMult!==1||sig.tpMult!==1)?" · BEST SL×"+sig.stopMult+" TP×"+sig.tpMult:"";
+    var wkInfo=sig.weekend?" (выходной)":"";
+    T("sStatus","✅ Применено: «"+s.name+"» · ТФ "+(TFL[tf]||tf)+" · сигнал: "+sig.side+bestInfo+wkInfo);
   };
   if(!S.candles[tf]||!S.candles[tf][selAsset])loadCandles(tf).then(ready);
   else ready();
@@ -1144,14 +1256,16 @@ async function runAll(){
         updateCard(s.id,lastResults[s.id]);
         continue;
       }
-      var r=runBT(ctx.candles,ctx,s,cfg,trail);
+      var bc=bestCombo[s.id]||{};
+      var cfgUse=Object.assign({},cfg,{stopMult:bc.stopMult||1,tpMult:bc.tpMult||1});
+      var r=runBT(ctx.candles,ctx,s,cfgUse,trail);
       lastResults[s.id]=r;
       updateCard(s.id,r);
       r.trades.forEach(function(t){lastAllTrades.push({strat:s.name,sid:s.id,time:t.time,side:t.side,entry:t.entry,exit:t.exit,R:t.R,reason:t.reason})});
       await new Promise(function(res){setTimeout(res,0)});
     }
     saveResults(lastResults);
-    $("sStatus").textContent="✅ Готово. Стратегий: "+STRATS.length+", сделок: "+lastAllTrades.length;
+    $("sStatus").textContent="✅ Готово. Стратегий: "+STRATS.length+", сделок: "+lastAllTrades.length+" (выходные исключены)";
     $("sCsv").disabled=!lastAllTrades.length;
     renderJournal();
   }catch(e){$("sStatus").textContent="Ошибка: "+(e.message||e)}
@@ -1209,13 +1323,14 @@ async function runOpt(){
       return b.pf-a.pf;
     });
     var top=good.slice(0,15);
-    bestCombo={};
+    var newBest={};
     good.forEach(function(g){
-      if(!bestCombo[g.sid]||g.pf>bestCombo[g.sid].pf)bestCombo[g.sid]={stopMult:g.stopMult,tpMult:g.tpMult,trail:g.trail,pf:g.pf,winRate:g.winRate,total:g.total};
+      if(!newBest[g.sid]||g.pf>newBest[g.sid].pf)newBest[g.sid]={stopMult:g.stopMult,tpMult:g.tpMult,trail:g.trail,pf:g.pf,winRate:g.winRate,total:g.total};
     });
+    bestCombo=Object.assign(bestCombo,newBest);
     saveBest(bestCombo);
-    for(var sid in bestCombo){
-      var bc=bestCombo[sid];
+    for(var sid in newBest){
+      var bc=newBest[sid];
       var s2=STRATS.find(function(x){return x.id===sid});
       if(!s2||!ctxTrain[s2.tfNative])continue;
       var cfg2=Object.assign({},base,{atr:1.5,r:2.0,stopMult:bc.stopMult,tpMult:bc.tpMult});
@@ -1232,10 +1347,13 @@ async function runOpt(){
       html+='<div class="opt-row"><span>'+esc(g.strat)+'</span><b>'+g.stopMult+'</b><b>'+g.tpMult+'</b><b class="good">'+f(g.pf,2)+'</b><b class="'+ocl+'">'+oo+'</b><b>'+f(g.winRate,0)+'%</b></div>';
     });
     $("optList").innerHTML=html;
-    $("sStatus").textContent="✅ Оптимизация завершена. Комбинаций с PF>1: "+good.length;
+    var updatedCount=Object.keys(newBest).length;
+    $("sStatus").textContent="✅ Оптимизация: "+good.length+" комбинаций (PF>1) · обновлено BEST: "+updatedCount+"/"+STRATS.length+" · выходные исключены";
+    S.sig[selAsset]=analyze(selAsset,3);renderMarket();renderStrats();
   }catch(e){$("optList").innerHTML='<div class="sub">Ошибка: '+esc(e.message||e)+'</div>'}
   finally{btn.disabled=false;$("sRunAll").disabled=false;setTimeout(function(){$("sProg").style.display="none"},1500)}
 }
+
 function renderJournal(){
   if(!lastAllTrades.length){$("sTrades").innerHTML='<table><thead><tr><th>Стратегия</th><th>Время</th><th>Сторона</th><th>Вход</th><th>Выход</th><th>R</th></tr></thead><tbody><tr><td colspan="6">Нет сделок</td></tr></tbody></table>';return}
   var body=lastAllTrades.slice().reverse().slice(0,300).map(function(t){
@@ -1268,7 +1386,7 @@ async function refreshAll(){
     var mon=getMon();
     var prev=S.sig.gold?S.sig.gold.side:null;
     autoAdd(next.gold);
-    if(monInit&&mon.enabled&&mon.gold&&!next.gold.expired&&(next.gold.side==="BUY"||next.gold.side==="SELL")&&prev!==next.gold.side){
+    if(monInit&&mon.enabled&&mon.gold&&!next.gold.expired&&!next.gold.weekend&&(next.gold.side==="BUY"||next.gold.side==="SELL")&&prev!==next.gold.side){
       notify("gold",next.gold,mon);
       if(mon.order)sendDemoOrder("gold",next.gold);
     }
@@ -1312,6 +1430,17 @@ document.querySelectorAll(".quote[data-a]").forEach(function(q){q.onclick=functi
 $("sRunAll").onclick=runAll;
 $("sOpt").onclick=runOpt;
 $("sCsv").onclick=exportCSV;
+$("sResetBest").onclick=function(){
+  if(!confirm("Сбросить BEST для ВСЕХ стратегий? Live-торговля вернётся к дефолтным SL/TP. Результаты бэктеста будут очищены."))return;
+  bestCombo={};saveBest(bestCombo);
+  lastResults={};saveResults({});
+  lastAllTrades=[];
+  renderStrats();
+  renderJournal();
+  $("sCsv").disabled=true;
+  if(S.sig.gold){S.sig.gold=analyze("gold",3);renderMarket()}
+  T("sStatus","🔄 BEST сброшен. Live использует дефолтные SL/TP. Запусти «Проверить» заново.");
+};
 $("clrTr").onclick=function(){if(S.trades.length&&confirm("Удалить все?")){S.trades=[];saveTrades();renderTrades()}};
 $("tForm").onsubmit=function(e){
   e.preventDefault();
