@@ -927,7 +927,7 @@ function apply(sid){
     S.sig[selAsset]=sig;
     autoAdd(sig);
     renderStrats();renderMarket();renderSignals();renderTrades();
-    T("moStatus","✅ Применено: "+s.name+" ("+(TFL[tf]||tf)+")");
+    T("sStatus","✅ Применено: «"+s.name+"» · ТФ "+(TFL[tf]||tf)+" · сигнал: "+sig.side);
   };
   if(!S.candles[tf]||!S.candles[tf][selAsset])loadCandles(tf).then(ready);
   else ready();
