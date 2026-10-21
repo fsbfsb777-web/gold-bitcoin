@@ -1000,7 +1000,7 @@ function closeOpen(){
       
       // 1. Перевод в безубыток (если прошли 1R)
       if(profit >= t.initialRisk && t.stop !== t.entry) {
-        if((t.direction === "BUY" && t.stop < t.entry) || (t.direction === "SHORT" && t.stop > t.entry)){
+        if((t.direction === "BUY" && t.stop < t.entry) || (t.direction === "SELL" && t.stop > t.entry)){
            t.stop = t.entry;
            t.note = (t.note || "") + " [Безубыток]";
            changed = true;
@@ -1015,7 +1015,7 @@ function closeOpen(){
             t.stop = newStopBuy;
             changed = true;
           }
-        } else if(t.direction === "SHORT") {
+        } else if(t.direction === "SELL") {
           var newStopSell = p + curAtr * trAtr;
           if(newStopSell < t.stop && newStopSell > p) {
             t.stop = newStopSell;
