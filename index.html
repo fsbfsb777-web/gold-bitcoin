@@ -144,6 +144,23 @@ th{background:#17212e;color:var(--mut);position:sticky;top:0}
 <div class="readiness-bar"><div id="mreadBar"></div></div>
 <div class="sub" id="mreadTxt" style="margin-top:4px">Готовность: —</div>
 </div>
+<!-- НОВЫЙ БЛОК: КОНСЕНСУС -->
+<div class="panel">
+  <div class="ptitle">🗳️ Консенсус M1 стратегий</div>
+  <div class="sub" id="consensusText">Анализ голосов…</div>
+  <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; margin:10px 0; background:#1f2b3d;">
+    <div id="consBuy" style="background:var(--grn); width:0%; transition:width .3s;"></div>
+    <div id="consWait" style="background:var(--mut); width:100%; transition:width .3s;"></div>
+    <div id="consSell" style="background:var(--red); width:0%; transition:width .3s;"></div>
+  </div>
+  <div style="display:flex; justify-content:space-between; font-size:11px;">
+    <span class="buy" id="consBuyTxt">BUY: 0</span>
+    <span class="wait" id="consWaitTxt">WAIT: 0</span>
+    <span class="sell" id="consSellTxt">SELL: 0</span>
+  </div>
+  <div class="big wait" id="consBigSignal" style="text-align:center; margin-top:10px; width:100%;">WAIT</div>
+</div>
+<!-- КОНЕЦ БЛОКА -->
 <div class="panel">
 <div class="ptitle">Анализ</div>
 <div class="sub" id="supd">Ожидание данных</div>
@@ -257,6 +274,10 @@ th{background:#17212e;color:var(--mut);position:sticky;top:0}
 <div class="srow"><div><div class="stitle">Звук и вибрация</div><div class="sub">При новом BUY/SELL</div></div><label class="toggle"><input type="checkbox" id="moSnd" checked><span class="toggle-track"></span></label></div>
 <div class="srow"><div><div class="stitle">Автоотправка ордеров</div><div class="sub">POST /api/demo/order</div></div><label class="toggle"><input type="checkbox" id="moOrder"><span class="toggle-track"></span></label></div>
 <div class="srow"><div><div class="stitle">Размер лота (Size)</div><div class="sub">Объем сделки (например, 0.01)</div></div><input id="ordSize" type="number" step="0.01" min="0.01" value="0.01" style="max-width:100px"></div>
+<!-- НОВЫЙ БЛОК: НАСТРОЙКИ ТРЕЙЛИНГА -->
+<div class="srow"><div><div class="stitle">Живой ATR Трейлинг-стоп</div><div class="sub">Подтягивать SL за ценой (безубыток при 1R)</div></div><label class="toggle"><input type="checkbox" id="trOn" checked><span class="toggle-track"></span></label></div>
+<div class="srow"><div><div class="stitle">Множитель ATR для стопа</div><div class="sub">Насколько широко держать</div></div><input id="trAtr" type="number" step="0.1" value="1.5" style="max-width:100px"></div>
+<!-- КОНЕЦ БЛОКА -->
 <div class="srow"><div><div class="stitle">Уведомления браузера</div><div class="sub" id="moNotifyState">Проверка…</div></div><button id="moNotifyBtn" class="primary">Разрешить</button></div>
 <div class="sub" id="moStatus" style="margin-top:8px">—</div>
 </div>
@@ -476,8 +497,6 @@ function sVWAPEMARegime(c,i){
 }
 
 // ══════════════ 16 НОВЫХ M1 СТРАТЕГИЙ ══════════════
-
-// 1. M1 RANGE BB REVERSAL — основная (от уровня к уровню)
 function sM1Range(c,i){
   if(i<60||!c.atr[i]||!c.adx[i]||!c.BB25||c.BB25.upper[i]==null)return null;
   var A=c.atr[i], atrAvg=c.atrSma[i];
@@ -501,8 +520,6 @@ function sM1Range(c,i){
   }
   return null;
 }
-
-// 2. M1 ORB LONDON — пробой утреннего 5-мин диапазона
 function sM1ORB(c,i){
   if(i<20||!c.atr[i])return null;
   var bar=c.candles[i], A=c.atr[i];
@@ -530,8 +547,6 @@ function sM1ORB(c,i){
   }
   return null;
 }
-
-// 3. M1 VWAP BOUNCE — отскок от VWAP
 function sM1VWAP(c,i){
   if(i<60||!c.atr[i])return null;
   var bar=c.candles[i], A=c.atr[i];
@@ -551,8 +566,6 @@ function sM1VWAP(c,i){
   }
   return null;
 }
-
-// 4. M1 EMA 9/21 CROSS
 function sM1EMACross(c,i){
   if(i<25||!c.ema9[i]||!c.ema21[i]||!c.atr[i])return null;
   if(c.ema9[i-1]==null||c.ema21[i-1]==null)return null;
@@ -565,8 +578,6 @@ function sM1EMACross(c,i){
   }
   return null;
 }
-
-// 5. M1 RSI REVERSAL
 function sM1RSI(c,i){
   if(i<20||!c.rsi[i]||!c.atr[i])return null;
   if(c.rsi[i-1]==null)return null;
@@ -579,8 +590,6 @@ function sM1RSI(c,i){
   }
   return null;
 }
-
-// 6. M1 STOCH CROSS
 function sM1Stoch(c,i){
   if(i<20||!c.stochK[i]||!c.stochD[i]||!c.atr[i])return null;
   if(c.stochK[i-1]==null||c.stochD[i-1]==null)return null;
@@ -593,8 +602,6 @@ function sM1Stoch(c,i){
   }
   return null;
 }
-
-// 7. M1 DONCHIAN BREAKOUT
 function sM1Donchian(c,i){
   if(i<25||!c.dHigh||!c.dLow||!c.atr[i])return null;
   if(c.dHigh[i-1]==null||c.dLow[i-1]==null)return null;
@@ -607,8 +614,6 @@ function sM1Donchian(c,i){
   }
   return null;
 }
-
-// 8. M1 ENGULFING
 function sM1Engulfing(c,i){
   if(i<10||!c.atr[i])return null;
   var bar=c.candles[i], prev=c.candles[i-1], A=c.atr[i];
@@ -620,8 +625,6 @@ function sM1Engulfing(c,i){
   }
   return null;
 }
-
-// 9. M1 PIN BAR
 function sM1PinBar(c,i){
   if(i<5||!c.atr[i])return null;
   var bar=c.candles[i], A=c.atr[i];
@@ -638,8 +641,6 @@ function sM1PinBar(c,i){
   }
   return null;
 }
-
-// 10. M1 DOUBLE TOP/BOTTOM
 function sM1Double(c,i){
   if(i<30||!c.atr[i])return null;
   var bar=c.candles[i], A=c.atr[i];
@@ -657,8 +658,6 @@ function sM1Double(c,i){
   }
   return null;
 }
-
-// 11. M1 MACD HIST REVERSAL
 function sM1MACD(c,i){
   if(i<30||!c.macdHist[i]||!c.atr[i])return null;
   if(c.macdHist[i-1]==null||c.macdHist[i-2]==null)return null;
@@ -671,8 +670,6 @@ function sM1MACD(c,i){
   }
   return null;
 }
-
-// 12. M1 ATR BREAKOUT
 function sM1ATRBreak(c,i){
   if(i<30||!c.atr[i]||!c.atrSma[i])return null;
   if(c.atrSma[i]===0)return null;
@@ -687,8 +684,6 @@ function sM1ATRBreak(c,i){
   }
   return null;
 }
-
-// 13. M1 KELTNER BOUNCE
 function sM1Keltner(c,i){
   if(i<25||!c.atr[i]||!c.ema21[i])return null;
   var bar=c.candles[i], A=c.atr[i], mid=c.ema21[i];
@@ -702,8 +697,6 @@ function sM1Keltner(c,i){
   }
   return null;
 }
-
-// 14. M1 INSIDE BAR BREAKOUT
 function sM1InsideBar(c,i){
   if(i<10||!c.atr[i])return null;
   var bar=c.candles[i], prev=c.candles[i-1], pp=c.candles[i-2], A=c.atr[i];
@@ -717,8 +710,6 @@ function sM1InsideBar(c,i){
   }
   return null;
 }
-
-// 15. M1 THREE SOLDIERS/CROWS
 function sM1ThreeSoldiers(c,i){
   if(i<10||!c.atr[i])return null;
   var b1=c.candles[i-2],b2=c.candles[i-1],b3=c.candles[i],A=c.atr[i];
@@ -732,8 +723,6 @@ function sM1ThreeSoldiers(c,i){
   }
   return null;
 }
-
-// 16. M1 VOLUME SPIKE
 function sM1VolumeSpike(c,i){
   if(i<30||!c.atr[i])return null;
   var bar=c.candles[i], A=c.atr[i];
@@ -987,7 +976,8 @@ function autoAdd(s){
   if(hasOpen(s.asset,s.stratId,s.tf,s.signalTime))return;
   var entry=+s.entry;
   if(!isFinite(entry)||entry<=0)return;
-  S.trades.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,7),asset:s.asset,direction:s.side,entry:entry,exit:null,stop:+s.stop,target:+s.target,note:s.explanation,date:new Date().toLocaleString("ru-RU"),status:"OPEN",auto:true,sid:s.stratId,sname:s.stratName,tf:s.tf,signalTime:s.signalTime,stopMult:s.stopMult,tpMult:s.tpMult});
+  var initRisk = Math.abs(entry - s.stop);
+  S.trades.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,7),asset:s.asset,direction:s.side,entry:entry,exit:null,stop:+s.stop,initialStop:+s.stop,initialRisk:initRisk,target:+s.target,note:s.explanation,date:new Date().toLocaleString("ru-RU"),status:"OPEN",auto:true,sid:s.stratId,sname:s.stratName,tf:s.tf,signalTime:s.signalTime,stopMult:s.stopMult,tpMult:s.tpMult});
   saveTrades();
 }
 function closeOpen(){
@@ -997,6 +987,45 @@ function closeOpen(){
     var ts=parseInt(String(t.id).split("-")[0],10);
     if(ts&&(now-ts)>MAX){var pA=S.price[t.asset];if(pA){t.exit=pA;t.status="CLOSED";t.note=(t.note||"")+" [авто 6ч]";changed=true}continue}
     var p=S.price[t.asset];if(!p)continue;
+    
+    // --- НОВЫЙ БЛОК: ТРЕЙЛИНГ СТОП ---
+    var trailOn = $("trOn") ? $("trOn").checked : true;
+    var trAtr = $("trAtr") ? (+$("trAtr").value || 1.5) : 1.5;
+    if(trailOn && t.status === "OPEN" && t.initialRisk && S.candles["MINUTE"] && S.candles["MINUTE"][t.asset]) {
+      var m1Candles = S.candles["MINUTE"][t.asset];
+      var lastAtr = atr(m1Candles, 14);
+      var curAtr = lastAtr[lastAtr.length-1] || 2.0;
+      
+      var profit = t.direction === "BUY" ? (p - t.entry) : (t.entry - p);
+      
+      // 1. Перевод в безубыток (если прошли 1R)
+      if(profit >= t.initialRisk && t.stop !== t.entry) {
+        if((t.direction === "BUY" && t.stop < t.entry) || (t.direction === "SHORT" && t.stop > t.entry)){
+           t.stop = t.entry;
+           t.note = (t.note || "") + " [Безубыток]";
+           changed = true;
+        }
+      }
+      
+      // 2. Подтягивание по ATR
+      if(profit > 0) {
+        if(t.direction === "BUY") {
+          var newStopBuy = p - curAtr * trAtr;
+          if(newStopBuy > t.stop && newStopBuy < p) {
+            t.stop = newStopBuy;
+            changed = true;
+          }
+        } else if(t.direction === "SHORT") {
+          var newStopSell = p + curAtr * trAtr;
+          if(newStopSell < t.stop && newStopSell > p) {
+            t.stop = newStopSell;
+            changed = true;
+          }
+        }
+      }
+    }
+    // --- КОНЕЦ БЛОКА ---
+
     var hit=null;
     if(t.direction==="BUY"){if(t.stop&&p<=t.stop)hit=t.stop;else if(t.target&&p>=t.target)hit=t.target}
     else{if(t.stop&&p>=t.stop)hit=t.stop;else if(t.target&&p<=t.target)hit=t.target}
@@ -1104,7 +1133,62 @@ function renderMarket(){
       if(rtxt)rtxt.textContent="Готовность: —";
     }
   }
+  calculateConsensus(S.asset);
 }
+
+// НОВАЯ ФУНКЦИЯ: КОНСЕНСУС
+function calculateConsensus(asset){
+  if(!S.candles["MINUTE"] || !S.candles["MINUTE"][asset]) return;
+  var candles = closed(S.candles["MINUTE"][asset], 60);
+  if(candles.length < 60) return;
+  
+  var ctx = buildCtx(candles);
+  var last = candles.length - 1;
+  
+  var buyVotes = 0, sellVotes = 0, waitVotes = 0;
+  var m1Strats = STRATS.filter(function(s){ return s.tfNative === "MINUTE"; });
+  
+  m1Strats.forEach(function(s){
+    var sig = null;
+    try { sig = s.fn(ctx, last); } catch(e) {}
+    if(sig && sig.side === "LONG") buyVotes++;
+    else if(sig && sig.side === "SHORT") sellVotes++;
+    else waitVotes++;
+  });
+  
+  var total = m1Strats.length;
+  var buyPct = Math.round(buyVotes / total * 100);
+  var sellPct = Math.round(sellVotes / total * 100);
+  var waitPct = 100 - buyPct - sellPct;
+  
+  var elBuy = $("consBuy"), elWait = $("consWait"), elSell = $("consSell");
+  if(elBuy) elBuy.style.width = buyPct + "%";
+  if(elWait) elWait.style.width = waitPct + "%";
+  if(elSell) elSell.style.width = sellPct + "%";
+  
+  if($("consBuyTxt")) $("consBuyTxt").textContent = "BUY: " + buyVotes;
+  if($("consWaitTxt")) $("consWaitTxt").textContent = "WAIT: " + waitVotes;
+  if($("consSellTxt")) $("consSellTxt").textContent = "SELL: " + sellVotes;
+  
+  var bigEl = $("consBigSignal");
+  if(!bigEl) return;
+  
+  var threshold = Math.ceil(total * 0.3); 
+  if(buyVotes >= threshold && buyVotes > sellVotes * 2){
+    bigEl.textContent = "СИЛЬНЫЙ BUY";
+    bigEl.className = "big buy";
+    if($("consensusText")) $("consensusText").textContent = "Большинство M1 стратегий за покупку!";
+  } else if(sellVotes >= threshold && sellVotes > buyVotes * 2){
+    bigEl.textContent = "СИЛЬНЫЙ SELL";
+    bigEl.className = "big sell";
+    if($("consensusText")) $("consensusText").textContent = "Большинство M1 стратегий за продажу!";
+  } else {
+    bigEl.textContent = "WAIT";
+    bigEl.className = "big wait";
+    if($("consensusText")) $("consensusText").textContent = "Нет явного согласия среди стратегий.";
+  }
+}
+
 function renderTrades(){
   var list=$("trList");if(!list)return;
   T("trCnt","("+S.trades.length+")");
