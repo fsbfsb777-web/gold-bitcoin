@@ -853,6 +853,38 @@ var STRAT_CHECKS={
       {name:"Свип + возврат внутрь BB", ok:(bar.high>upper&&bar.close<upper)||(bar.low<lower&&bar.close>lower)},
       {name:"Свеча подтверждения", ok:bar.close!==bar.open}
     ];
+  },
+  m1double:function(c,i){
+    if(i<30||!c.atr[i])return[];
+    var bar=c.candles[i], A=c.atr[i];
+    var h20=-Infinity,l20=Infinity;
+    for(var k=i-20;k<i;k++){
+      if(c.candles[k].high>h20)h20=c.candles[k].high;
+      if(c.candles[k].low<l20)l20=c.candles[k].low;
+    }
+    var tol=A*0.5;
+    return [
+      {name:"Касание High 20 баров ("+f(h20,2)+")", ok:Math.abs(bar.high-h20)<tol},
+      {name:"Касание Low 20 баров ("+f(l20,2)+")", ok:Math.abs(bar.low-l20)<tol},
+      {name:"Свеча-отказ (против движения)", ok:(Math.abs(bar.high-h20)<tol&&bar.close<bar.open)||(Math.abs(bar.low-l20)<tol&&bar.close>bar.open)}
+    ];
+  },
+  m1vwap:function(c,i){
+     if(i<60||!c.atr[i])return[];
+     var bar=c.candles[i], A=c.atr[i];
+     var spv=0,sv=0;
+     for(var k=Math.max(0,i-59);k<=i;k++){
+       var kc=c.candles[k];
+       var tp=(kc.high+kc.low+kc.close)/3;
+       var v=(typeof kc.volume==="number"&&kc.volume>0)?kc.volume:1;
+       spv+=tp*v;sv+=v;
+     }
+     var vwap=sv>0?spv/sv:bar.close;
+     return [
+       {name:"VWAP: "+f(vwap,2), ok:true},
+       {name:"Касание VWAP", ok:Math.abs(bar.close-vwap)<A*1.5},
+       {name:"Свеча подтверждения", ok:bar.close!==bar.open}
+     ];
   }
 };
 
